@@ -124,7 +124,7 @@
     '혼다': 'HONDA', '닛산': 'NISSAN', '테슬라': 'TESLA', '캐딜락': 'CADILLAC',
     '쉐보레': 'CHEVROLET', '현대': 'HYUNDAI', '기아': 'KIA', '제네시스': 'GENESIS',
     '쌍용': 'SSANGYONG', 'KG모빌리티': 'KG MOBILITY', '르노': 'RENAULT',
-    '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN', '한국GM': 'GM', 'GM': 'GM'
+    '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN', '한국GM': 'CHEVROLET', 'GM': 'CHEVROLET'
   };
   const PRIMARY_BRANDS = ['벤츠', 'BMW', '볼보'];
 
