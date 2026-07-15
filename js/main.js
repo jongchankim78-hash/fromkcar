@@ -111,11 +111,45 @@
     gridEl.innerHTML = filtered.map(carCardHtml).join('');
   }
 
+  const BRAND_EN = {
+    '벤츠': 'BENZ', 'BMW': 'BMW', '아우디': 'AUDI', '폭스바겐': 'VOLKSWAGEN',
+    '포르쉐': 'PORSCHE', '볼보': 'VOLVO', '랜드로버': 'LAND ROVER', '재규어': 'JAGUAR',
+    '미니': 'MINI', '푸조': 'PEUGEOT', '렉서스': 'LEXUS', '토요타': 'TOYOTA',
+    '혼다': 'HONDA', '닛산': 'NISSAN', '테슬라': 'TESLA', '캐딜락': 'CADILLAC',
+    '쉐보레': 'CHEVROLET', '현대': 'HYUNDAI', '기아': 'KIA', '제네시스': 'GENESIS',
+    '쌍용': 'SSANGYONG', 'KG모빌리티': 'KG MOBILITY', '르노': 'RENAULT',
+    '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN'
+  };
+  const PRIMARY_BRANDS = ['벤츠', 'BMW', '볼보'];
+
+  function brandLabel(brand) {
+    return BRAND_EN[brand] || String(brand).toUpperCase();
+  }
+
   function renderHeroBrandStats(cars) {
-    const countFor = (brand) => cars.filter(c => c.brand === brand).length;
-    document.getElementById('stat-count-benz').textContent = `${countFor('벤츠')}대`;
-    document.getElementById('stat-count-bmw').textContent = `${countFor('BMW')}대`;
-    document.getElementById('stat-count-volvo').textContent = `${countFor('볼보')}대`;
+    const counts = {};
+    cars.forEach(c => { if (c.brand) counts[c.brand] = (counts[c.brand] || 0) + 1; });
+
+    const otherBrands = Object.keys(counts)
+      .filter(b => !PRIMARY_BRANDS.includes(b))
+      .sort((a, b) => counts[b] - counts[a]);
+    const orderedBrands = [...PRIMARY_BRANDS, ...otherBrands];
+
+    const container = document.getElementById('hero-brand-stats');
+    container.innerHTML = orderedBrands.map(brand => `
+      <button type="button" class="hero-brand-badge inline-flex items-center gap-2 bg-white/8 backdrop-blur rounded-xl px-4 py-2.5 border border-white/10 hover:border-[var(--fk-gold)]/60 transition-colors cursor-pointer" data-brand="${KCarUtil.escapeHtml(brand)}">
+        <span class="font-extrabold text-white text-sm tracking-wide">${KCarUtil.escapeHtml(brandLabel(brand))}</span>
+        <span class="text-[var(--fk-gold)] font-bold text-sm">${counts[brand] || 0}대</span>
+      </button>
+    `).join('');
+
+    container.querySelectorAll('.hero-brand-badge').forEach(btn => {
+      btn.addEventListener('click', () => {
+        brandFilter.value = btn.dataset.brand;
+        applyFiltersAndRender();
+        document.getElementById('gallery').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
   }
 
   async function loadCars() {
