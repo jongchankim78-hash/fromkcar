@@ -15,8 +15,14 @@
   const fuelFilter = document.getElementById('filter-fuel');
   const sortSelect = document.getElementById('sort-select');
 
+  function effectiveBrand(car) {
+    // 옛 표기("현대 제네시스 ...")로 등록된 매물은 브랜드가 '현대'로 저장돼 있어도 실제로는 제네시스다.
+    if (car.brand === '현대' && car.title && car.title.includes('제네시스')) return '제네시스';
+    return car.brand;
+  }
+
   function populateFilterOptions(cars) {
-    const brands = [...new Set(cars.map(c => c.brand).filter(Boolean))].sort();
+    const brands = [...new Set(cars.map(c => effectiveBrand(c)).filter(Boolean))].sort();
     const fuels = [...new Set(cars.map(c => c.fuel_type).filter(Boolean))].sort();
     brandFilter.innerHTML = '<option value="">전체 브랜드</option>' + brands.map(b => `<option value="${KCarUtil.escapeHtml(b)}">${KCarUtil.escapeHtml(b)}</option>`).join('');
     fuelFilter.innerHTML = '<option value="">전체 연료</option>' + fuels.map(f => `<option value="${KCarUtil.escapeHtml(f)}">${KCarUtil.escapeHtml(f)}</option>`).join('');
@@ -45,7 +51,7 @@
       </div>
       <div class="p-4 flex flex-col flex-1">
         <div class="flex items-center gap-1.5 mb-1.5">
-          <span class="badge badge-blue">${KCarUtil.escapeHtml(car.brand || '기타')}</span>
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || '기타')}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
           ${car.accident_info && car.accident_info.startsWith('무사고') ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>완전무사고</span>` : ''}
         </div>
@@ -76,7 +82,7 @@
     const sort = sortSelect.value;
 
     let filtered = allCars.filter(car => {
-      if (brand && car.brand !== brand) return false;
+      if (brand && effectiveBrand(car) !== brand) return false;
       if (fuel && car.fuel_type !== fuel) return false;
       if (q) {
         const hay = [car.title, car.region, car.car_number, car.brand].filter(Boolean).join(' ').toLowerCase();
@@ -118,7 +124,7 @@
     '혼다': 'HONDA', '닛산': 'NISSAN', '테슬라': 'TESLA', '캐딜락': 'CADILLAC',
     '쉐보레': 'CHEVROLET', '현대': 'HYUNDAI', '기아': 'KIA', '제네시스': 'GENESIS',
     '쌍용': 'SSANGYONG', 'KG모빌리티': 'KG MOBILITY', '르노': 'RENAULT',
-    '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN'
+    '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN', '한국GM': 'GM', 'GM': 'GM'
   };
   const PRIMARY_BRANDS = ['벤츠', 'BMW', '볼보'];
 
@@ -128,7 +134,7 @@
 
   function renderHeroBrandStats(cars) {
     const counts = {};
-    cars.forEach(c => { if (c.brand) counts[c.brand] = (counts[c.brand] || 0) + 1; });
+    cars.forEach(c => { const b = effectiveBrand(c); if (b) counts[b] = (counts[b] || 0) + 1; });
 
     const otherBrands = Object.keys(counts)
       .filter(b => !PRIMARY_BRANDS.includes(b))
@@ -198,7 +204,7 @@
         </div>` : ''}
 
         <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
-          <span class="badge badge-blue">${KCarUtil.escapeHtml(car.brand || '기타')}</span>
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || '기타')}</span>
           ${statusBadge(car.status)}
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
         </div>
