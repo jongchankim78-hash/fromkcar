@@ -1,0 +1,288 @@
+/**
+ * FROM K CAR — 메인 갤러리 페이지 로직
+ */
+(function () {
+  let allCars = [];
+  let currentModalImages = [];
+  let currentModalIndex = 0;
+
+  const gridEl = document.getElementById('car-grid');
+  const loadingEl = document.getElementById('loading-state');
+  const emptyEl = document.getElementById('empty-state');
+  const resultCountEl = document.getElementById('result-count');
+  const searchInput = document.getElementById('search-input');
+  const brandFilter = document.getElementById('filter-brand');
+  const fuelFilter = document.getElementById('filter-fuel');
+  const sortSelect = document.getElementById('sort-select');
+
+  function populateFilterOptions(cars) {
+    const brands = [...new Set(cars.map(c => c.brand).filter(Boolean))].sort();
+    const fuels = [...new Set(cars.map(c => c.fuel_type).filter(Boolean))].sort();
+    brandFilter.innerHTML = '<option value="">전체 브랜드</option>' + brands.map(b => `<option value="${KCarUtil.escapeHtml(b)}">${KCarUtil.escapeHtml(b)}</option>`).join('');
+    fuelFilter.innerHTML = '<option value="">전체 연료</option>' + fuels.map(f => `<option value="${KCarUtil.escapeHtml(f)}">${KCarUtil.escapeHtml(f)}</option>`).join('');
+  }
+
+  function statusBadge(status) {
+    const map = {
+      '판매중': '<span class="badge badge-green"><i class="fa-solid fa-circle text-[8px]"></i>판매중</span>',
+      '판매완료': '<span class="badge badge-gray"><i class="fa-solid fa-circle text-[8px]"></i>판매완료</span>',
+      '확인필요': '<span class="badge badge-red"><i class="fa-solid fa-circle text-[8px]"></i>확인필요</span>'
+    };
+    return map[status] || map['판매중'];
+  }
+
+  function carCardHtml(car) {
+    const images = Array.isArray(car.images) ? car.images : [];
+    const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
+    const imgCount = images.length;
+    return `
+    <article class="car-card fade-in" data-id="${car.id}">
+      <div class="car-card-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+        <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || '차량 이미지')}" loading="lazy"
+             onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
+        ${imgCount > 1 ? `<div class="car-card-count"><i class="fa-solid fa-images text-[11px]"></i>${imgCount}</div>` : ''}
+        <div class="absolute top-3 left-3 flex gap-1.5">${statusBadge(car.status)}</div>
+      </div>
+      <div class="p-4 flex flex-col flex-1">
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(car.brand || '기타')}</span>
+          ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+          ${car.accident_info && car.accident_info.startsWith('무사고') ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>완전무사고</span>` : ''}
+        </div>
+        <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
+          ${KCarUtil.escapeHtml(car.title || '차량명 미확인')}
+        </h3>
+        <p class="text-xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+        <div class="flex flex-wrap gap-1.5 mb-4">
+          <span class="spec-chip"><i class="fa-regular fa-calendar mr-1"></i>${KCarUtil.escapeHtml(car.year_info || '-')}</span>
+          <span class="spec-chip"><i class="fa-solid fa-road mr-1"></i>${KCarUtil.formatMileage(car.mileage)}</span>
+          <span class="spec-chip"><i class="fa-solid fa-gas-pump mr-1"></i>${KCarUtil.escapeHtml(car.fuel_type || '-')}</span>
+          <span class="spec-chip"><i class="fa-solid fa-location-dot mr-1"></i>${KCarUtil.escapeHtml(car.region || '-')}</span>
+        </div>
+        <div class="mt-auto flex gap-2">
+          <button class="btn-secondary flex-1 !py-2 text-sm" data-action="open-detail" data-id="${car.id}">
+            <i class="fa-solid fa-circle-info mr-1.5"></i>상세보기
+          </button>
+          ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-secondary !py-2 !px-3 text-sm" title="원본 매물 보기"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function applyFiltersAndRender() {
+    const q = (searchInput.value || '').trim().toLowerCase();
+    const brand = brandFilter.value;
+    const fuel = fuelFilter.value;
+    const sort = sortSelect.value;
+
+    let filtered = allCars.filter(car => {
+      if (brand && car.brand !== brand) return false;
+      if (fuel && car.fuel_type !== fuel) return false;
+      if (q) {
+        const hay = [car.title, car.region, car.car_number, car.brand].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    filtered.sort((a, b) => {
+      switch (sort) {
+        case 'price_asc': return (a.price ?? Infinity) - (b.price ?? Infinity);
+        case 'price_desc': return (b.price ?? -Infinity) - (a.price ?? -Infinity);
+        case 'mileage_asc': return (a.mileage ?? Infinity) - (b.mileage ?? Infinity);
+        case 'year_desc': return String(b.year_info || '').localeCompare(String(a.year_info || ''));
+        default: return (b.created_at || 0) - (a.created_at || 0);
+      }
+    });
+
+    resultCountEl.textContent = filtered.length;
+
+    if (filtered.length === 0) {
+      gridEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      if (allCars.length > 0) {
+        emptyEl.querySelector('h3').textContent = '조건에 맞는 매물이 없어요';
+        emptyEl.querySelector('p').textContent = '검색어나 필터를 조정해보세요.';
+      }
+      return;
+    }
+    emptyEl.classList.add('hidden');
+    gridEl.classList.remove('hidden');
+    gridEl.innerHTML = filtered.map(carCardHtml).join('');
+  }
+
+  async function loadCars() {
+    try {
+      const res = await KCarAPI.listCars({ limit: 200 });
+      allCars = (res.data || []).filter(c => !c.deleted);
+      loadingEl.classList.add('hidden');
+      populateFilterOptions(allCars);
+      applyFiltersAndRender();
+    } catch (e) {
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      KCarUtil.toast('매물 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+  }
+
+  /* ---------------- 상세 모달 ---------------- */
+  function optionTagsHtml(options) {
+    if (!Array.isArray(options) || options.length === 0) return '<p class="text-sm text-[var(--fk-gray-600)]">등록된 옵션 정보가 없습니다.</p>';
+    return options.map(o => `<span class="option-tag"><i class="fa-solid fa-check text-[var(--fk-blue)] text-[11px]"></i>${KCarUtil.escapeHtml(o)}</span>`).join('');
+  }
+
+  function specRow(label, value) {
+    return `<tr><th>${label}</th><td>${value ? KCarUtil.escapeHtml(String(value)) : '-'}</td></tr>`;
+  }
+
+  function openDetailModal(car) {
+    currentModalImages = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
+    currentModalIndex = 0;
+
+    const body = document.getElementById('modal-body');
+    body.innerHTML = `
+      <div class="gallery-main" id="gallery-main-wrap">
+        <img id="gallery-main-img" src="${currentModalImages[0] || ''}" alt="${KCarUtil.escapeHtml(car.title)}"
+             onerror="this.src='https://via.placeholder.com/800x500?text=No+Image'">
+        ${currentModalImages.length > 1 ? `
+          <button class="gallery-nav-btn" style="left:12px" id="gallery-prev"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="gallery-nav-btn" style="right:12px" id="gallery-next"><i class="fa-solid fa-chevron-right"></i></button>
+        ` : ''}
+        <div class="gallery-counter" id="gallery-counter">1 / ${currentModalImages.length || 1}</div>
+      </div>
+      <div class="p-5 sm:p-7">
+        ${currentModalImages.length > 1 ? `<div class="thumb-strip mb-3" id="thumb-strip">
+          ${currentModalImages.map((img, i) => `<img src="${img}" data-idx="${i}" class="${i === 0 ? 'active' : ''}" onerror="this.style.display='none'">`).join('')}
+        </div>` : ''}
+
+        <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(car.brand || '기타')}</span>
+          ${statusBadge(car.status)}
+          ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+        </div>
+        <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)] mb-2">${KCarUtil.escapeHtml(car.title || '차량명 미확인')}</h2>
+        <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-5">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+
+        <div class="grid sm:grid-cols-2 gap-6 mb-6">
+          <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
+            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-list-check mr-1.5 text-[var(--fk-blue)]"></i>기본 정보</h3>
+            <table class="spec-table">
+              ${specRow('연식', car.year_info)}
+              ${specRow('주행거리', car.mileage ? KCarUtil.formatMileage(car.mileage) : null)}
+              ${specRow('연료', car.fuel_type)}
+              ${specRow('변속기', car.transmission)}
+              ${specRow('배기량', car.displacement)}
+              ${specRow('차량색상', car.color)}
+              ${specRow('시트색상', car.seat_color)}
+              ${specRow('지역', car.region)}
+            </table>
+          </div>
+          <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
+            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-shield-halved mr-1.5 text-[var(--fk-blue)]"></i>진단 · 사고 이력</h3>
+            <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed mb-3">${KCarUtil.escapeHtml(car.accident_info || '정보 없음')}</p>
+            ${car.diagnosis_summary ? `<p class="text-xs text-[var(--fk-gray-600)] leading-relaxed border-t border-[var(--fk-gray-200)] pt-3">${KCarUtil.escapeHtml(car.diagnosis_summary)}</p>` : ''}
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-star mr-1.5 text-[var(--fk-blue)]"></i>주요 옵션</h3>
+          <div class="flex flex-wrap gap-2">${optionTagsHtml(car.options)}</div>
+        </div>
+
+        ${(car.description_ko || car.description_ru) ? `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>매물 소개</h3>
+          ${car.description_ko ? `<p class="text-sm text-[var(--fk-gray-800)] leading-relaxed whitespace-pre-line mb-3">${KCarUtil.escapeHtml(car.description_ko)}</p>` : ''}
+          ${car.description_ru ? `<div class="border-t border-[var(--fk-gray-200)] pt-3">
+            <p class="text-[11px] font-semibold text-[var(--fk-blue)] uppercase tracking-wide mb-1.5"><i class="fa-solid fa-globe mr-1"></i>На русском</p>
+            <p class="text-sm text-[var(--fk-gray-600)] italic leading-relaxed whitespace-pre-line">${KCarUtil.escapeHtml(car.description_ru)}</p>
+          </div>` : ''}
+        </div>` : ''}
+
+        ${car.memo ? `<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>메모</h3>
+          <p class="text-sm text-amber-900">${KCarUtil.escapeHtml(car.memo)}</p>
+        </div>` : ''}
+
+        <div class="flex gap-3">
+          ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-primary flex-1 text-center">
+            <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>원본 매물 페이지에서 보기
+          </a>` : ''}
+        </div>
+      </div>
+    `;
+
+    const modalEl = document.getElementById('detail-modal');
+    modalEl.classList.remove('hidden');
+    modalEl.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+
+    if (currentModalImages.length > 1) {
+      document.getElementById('gallery-prev').addEventListener('click', () => shiftGalleryImage(-1));
+      document.getElementById('gallery-next').addEventListener('click', () => shiftGalleryImage(1));
+      document.querySelectorAll('#thumb-strip img').forEach(img => {
+        img.addEventListener('click', () => setGalleryImage(parseInt(img.dataset.idx, 10)));
+      });
+    }
+  }
+
+  function setGalleryImage(idx) {
+    if (!currentModalImages.length) return;
+    currentModalIndex = (idx + currentModalImages.length) % currentModalImages.length;
+    document.getElementById('gallery-main-img').src = currentModalImages[currentModalIndex];
+    document.getElementById('gallery-counter').textContent = `${currentModalIndex + 1} / ${currentModalImages.length}`;
+    document.querySelectorAll('#thumb-strip img').forEach((img, i) => img.classList.toggle('active', i === currentModalIndex));
+  }
+  function shiftGalleryImage(delta) { setGalleryImage(currentModalIndex + delta); }
+
+  function closeModal() {
+    const modalEl = document.getElementById('detail-modal');
+    modalEl.classList.add('hidden');
+    modalEl.classList.remove('flex');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('detail-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'detail-modal') closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+    if (document.getElementById('detail-modal').classList.contains('hidden')) return;
+    if (e.key === 'ArrowLeft') shiftGalleryImage(-1);
+    if (e.key === 'ArrowRight') shiftGalleryImage(1);
+  });
+
+  gridEl.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-action="open-detail"]');
+    if (!trigger) return;
+    const id = trigger.dataset.id;
+    const car = allCars.find(c => c.id === id);
+    if (car) openDetailModal(car);
+  });
+
+  searchInput.addEventListener('input', KCarUtil.debounce(applyFiltersAndRender, 250));
+  brandFilter.addEventListener('change', applyFiltersAndRender);
+  fuelFilter.addEventListener('change', applyFiltersAndRender);
+  sortSelect.addEventListener('change', applyFiltersAndRender);
+
+  /* ---------------- ADMIN 드롭다운 메뉴 ---------------- */
+  const adminMenuBtn = document.getElementById('admin-menu-btn');
+  const adminMenuDropdown = document.getElementById('admin-menu-dropdown');
+  const adminMenuChevron = document.getElementById('admin-menu-chevron');
+  if (adminMenuBtn && adminMenuDropdown) {
+    adminMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = adminMenuDropdown.classList.contains('hidden');
+      adminMenuDropdown.classList.toggle('hidden', !isHidden);
+      adminMenuChevron.classList.toggle('rotate-180', isHidden);
+    });
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('admin-menu-wrap').contains(e.target)) {
+        adminMenuDropdown.classList.add('hidden');
+        adminMenuChevron.classList.remove('rotate-180');
+      }
+    });
+  }
+
+  loadCars();
+})();

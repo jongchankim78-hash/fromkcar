@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FROM K CAR — 내가 모은 중고차 매물</title>
+<meta name="description" content="FROM K CAR, 관심있는 중고차 매물을 한곳에 모아보는 개인 아카이브">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="icon" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/car-side.svg">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { font-family: 'Noto Sans KR', sans-serif; }
+</style>
+</head>
+<body class="bg-[var(--fk-gray-50)]">
+
+<!-- ================= 헤더 ================= -->
+<header class="fk-header sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+    <a href="index.html" class="fk-logo-badge">
+      <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR">
+    </a>
+    <div class="relative" id="admin-menu-wrap">
+      <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
+        <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN
+        <i class="fa-solid fa-chevron-down text-[10px] transition-transform" id="admin-menu-chevron"></i>
+      </button>
+      <div id="admin-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-2xl border border-[var(--fk-gray-200)] overflow-hidden">
+        <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-lock text-[var(--fk-blue)]"></i>관리자 로그인</a>
+        <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-plus text-[var(--fk-blue)]"></i>매물 추가</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 히어로 ================= -->
+<section class="fk-hero text-white">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20 relative z-10">
+    <p class="text-[13px] font-semibold tracking-[0.2em] text-blue-300 uppercase mb-3">NO PAINT &amp; TAX 100%</p>
+    <h1 class="text-2xl sm:text-4xl font-extrabold leading-tight mb-3">
+      한국에서 믿을 수 있는 중고차 매물,<br class="sm:hidden">
+      <span class="text-[var(--fk-gold)]">프롬케이카 김종찬 팀장</span>에게 맡겨주세요.<br>
+      원하시는 매물, 가장 빠르게 찾아드립니다.
+    </h1>
+    <p class="text-slate-300/90 text-sm sm:text-base italic leading-relaxed mb-8 border-l-2 border-white/20 pl-4">
+      Надёжные автомобили с пробегом в Корее — доверьте это менеджеру Ким Чон Чхану (FROM K CAR).<br>
+      Мы найдём именно тот автомобиль, который вам нужен, быстрее всех.
+    </p>
+    <div class="flex flex-wrap gap-3">
+      <a href="#gallery" class="btn-primary"><i class="fa-solid fa-car mr-2"></i>매물 둘러보기</a>
+      <a href="tel:010-7449-8282" class="btn-secondary !bg-white/10 !text-white !border-white/20 hover:!border-white/50">
+        <i class="fa-solid fa-phone mr-2"></i>전화 상담하기
+      </a>
+    </div>
+
+    <!-- 담당자 프로필 카드 -->
+    <div id="dealer-info-card" class="mt-8 inline-flex items-center gap-4 bg-white/8 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 max-w-xl">
+      <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
+      <div>
+        <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5">FROM K CAR 담당</p>
+        <p class="text-lg sm:text-xl font-extrabold text-white">김종찬 팀장</p>
+        <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
+          <i class="fa-solid fa-phone"></i>010-7449-8282
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= 필터바 ================= -->
+<section class="max-w-7xl mx-auto px-5 sm:px-8 -mt-6 relative z-20">
+  <div class="bg-white rounded-2xl shadow-lg border border-[var(--fk-gray-200)] p-4 sm:p-5 flex flex-col md:flex-row gap-3 md:items-center">
+    <div class="relative flex-1">
+      <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fk-gray-400)]"></i>
+      <input id="search-input" type="text" placeholder="차량명, 지역, 번호판으로 검색"
+        class="w-full pl-11 pr-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--fk-blue)]/30 focus:border-[var(--fk-blue)]">
+    </div>
+    <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+      <select id="filter-brand" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[110px]">
+        <option value="">전체 브랜드</option>
+      </select>
+      <select id="filter-fuel" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[100px]">
+        <option value="">전체 연료</option>
+      </select>
+      <select id="sort-select" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[130px]">
+        <option value="registered_desc">최근 등록순</option>
+        <option value="price_asc">가격 낮은순</option>
+        <option value="price_desc">가격 높은순</option>
+        <option value="mileage_asc">주행거리 적은순</option>
+        <option value="year_desc">연식 최신순</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 매물 갤러리 ================= -->
+<main id="gallery" class="max-w-7xl mx-auto px-5 sm:px-8 py-12">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-extrabold text-[var(--fk-navy)]">등록된 매물</h2>
+      <p class="text-sm text-[var(--fk-gray-600)] mt-1"><span id="result-count">0</span>건의 매물을 보고 있어요</p>
+    </div>
+  </div>
+
+  <div id="loading-state" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- 스켈레톤 카드 -->
+    <div class="car-card"><div class="car-card-img-wrap skeleton"></div><div class="p-4 space-y-2"><div class="h-4 w-3/4 skeleton rounded"></div><div class="h-4 w-1/2 skeleton rounded"></div></div></div>
+    <div class="car-card"><div class="car-card-img-wrap skeleton"></div><div class="p-4 space-y-2"><div class="h-4 w-3/4 skeleton rounded"></div><div class="h-4 w-1/2 skeleton rounded"></div></div></div>
+    <div class="car-card"><div class="car-card-img-wrap skeleton"></div><div class="p-4 space-y-2"><div class="h-4 w-3/4 skeleton rounded"></div><div class="h-4 w-1/2 skeleton rounded"></div></div></div>
+  </div>
+
+  <div id="empty-state" class="hidden text-center py-24">
+    <div class="w-20 h-20 rounded-full bg-[var(--fk-gray-100)] flex items-center justify-center mx-auto mb-5">
+      <i class="fa-solid fa-car text-3xl text-[var(--fk-gray-400)]"></i>
+    </div>
+    <h3 class="text-lg font-bold text-[var(--fk-gray-800)] mb-2">아직 등록된 매물이 없어요</h3>
+    <p class="text-sm text-[var(--fk-gray-600)] mb-6">관리자 페이지에서 매물 URL을 입력해 첫 매물을 추가해보세요.</p>
+    <a href="admin.html" class="btn-primary inline-block"><i class="fa-solid fa-plus mr-2"></i>매물 추가하러 가기</a>
+  </div>
+
+  <div id="car-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+</main>
+
+<!-- ================= 상세 모달 ================= -->
+<div id="detail-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-3 sm:p-6 bg-black/70">
+  <div id="modal-card" class="bg-white w-full max-w-3xl max-h-[90vh] sm:max-h-[85vh] rounded-2xl sm:rounded-3xl overflow-hidden relative fade-in flex flex-col">
+    <button id="modal-close" class="absolute top-3 right-3 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-[var(--fk-gray-100)]">
+      <i class="fa-solid fa-xmark text-lg text-[var(--fk-gray-800)]"></i>
+    </button>
+    <div id="modal-body" class="p-0 overflow-y-auto flex-1"></div>
+  </div>
+</div>
+
+<!-- ================= 푸터 ================= -->
+<footer class="border-t border-[var(--fk-gray-200)] bg-white mt-12">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+    <a href="index.html" class="flex-shrink-0">
+      <img src="images/from-k-car-logo.png" alt="FROM K CAR" class="h-10 sm:h-12">
+    </a>
+    <address class="text-xs text-[var(--fk-gray-600)] text-center sm:text-right leading-relaxed not-italic">
+      <p class="font-extrabold text-[var(--fk-navy)] text-sm mb-1.5">FROM K CAR</p>
+      <p class="font-bold text-[var(--fk-gray-800)] mb-1">KIM JONG CHAN</p>
+      <p class="text-[var(--fk-blue)] font-extrabold text-base mb-1"><i class="fa-solid fa-mobile-screen mr-1"></i>Mobile. <a href="tel:010-7449-8282" class="hover:underline">010-7449-8282</a></p>
+      <p>Tel. +82-31-306-8080 &nbsp;|&nbsp; Fax. +82-31-306-8383</p>
+      <p>E-mail. <a href="mailto:chanini78@naver.com" class="hover:underline">chanini78@naver.com</a></p>
+      <p class="mt-1">Addr. 314, 45, Pyeongdong-ro 79beon-gil, Gwonseon-gu, Suwon-si, Gyeonggi-do<br class="hidden sm:block"> (SK V1 Motors, Pyeong-dong) Seoul, Korea</p>
+    </address>
+  </div>
+</footer>
+
+<div id="toast-container"></div>
+
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

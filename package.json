@@ -1,0 +1,13 @@
+{
+  "name": "from-k-car",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FROM K CAR - 중고차 매물 아카이브",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>매물 관리자 — FROM K CAR</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="icon" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/car-side.svg">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { font-family: 'Noto Sans KR', sans-serif; }
+</style>
+</head>
+<body class="bg-[var(--fk-gray-50)]">
+
+<!-- ================= 관리자 로그인 게이트 ================= -->
+<div id="admin-login-gate" class="fixed inset-0 z-[200] bg-black flex items-center justify-center px-5">
+  <div class="w-full max-w-sm">
+    <div class="flex justify-center mb-6">
+      <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR" class="h-12">
+    </div>
+    <div class="bg-[#0f1115] border border-white/10 rounded-3xl p-7 shadow-2xl">
+      <div class="flex items-center gap-2 mb-1.5">
+        <i class="fa-solid fa-shield-halved text-[var(--fk-gold)]"></i>
+        <h2 class="text-white font-bold text-lg">관리자 인증</h2>
+      </div>
+      <p class="text-white/50 text-xs mb-5">관리자 비밀번호를 입력해야 매물 관리 페이지에 접근할 수 있습니다.</p>
+      <form id="admin-login-form" class="space-y-3">
+        <div class="relative">
+          <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-white/30"></i>
+          <input id="admin-password-input" type="password" required placeholder="비밀번호 입력"
+            class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[var(--fk-gold)] focus:ring-2 focus:ring-[var(--fk-gold)]/20">
+        </div>
+        <p id="admin-login-error" class="hidden text-xs text-red-400"><i class="fa-solid fa-circle-exclamation mr-1"></i>비밀번호가 올바르지 않습니다.</p>
+        <button type="submit" class="w-full btn-primary !justify-center flex items-center">
+          <i class="fa-solid fa-unlock mr-2"></i>입장하기
+        </button>
+      </form>
+      <a href="index.html" class="block text-center text-white/40 text-xs mt-4 hover:text-white/70">
+        <i class="fa-solid fa-arrow-left mr-1"></i>갤러리로 돌아가기
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 관리자 콘텐츠 (인증 후 표시) ================= -->
+<div id="admin-content" class="hidden">
+
+<!-- ================= 헤더 ================= -->
+<header class="fk-header sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+    <a href="index.html" class="fk-logo-badge">
+      <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR">
+    </a>
+    <nav class="hidden md:flex items-center gap-1">
+      <a href="index.html" class="fk-nav-link">매물 갤러리</a>
+      <a href="admin.html" class="fk-nav-link active"><i class="fa-solid fa-lock mr-1.5 text-[11px]"></i>관리자</a>
+    </nav>
+    <div class="flex items-center gap-2">
+      <button id="admin-logout-btn" class="btn-secondary text-sm !py-2 !px-4 !bg-white/10 !text-white !border-white/20 hover:!border-white/50">
+        <i class="fa-solid fa-right-from-bracket mr-1.5"></i>로그아웃
+      </button>
+      <a href="index.html" class="btn-secondary text-sm !py-2 !px-4 !bg-white/10 !text-white !border-white/20 hover:!border-white/50">
+        <i class="fa-solid fa-arrow-left mr-1.5"></i>갤러리로
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 sm:px-8 py-10">
+
+  <div class="mb-8">
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--fk-navy)] mb-2">매물 관리자</h1>
+    <p class="text-sm text-[var(--fk-gray-600)]">
+      매물 상세페이지 URL을 입력하면 차량 정보를 자동으로 추출합니다. 추출된 내용은 등록 전에 직접 확인 · 수정할 수 있어요.
+    </p>
+  </div>
+
+  <!-- ================= STEP 1: URL 자동수집 ================= -->
+  <section class="bg-white rounded-3xl shadow-sm border border-[var(--fk-gray-200)] p-6 sm:p-8 mb-8">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="step-num">1</div>
+      <h2 class="text-lg font-bold text-[var(--fk-gray-800)]">매물 URL 입력</h2>
+    </div>
+
+    <form id="fetch-form" class="flex flex-col sm:flex-row gap-3 mb-3">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-link absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fk-gray-400)]"></i>
+        <input id="url-input" type="url" required placeholder="https://www.kbchachacha.com/public/car/detail.kbc?carSeq=..."
+          class="w-full pl-11 pr-4 py-3.5 rounded-xl border border-[var(--fk-gray-200)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--fk-blue)]/30 focus:border-[var(--fk-blue)]">
+      </div>
+      <button id="fetch-btn" type="submit" class="btn-primary whitespace-nowrap !px-6">
+        <i class="fa-solid fa-magnifying-glass mr-2"></i>정보 가져오기
+      </button>
+    </form>
+
+    <div class="flex items-start gap-2 text-xs text-[var(--fk-gray-600)] bg-[var(--fk-gray-50)] rounded-xl p-3.5 leading-relaxed">
+      <i class="fa-solid fa-circle-info mt-0.5 text-[var(--fk-blue)]"></i>
+      <div>
+        <p><b>로그인이 필요 없는 공개 매물 상세페이지</b> URL만 지원합니다 (예: KB차차차 <code class="bg-white px-1 py-0.5 rounded">detail.kbc?carSeq=...</code> 페이지).</p>
+        <p class="mt-1">로그인 후에만 보이는 페이지, 혹은 봇 접근을 차단한 페이지는 자동 추출이 되지 않을 수 있어요. 이 경우 아래 "직접 입력"으로 등록해주세요.</p>
+      </div>
+    </div>
+
+    <div id="fetch-status" class="hidden mt-4 items-center gap-3 text-sm text-[var(--fk-blue)]">
+      <div class="fk-spinner fk-spinner-dark"></div>
+      <span>매물 정보를 가져오고 있어요… (몇 초 정도 걸릴 수 있어요)</span>
+    </div>
+  </section>
+
+  <!-- ================= STEP 2: 추출 결과 미리보기/수정 ================= -->
+  <section id="preview-section" class="hidden bg-white rounded-3xl shadow-sm border border-[var(--fk-gray-200)] p-6 sm:p-8 mb-8">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="step-num">2</div>
+      <h2 class="text-lg font-bold text-[var(--fk-gray-800)]">추출 결과 확인 · 수정 후 등록</h2>
+    </div>
+
+    <div class="grid md:grid-cols-[220px_1fr] gap-6">
+      <div>
+        <div class="rounded-2xl overflow-hidden bg-[var(--fk-gray-100)] aspect-[4/3] mb-3">
+          <img id="preview-main-img" src="" alt="" class="w-full h-full object-cover">
+        </div>
+        <p class="text-xs text-[var(--fk-gray-600)] mb-1" id="preview-image-count">이미지 0장 확보</p>
+        <div class="flex gap-1.5 overflow-x-auto pb-1" id="preview-thumbs"></div>
+      </div>
+
+      <form id="car-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <input type="hidden" id="f-id">
+        <input type="hidden" id="f-source-url">
+        <input type="hidden" id="f-car-seq">
+        <input type="hidden" id="f-images">
+        <input type="hidden" id="f-main-image">
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">차량명 *</span>
+          <input id="f-title" required type="text" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">브랜드</span>
+          <input id="f-brand" type="text" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">차량번호</span>
+          <input id="f-car-number" type="text" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">판매가격(원)</span>
+          <input id="f-price" type="number" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">가격 표시문구</span>
+          <input id="f-price-display" type="text" placeholder="예: 4,490만원" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">연식</span>
+          <input id="f-year" type="text" placeholder="예: 24년02월(23년형)" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">주행거리(km)</span>
+          <input id="f-mileage" type="number" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">연료</span>
+          <input id="f-fuel" type="text" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">변속기</span>
+          <input id="f-transmission" type="text" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">배기량</span>
+          <input id="f-displacement" type="text" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">지역</span>
+          <input id="f-region" type="text" class="fk-input">
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">차량색상</span>
+          <input id="f-color" type="text" class="fk-input">
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">시트색상</span>
+          <input id="f-seat-color" type="text" class="fk-input">
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">사고 · 보험 이력</span>
+          <input id="f-accident" type="text" class="fk-input">
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">진단/주행 요약</span>
+          <textarea id="f-diagnosis" rows="2" class="fk-input resize-none"></textarea>
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1"><i class="fa-solid fa-file-lines mr-1 text-[var(--fk-blue)]"></i>매물 소개 (한글)</span>
+          <textarea id="f-description-ko" rows="3" placeholder="차량에 대한 소개 문구를 입력하세요 (한글)" class="fk-input resize-none"></textarea>
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1"><i class="fa-solid fa-language mr-1 text-[var(--fk-blue)]"></i>매물 소개 (러시아어 번역) <span class="text-[var(--fk-gray-600)] font-normal">Описание (на русском)</span></span>
+          <textarea id="f-description-ru" rows="3" placeholder="Введите описание автомобиля на русском языке" class="fk-input resize-none"></textarea>
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">주요 옵션 (쉼표로 구분)</span>
+          <textarea id="f-options" rows="2" class="fk-input resize-none"></textarea>
+        </label>
+
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">관리자 메모</span>
+          <textarea id="f-memo" rows="2" placeholder="예: 성능점검 예약함, 딜러 연락처 등" class="fk-input resize-none"></textarea>
+        </label>
+
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">상태</span>
+          <select id="f-status" class="fk-input">
+            <option value="판매중">판매중</option>
+            <option value="판매완료">판매완료</option>
+            <option value="확인필요">확인필요</option>
+          </select>
+        </label>
+        <label class="text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">원본 URL</span>
+          <input id="f-source-url-display" type="text" disabled class="fk-input bg-[var(--fk-gray-50)] text-[var(--fk-gray-600)]">
+        </label>
+
+        <div class="sm:col-span-2 flex flex-wrap gap-3 mt-2">
+          <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-2"></i><span id="submit-btn-text">매물 등록하기</span></button>
+          <button type="button" id="cancel-edit-btn" class="btn-secondary"><i class="fa-solid fa-rotate-left mr-2"></i>취소</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= STEP 3: 등록된 매물 관리 ================= -->
+  <section class="bg-white rounded-3xl shadow-sm border border-[var(--fk-gray-200)] p-6 sm:p-8">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="step-num">3</div>
+        <h2 class="text-lg font-bold text-[var(--fk-gray-800)]">등록된 매물 관리 (<span id="admin-total-count">0</span>건)</h2>
+      </div>
+      <button id="manual-add-btn" class="btn-secondary text-sm"><i class="fa-solid fa-pen mr-2"></i>직접 입력으로 추가</button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm admin-table">
+        <thead>
+          <tr class="text-left border-b border-[var(--fk-gray-200)]">
+            <th class="py-3 pr-3">사진</th>
+            <th class="py-3 pr-3">차량명</th>
+            <th class="py-3 pr-3">가격</th>
+            <th class="py-3 pr-3">연식/거리</th>
+            <th class="py-3 pr-3">상태</th>
+            <th class="py-3 pr-3">등록일</th>
+            <th class="py-3 pr-3 text-right">관리</th>
+          </tr>
+        </thead>
+        <tbody id="admin-table-body">
+          <tr><td colspan="7" class="text-center py-10 text-[var(--fk-gray-600)]">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+</div>
+<!-- ================= /admin-content ================= -->
+
+<div id="toast-container"></div>
+
+<style>
+  .fk-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--fk-gray-200);
+    font-size: 14px;
+    outline: none;
+    transition: all .15s ease;
+  }
+  .fk-input:focus { border-color: var(--fk-blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+</style>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
