@@ -139,7 +139,7 @@
     const otherBrands = Object.keys(counts)
       .filter(b => !PRIMARY_BRANDS.includes(b))
       .sort((a, b) => counts[b] - counts[a]);
-    const orderedBrands = [...PRIMARY_BRANDS, ...otherBrands];
+    const orderedBrands = [...PRIMARY_BRANDS, ...otherBrands].filter(b => counts[b] > 0);
 
     const container = document.getElementById('hero-brand-stats');
     container.innerHTML = orderedBrands.map(brand => `
