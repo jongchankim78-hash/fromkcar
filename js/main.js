@@ -111,12 +111,20 @@
     gridEl.innerHTML = filtered.map(carCardHtml).join('');
   }
 
+  function renderHeroBrandStats(cars) {
+    const countFor = (brand) => cars.filter(c => c.brand === brand).length;
+    document.getElementById('stat-count-benz').textContent = `${countFor('벤츠')}대`;
+    document.getElementById('stat-count-bmw').textContent = `${countFor('BMW')}대`;
+    document.getElementById('stat-count-volvo').textContent = `${countFor('볼보')}대`;
+  }
+
   async function loadCars() {
     try {
       const res = await KCarAPI.listCars({ limit: 200 });
       allCars = (res.data || []).filter(c => !c.deleted);
       loadingEl.classList.add('hidden');
       populateFilterOptions(allCars);
+      renderHeroBrandStats(allCars);
       applyFiltersAndRender();
     } catch (e) {
       loadingEl.classList.add('hidden');
