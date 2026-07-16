@@ -218,6 +218,77 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
   return sendJson(res, 405, { error: 'Method not allowed' });
 }
 
+function escapeAttr(value) {
+  return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function replaceMeta(html, pattern, replacement) {
+  return pattern.test(html) ? html.replace(pattern, replacement) : html;
+}
+
+// /car/:id — 매물별 실제 og:title/description/image가 박힌 상세페이지를 서버에서 렌더링한다.
+// (SPA 모달만으로는 크롤러/링크 미리보기가 특정 매물을 인식할 수 없어서 추가한 라우트)
+function handleCarDetailPage(req, res, carId) {
+  let indexHtml;
+  try {
+    indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
+  } catch (e) {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Server error');
+  }
+
+  const car = readListings().find((c) => c.id === carId && !c.deleted);
+  if (!car) {
+    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(indexHtml);
+  }
+
+  const priceText = car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '');
+  const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ' — FROM K CAR';
+  const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · 한국 중고차 수출 FROM K CAR`.replace(/\s+/g, ' ').trim();
+  const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : '') || 'https://www.fromkcar.kr/images/from-k-car-logo.png';
+  const canonicalUrl = `https://www.fromkcar.kr/car/${car.id}`;
+
+  let html = indexHtml;
+  html = replaceMeta(html, /<title>.*?<\/title>/s, `<title>${escapeAttr(title)}</title>`);
+  html = replaceMeta(html, /<meta name="description" content=".*?">/s, `<meta name="description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<link rel="canonical" href=".*?">/s, `<link rel="canonical" href="${canonicalUrl}">`);
+  html = replaceMeta(html, /<meta property="og:title" content=".*?">/s, `<meta property="og:title" content="${escapeAttr(title)}">`);
+  html = replaceMeta(html, /<meta property="og:description" content=".*?">/s, `<meta property="og:description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<meta property="og:image" content=".*?">/s, `<meta property="og:image" content="${escapeAttr(image)}">`);
+  html = replaceMeta(html, /<meta property="og:url" content=".*?">/s, `<meta property="og:url" content="${canonicalUrl}">`);
+  html = replaceMeta(html, /<meta name="twitter:title" content=".*?">/s, `<meta name="twitter:title" content="${escapeAttr(title)}">`);
+  html = replaceMeta(html, /<meta name="twitter:description" content=".*?">/s, `<meta name="twitter:description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<meta name="twitter:image" content=".*?">/s, `<meta name="twitter:image" content="${escapeAttr(image)}">`);
+
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
+}
+
+function handleSitemap(req, res) {
+  const cars = readListings().filter((c) => !c.deleted);
+  const urls = [
+    { loc: 'https://www.fromkcar.kr/', changefreq: 'daily', priority: '1.0' },
+    ...cars.map((c) => ({
+      loc: `https://www.fromkcar.kr/car/${c.id}`,
+      changefreq: 'weekly',
+      priority: '0.8',
+      lastmod: new Date(c.updated_at || c.created_at || Date.now()).toISOString().slice(0, 10)
+    }))
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url>
+    <loc>${u.loc}</loc>
+    ${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>\n    ` : ''}<changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>
+`;
+  res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
+  res.end(xml);
+}
+
 function serveStatic(req, res, urlObj) {
   let reqPath = decodeURIComponent(urlObj.pathname);
   if (reqPath === '/') reqPath = '/index.html';
@@ -250,6 +321,15 @@ function serveStatic(req, res, urlObj) {
 
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
+
+  const carDetailMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/?$/);
+  if (carDetailMatch && (req.method === 'GET' || req.method === 'HEAD')) {
+    return handleCarDetailPage(req, res, decodeURIComponent(carDetailMatch[1]));
+  }
+
+  if (urlObj.pathname === '/sitemap.xml' && (req.method === 'GET' || req.method === 'HEAD')) {
+    return handleSitemap(req, res);
+  }
 
   if (urlObj.pathname === '/tables/car_listings' || urlObj.pathname.startsWith('/tables/car_listings/')) {
     const rest = urlObj.pathname.replace('/tables/car_listings', '').replace(/^\//, '');

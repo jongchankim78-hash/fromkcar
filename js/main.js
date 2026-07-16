@@ -2,9 +2,15 @@
  * FROM K CAR — 메인 갤러리 페이지 로직
  */
 (function () {
+  const HOME_TITLE = document.title;
   let allCars = [];
   let currentModalImages = [];
   let currentModalIndex = 0;
+
+  function getCarIdFromUrl() {
+    const m = window.location.pathname.match(/^\/car\/([^/]+)\/?$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
 
   const gridEl = document.getElementById('car-grid');
   const loadingEl = document.getElementById('loading-state');
@@ -69,9 +75,9 @@
           <span class="spec-chip"><i class="fa-solid fa-location-dot mr-1"></i>${KCarUtil.escapeHtml(car.region || '-')}</span>
         </div>
         <div class="mt-auto flex gap-2">
-          <button class="btn-secondary flex-1 !py-2 text-sm" data-action="open-detail" data-id="${car.id}">
+          <a href="/car/${car.id}" class="btn-secondary flex-1 !py-2 text-sm text-center" data-action="open-detail" data-id="${car.id}">
             <i class="fa-solid fa-circle-info mr-1.5"></i>${t('detail_btn')}
-          </button>
+          </a>
           ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-secondary !py-2 !px-3 text-sm" title="${t('original_listing_title')}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
         </div>
       </div>
@@ -206,6 +212,12 @@
       renderHeroBrandStats(allCars);
       applyFiltersAndRender();
       injectVehicleSchema(allCars);
+
+      const urlCarId = getCarIdFromUrl();
+      if (urlCarId) {
+        const car = allCars.find(c => c.id === urlCarId);
+        if (car) openDetailModal(car, { pushState: false });
+      }
     } catch (e) {
       loadingEl.classList.add('hidden');
       emptyEl.classList.remove('hidden');
@@ -223,8 +235,12 @@
     return `<tr><th>${label}</th><td>${value ? KCarUtil.escapeHtml(String(value)) : '-'}</td></tr>`;
   }
 
-  function openDetailModal(car) {
+  function openDetailModal(car, { pushState = true } = {}) {
     const t = KCarI18n.t;
+    if (pushState) {
+      history.pushState({ carId: car.id }, '', `/car/${car.id}`);
+    }
+    document.title = `${car.title || 'FROM K CAR'} — FROM K CAR`;
     currentModalImages = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
     currentModalIndex = 0;
 
@@ -323,11 +339,15 @@
   }
   function shiftGalleryImage(delta) { setGalleryImage(currentModalIndex + delta); }
 
-  function closeModal() {
+  function closeModal({ pushState = true } = {}) {
     const modalEl = document.getElementById('detail-modal');
     modalEl.classList.add('hidden');
     modalEl.classList.remove('flex');
     document.body.style.overflow = '';
+    document.title = HOME_TITLE;
+    if (pushState && getCarIdFromUrl()) {
+      history.pushState({}, '', '/');
+    }
   }
 
   document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -344,9 +364,20 @@
   gridEl.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-action="open-detail"]');
     if (!trigger) return;
+    e.preventDefault();
     const id = trigger.dataset.id;
     const car = allCars.find(c => c.id === id);
     if (car) openDetailModal(car);
+  });
+
+  window.addEventListener('popstate', () => {
+    const id = getCarIdFromUrl();
+    const car = id ? allCars.find(c => c.id === id) : null;
+    if (car) {
+      openDetailModal(car, { pushState: false });
+    } else {
+      closeModal({ pushState: false });
+    }
   });
 
   searchInput.addEventListener('input', KCarUtil.debounce(applyFiltersAndRender, 250));
