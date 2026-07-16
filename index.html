@@ -26,14 +26,17 @@
     <a href="index.html" class="fk-logo-badge">
       <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR">
     </a>
-    <div class="relative" id="admin-menu-wrap">
-      <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
-        <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN
-        <i class="fa-solid fa-chevron-down text-[10px] transition-transform" id="admin-menu-chevron"></i>
-      </button>
-      <div id="admin-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-2xl border border-[var(--fk-gray-200)] overflow-hidden">
-        <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-lock text-[var(--fk-blue)]"></i>관리자 로그인</a>
-        <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-plus text-[var(--fk-blue)]"></i>매물 추가</a>
+    <div class="flex items-center gap-2">
+      <button id="lang-toggle-btn" type="button" class="fk-nav-link border border-white/20 !px-3 font-bold tracking-wide">RU</button>
+      <div class="relative" id="admin-menu-wrap">
+        <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
+          <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN
+          <i class="fa-solid fa-chevron-down text-[10px] transition-transform" id="admin-menu-chevron"></i>
+        </button>
+        <div id="admin-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-2xl border border-[var(--fk-gray-200)] overflow-hidden">
+          <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-lock text-[var(--fk-blue)]"></i><span data-i18n="admin_login">관리자 로그인</span></a>
+          <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-plus text-[var(--fk-blue)]"></i><span data-i18n="admin_add">매물 추가</span></a>
+        </div>
       </div>
     </div>
   </div>
@@ -45,7 +48,7 @@
     <h1 class="text-2xl sm:text-4xl font-extrabold leading-tight mb-3">
       NO PAINT TAX100%<br>
       <span class="text-[var(--fk-gold)]">BMW, BENZ, VOLVO</span><br>
-      수원 SKV1모터스 전시장
+      <span data-i18n="hero_showroom">수원 SKV1모터스 전시장</span>
     </h1>
     <div class="flex flex-wrap gap-3" id="hero-brand-stats"></div>
 
@@ -53,7 +56,7 @@
     <div id="dealer-info-card" class="mt-8 inline-flex items-center gap-4 bg-white/8 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 max-w-xl">
       <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
       <div>
-        <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5">FROM K CAR 담당</p>
+        <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5" data-i18n="dealer_role">FROM K CAR 담당</p>
         <p class="text-lg sm:text-xl font-extrabold text-white">김종찬 팀장</p>
         <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
           <i class="fa-solid fa-phone"></i>010-7449-8282
@@ -69,22 +72,22 @@
   <div class="bg-white rounded-2xl shadow-lg border border-[var(--fk-gray-200)] p-4 sm:p-5 flex flex-col md:flex-row gap-3 md:items-center">
     <div class="relative flex-1">
       <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-[var(--fk-gray-400)]"></i>
-      <input id="search-input" type="text" placeholder="차량명, 지역, 번호판으로 검색"
+      <input id="search-input" type="text" placeholder="차량명, 지역, 번호판으로 검색" data-i18n-placeholder="search_placeholder"
         class="w-full pl-11 pr-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--fk-blue)]/30 focus:border-[var(--fk-blue)]">
     </div>
     <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0">
       <select id="filter-brand" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[110px]">
-        <option value="">전체 브랜드</option>
+        <option value="" data-i18n="filter_all_brand">전체 브랜드</option>
       </select>
       <select id="filter-fuel" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[100px]">
-        <option value="">전체 연료</option>
+        <option value="" data-i18n="filter_all_fuel">전체 연료</option>
       </select>
       <select id="sort-select" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[130px]">
-        <option value="registered_desc">최근 등록순</option>
-        <option value="price_asc">가격 낮은순</option>
-        <option value="price_desc">가격 높은순</option>
-        <option value="mileage_asc">주행거리 적은순</option>
-        <option value="year_desc">연식 최신순</option>
+        <option value="registered_desc" data-i18n="sort_registered_desc">최근 등록순</option>
+        <option value="price_asc" data-i18n="sort_price_asc">가격 낮은순</option>
+        <option value="price_desc" data-i18n="sort_price_desc">가격 높은순</option>
+        <option value="mileage_asc" data-i18n="sort_mileage_asc">주행거리 적은순</option>
+        <option value="year_desc" data-i18n="sort_year_desc">연식 최신순</option>
       </select>
     </div>
   </div>
@@ -94,8 +97,8 @@
 <main id="gallery" class="max-w-7xl mx-auto px-5 sm:px-8 py-12">
   <div class="flex items-end justify-between mb-6">
     <div>
-      <h2 class="text-xl sm:text-2xl font-extrabold text-[var(--fk-navy)]">등록된 매물</h2>
-      <p class="text-sm text-[var(--fk-gray-600)] mt-1"><span id="result-count">0</span>건의 매물을 보고 있어요</p>
+      <h2 class="text-xl sm:text-2xl font-extrabold text-[var(--fk-navy)]" data-i18n="gallery_title">등록된 매물</h2>
+      <p class="text-sm text-[var(--fk-gray-600)] mt-1"><span id="result-count">0</span><span data-i18n="result_count_suffix">건의 매물을 보고 있어요</span></p>
     </div>
   </div>
 
@@ -110,9 +113,9 @@
     <div class="w-20 h-20 rounded-full bg-[var(--fk-gray-100)] flex items-center justify-center mx-auto mb-5">
       <i class="fa-solid fa-car text-3xl text-[var(--fk-gray-400)]"></i>
     </div>
-    <h3 class="text-lg font-bold text-[var(--fk-gray-800)] mb-2">아직 등록된 매물이 없어요</h3>
-    <p class="text-sm text-[var(--fk-gray-600)] mb-6">관리자 페이지에서 매물 URL을 입력해 첫 매물을 추가해보세요.</p>
-    <a href="admin.html" class="btn-primary inline-block"><i class="fa-solid fa-plus mr-2"></i>매물 추가하러 가기</a>
+    <h3 class="text-lg font-bold text-[var(--fk-gray-800)] mb-2" data-i18n="empty_title">아직 등록된 매물이 없어요</h3>
+    <p class="text-sm text-[var(--fk-gray-600)] mb-6" data-i18n="empty_desc">관리자 페이지에서 매물 URL을 입력해 첫 매물을 추가해보세요.</p>
+    <a href="admin.html" class="btn-primary inline-block"><i class="fa-solid fa-plus mr-2"></i><span data-i18n="empty_cta">매물 추가하러 가기</span></a>
   </div>
 
   <div id="car-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -149,6 +152,7 @@
 
 <script src="js/common.js"></script>
 <script src="js/api.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
