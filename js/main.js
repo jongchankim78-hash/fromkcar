@@ -161,6 +161,42 @@
     });
   }
 
+  function injectVehicleSchema(cars) {
+    const prev = document.getElementById('vehicle-schema');
+    if (prev) prev.remove();
+    if (!cars.length) return;
+
+    const itemList = {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      itemListElement: cars.slice(0, 30).map((car, idx) => ({
+        '@type': 'ListItem',
+        position: idx + 1,
+        item: {
+          '@type': 'Car',
+          name: car.title,
+          brand: effectiveBrand(car),
+          image: car.main_image || (Array.isArray(car.images) ? car.images[0] : undefined),
+          vehicleModelDate: car.year_info,
+          mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'KMT' } : undefined,
+          offers: {
+            '@type': 'Offer',
+            price: car.price,
+            priceCurrency: 'KRW',
+            availability: car.status === '판매중' ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            url: 'https://www.fromkcar.kr/'
+          }
+        }
+      }))
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'vehicle-schema';
+    script.textContent = JSON.stringify(itemList);
+    document.head.appendChild(script);
+  }
+
   async function loadCars() {
     try {
       const res = await KCarAPI.listCars({ limit: 200 });
@@ -169,6 +205,7 @@
       populateFilterOptions(allCars);
       renderHeroBrandStats(allCars);
       applyFiltersAndRender();
+      injectVehicleSchema(allCars);
     } catch (e) {
       loadingEl.classList.add('hidden');
       emptyEl.classList.remove('hidden');
