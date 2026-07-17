@@ -213,7 +213,10 @@
         </label>
 
         <label class="sm:col-span-2 text-sm">
-          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1"><i class="fa-solid fa-language mr-1 text-[var(--fk-blue)]"></i>매물 소개 (러시아어 번역) <span class="text-[var(--fk-gray-600)] font-normal">Описание (на русском)</span></span>
+          <span class="flex items-center justify-between mb-1">
+            <span class="font-semibold text-[var(--fk-gray-800)]"><i class="fa-solid fa-language mr-1 text-[var(--fk-blue)]"></i>매물 소개 (러시아어 번역) <span class="text-[var(--fk-gray-600)] font-normal">Описание (на русском)</span></span>
+            <button type="button" id="translate-ru-btn" class="btn-secondary !py-1 !px-2.5 text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>자동 번역</button>
+          </span>
           <textarea id="f-description-ru" rows="3" placeholder="Введите описание автомобиля на русском языке" class="fk-input resize-none"></textarea>
         </label>
 

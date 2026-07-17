@@ -329,14 +329,14 @@
           <div class="flex flex-wrap gap-2">${optionTagsHtml(car.options)}</div>
         </div>
 
-        ${(car.description_ko || car.description_ru) ? `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
-          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>${t('desc_title')}</h3>
-          ${car.description_ko ? `<p class="text-sm text-[var(--fk-gray-800)] leading-relaxed whitespace-pre-line mb-3">${KCarUtil.escapeHtml(car.description_ko)}</p>` : ''}
-          ${car.description_ru ? `<div class="border-t border-[var(--fk-gray-200)] pt-3">
-            <p class="text-[11px] font-semibold text-[var(--fk-blue)] uppercase tracking-wide mb-1.5"><i class="fa-solid fa-globe mr-1"></i>На русском</p>
-            <p class="text-sm text-[var(--fk-gray-600)] italic leading-relaxed whitespace-pre-line">${KCarUtil.escapeHtml(car.description_ru)}</p>
-          </div>` : ''}
-        </div>` : ''}
+        ${(() => {
+          const descText = KCarI18n.getLang() === 'ru' ? car.description_ru : car.description_ko;
+          if (!descText) return '';
+          return `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
+            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>${t('desc_title')}</h3>
+            <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed whitespace-pre-line">${KCarUtil.escapeHtml(descText)}</p>
+          </div>`;
+        })()}
 
         ${car.memo ? `<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <h3 class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>${t('memo_title')}</h3>

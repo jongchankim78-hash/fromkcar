@@ -46,6 +46,39 @@
     }
   });
 
+  /* ---------------- 한글 -> 러시아어 자동 번역 (초안) ---------------- */
+  async function translateKoToRu(text) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('번역 요청에 실패했습니다.');
+    const data = await res.json();
+    return (data[0] || []).map((seg) => seg[0]).join('');
+  }
+
+  const translateRuBtn = document.getElementById('translate-ru-btn');
+  if (translateRuBtn) {
+    translateRuBtn.addEventListener('click', async () => {
+      const koText = document.getElementById('f-description-ko').value.trim();
+      if (!koText) {
+        KCarUtil.toast('먼저 매물 소개(한글)를 입력해주세요.', 'error');
+        return;
+      }
+      translateRuBtn.disabled = true;
+      const originalHtml = translateRuBtn.innerHTML;
+      translateRuBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>번역 중...';
+      try {
+        const translated = await translateKoToRu(koText);
+        document.getElementById('f-description-ru').value = translated;
+        KCarUtil.toast('러시아어로 초안 번역했어요. 내용을 확인 후 저장해주세요.', 'success');
+      } catch (err) {
+        KCarUtil.toast('자동 번역에 실패했습니다. 직접 입력해주세요.', 'error');
+      } finally {
+        translateRuBtn.disabled = false;
+        translateRuBtn.innerHTML = originalHtml;
+      }
+    });
+  }
+
   /* ---------------- 폼 채우기 / 읽기 ---------------- */
   function fillFormFromData(data) {
     document.getElementById('f-id').value = data.id || '';
