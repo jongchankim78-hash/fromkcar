@@ -76,6 +76,7 @@
     currentExtractedImages = Array.isArray(data.images) ? data.images : (data.main_image ? [data.main_image] : []);
     document.getElementById('f-images').value = JSON.stringify(currentExtractedImages);
     document.getElementById('f-main-image').value = data.main_image || currentExtractedImages[0] || '';
+    document.getElementById('f-panel-diagnosis').value = data.panel_diagnosis ? JSON.stringify(data.panel_diagnosis) : '';
 
     renderPreviewImages();
   }
@@ -102,6 +103,8 @@
     const options = optionsRaw ? optionsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
     let images = [];
     try { images = JSON.parse(document.getElementById('f-images').value || '[]'); } catch (e) { images = []; }
+    let panelDiagnosis = null;
+    try { panelDiagnosis = JSON.parse(document.getElementById('f-panel-diagnosis').value || 'null'); } catch (e) { panelDiagnosis = null; }
 
     return {
       source_url: document.getElementById('f-source-url').value || '',
@@ -127,7 +130,8 @@
       memo: document.getElementById('f-memo').value.trim(),
       status: document.getElementById('f-status').value,
       main_image: document.getElementById('f-main-image').value || (images[0] || ''),
-      images: images
+      images: images,
+      panel_diagnosis: panelDiagnosis
     };
   }
 

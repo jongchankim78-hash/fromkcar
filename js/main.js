@@ -235,6 +235,39 @@
     return `<tr><th>${label}</th><td>${value ? KCarUtil.escapeHtml(String(value)) : '-'}</td></tr>`;
   }
 
+  function panelDiagnosisHtml(pd, t) {
+    if (!pd) return '';
+    const badgeCls = (status) => (status === '정상' ? 'badge-green' : 'badge-red');
+    const panelRows = (items) => items.map((item) => `
+      <div class="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-[var(--fk-gray-100)] last:border-0">
+        <span class="text-[var(--fk-gray-600)]">${KCarUtil.escapeHtml(item.label)}</span>
+        <span class="font-bold flex-shrink-0 ${item.status === '정상' ? 'text-[var(--fk-green)]' : 'text-[var(--fk-red)]'}">${KCarUtil.escapeHtml(item.status)}</span>
+      </div>
+    `).join('');
+
+    return `
+    <div class="mb-6 bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
+      <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-car-burst mr-1.5 text-[var(--fk-blue)]"></i>${t('panel_diagnosis_title')}</h3>
+      ${pd.headline ? `<p class="text-sm text-[var(--fk-gray-800)] mb-3">${KCarUtil.escapeHtml(pd.headline)}</p>` : ''}
+      <div class="flex flex-wrap gap-2 mb-4">
+        ${pd.frame_status ? `<span class="badge ${badgeCls(pd.frame_status)}">${t('panel_frame')} ${KCarUtil.escapeHtml(pd.frame_status)}</span>` : ''}
+        ${pd.exterior_status ? `<span class="badge ${badgeCls(pd.exterior_status)}">${t('panel_exterior')} ${KCarUtil.escapeHtml(pd.exterior_status)}</span>` : ''}
+        ${pd.weld_count !== null && pd.weld_count !== undefined ? `<span class="spec-chip">${t('panel_weld')} ${pd.weld_count}${t('panel_count_suffix')}</span>` : ''}
+        ${pd.exchange_count !== null && pd.exchange_count !== undefined ? `<span class="spec-chip">${t('panel_exchange')} ${pd.exchange_count}${t('panel_count_suffix')}</span>` : ''}
+      </div>
+      <div class="grid sm:grid-cols-2 gap-x-6">
+        ${Array.isArray(pd.exterior_panels) && pd.exterior_panels.length ? `<div>
+          <p class="text-xs font-bold text-[var(--fk-gray-500)] uppercase tracking-wide mb-1">${t('panel_exterior')}</p>
+          ${panelRows(pd.exterior_panels)}
+        </div>` : ''}
+        ${Array.isArray(pd.frame_groups) && pd.frame_groups.length ? `<div>
+          <p class="text-xs font-bold text-[var(--fk-gray-500)] uppercase tracking-wide mb-1">${t('panel_frame')}</p>
+          ${panelRows(pd.frame_groups)}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
   function openDetailModal(car, { pushState = true } = {}) {
     const t = KCarI18n.t;
     if (pushState) {
@@ -288,6 +321,8 @@
             ${car.diagnosis_summary ? `<p class="text-xs text-[var(--fk-gray-600)] leading-relaxed border-t border-[var(--fk-gray-200)] pt-3">${KCarUtil.escapeHtml(car.diagnosis_summary)}</p>` : ''}
           </div>
         </div>
+
+        ${panelDiagnosisHtml(car.panel_diagnosis, t)}
 
         <div class="mb-6">
           <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-star mr-1.5 text-[var(--fk-blue)]"></i>${t('options_title')}</h3>
@@ -408,6 +443,9 @@
     populateFilterOptions(allCars);
     renderHeroBrandStats(allCars);
     applyFiltersAndRender();
+    const openCarId = getCarIdFromUrl();
+    const openCar = openCarId ? allCars.find(c => c.id === openCarId) : null;
+    if (openCar) openDetailModal(openCar, { pushState: false });
   });
 
   loadCars();

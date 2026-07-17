@@ -180,10 +180,13 @@
   /** 진단/주행거리 분석 요약 문구 */
   function extractDiagnosisSummary(text) {
     const parts = [];
-    const frame = text.match(/프레임\s*\*{2}([^\*\n]+)\*{2}/);
-    const panel = text.match(/외부패널\s*\*{2}([^\*\n]+)\*{2}/);
-    if (frame) parts.push(`프레임 ${frame[1].trim()}`);
-    if (panel) parts.push(`외부패널 ${panel[1].trim()}`);
+    // "## 프레임 및 외부패널 진단" 상단 안내문에도 "외부패널 **무사고 진단완료**" 같은 문구가 먼저 나오므로,
+    // 반드시 "프레임 **상태**" 바로 뒤에 이어지는 "외부패널 **상태**"만 한 쌍으로 잡는다.
+    const overall = text.match(/프레임\s*\*{2}([^\*\n]+)\*{2}[\s\S]{0,20}?외부패널\s*\*{2}([^\*\n]+)\*{2}/);
+    if (overall) {
+      parts.push(`프레임 ${overall[1].trim()}`);
+      parts.push(`외부패널 ${overall[2].trim()}`);
+    }
     const mileageAnalysis = text.match(/총\s*([0-9년개월\s]+)동안\*{0,2}([\d,]+Km)\*{0,2}\(연평균\s*([\d,]+Km)\s*주행\)/);
     if (mileageAnalysis) {
       parts.push(`총 ${mileageAnalysis[1].trim()} 동안 ${mileageAnalysis[2]} 주행 (연평균 ${mileageAnalysis[3]})`);
@@ -193,6 +196,41 @@
     const newCarRatio = text.match(/신차 출고 가격 대비\s*(\d+%)/);
     if (newCarRatio) parts.push(`신차가 대비 ${newCarRatio[1]} 수준`);
     return parts.join(' · ');
+  }
+
+  /** 프레임 및 외부패널 진단 상세 (판금/용접·교환 횟수, 부위별 상태) */
+  function extractPanelDiagnosis(text) {
+    const weldExchange = text.match(/판금\/용접\s*(\d+)\s*회\s*교환\s*(\d+)\s*회/);
+    const overall = text.match(/프레임\s*\*{2}([^\*\n]+)\*{2}[\s\S]{0,20}?외부패널\s*\*{2}([^\*\n]+)\*{2}/);
+    const headline = text.match(/([가-힣0-9]+)\s*차량의 진단 결과\s*([^\n]+?)\s*입니다/);
+
+    function parsePairs(segment) {
+      const items = [];
+      const re = /([^*]+?)\*\*([^*]+)\*\*/g;
+      let m;
+      while ((m = re.exec(segment)) !== null) {
+        items.push({ label: m[1].trim(), status: m[2].trim() });
+      }
+      return items;
+    }
+
+    const lineMatch = text.match(/외부패널\s+((?:[^\n*]+\*\*[^*\n]+\*\*)+)프레임\s+((?:[^\n*]+\*\*[^*\n]+\*\*)+)/);
+    const exteriorPanels = lineMatch ? parsePairs(lineMatch[1]) : [];
+    const frameGroups = lineMatch ? parsePairs(lineMatch[2]) : [];
+
+    if (!weldExchange && !overall && exteriorPanels.length === 0 && frameGroups.length === 0) {
+      return null;
+    }
+
+    return {
+      weld_count: weldExchange ? toNumber(weldExchange[1]) : null,
+      exchange_count: weldExchange ? toNumber(weldExchange[2]) : null,
+      frame_status: overall ? overall[1].trim() : null,
+      exterior_status: overall ? overall[2].trim() : null,
+      headline: headline ? `${headline[1].trim()} 차량의 진단 결과 ${headline[2].trim()}입니다` : null,
+      exterior_panels: exteriorPanels,
+      frame_groups: frameGroups
+    };
   }
 
   /**
@@ -211,6 +249,7 @@
     const accidentInfo = extractAccidentInfo(markdownText);
     const options = extractOptions(markdownText);
     const diagnosisSummary = extractDiagnosisSummary(markdownText);
+    const panelDiagnosis = extractPanelDiagnosis(markdownText);
 
     const finalCarNumber = carNumber || basicInfo.carNumber2 || null;
     const finalYearInfo = summary.yearInfo || basicInfo.yearInfo || null;
@@ -239,6 +278,7 @@
       main_image: images[0] || null,
       images: images,
       diagnosis_summary: diagnosisSummary,
+      panel_diagnosis: panelDiagnosis,
       status: '판매중'
     };
     return data;
