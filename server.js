@@ -246,7 +246,7 @@ function handleCarDetailPage(req, res, carId) {
   const priceText = car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '');
   const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ' — FROM K CAR';
   const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · 한국 중고차 수출 FROM K CAR`.replace(/\s+/g, ' ').trim();
-  const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : '') || 'https://www.fromkcar.kr/images/from-k-car-logo.png';
+  const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : '') || 'https://www.fromkcar.kr/images/og-image.png';
   const canonicalUrl = `https://www.fromkcar.kr/car/${car.id}`;
 
   let html = indexHtml;
