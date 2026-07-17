@@ -53,7 +53,7 @@
       desc_title: '매물 소개',
       memo_title: '메모',
       load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
-      lang_toggle: '🇷🇺'
+      lang_toggle_flag: 'ru'
     },
     ru: {
       admin_login: 'Вход для администратора',
@@ -101,7 +101,7 @@
       desc_title: 'Описание',
       memo_title: 'Заметка',
       load_error: 'Ошибка при загрузке списка автомобилей.',
-      lang_toggle: '🇰🇷'
+      lang_toggle_flag: 'kr'
     }
   };
 
@@ -121,8 +121,8 @@
     document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
     });
-    const toggleBtn = document.getElementById('lang-toggle-btn');
-    if (toggleBtn) toggleBtn.textContent = t('lang_toggle');
+    const toggleFlag = document.getElementById('lang-toggle-flag');
+    if (toggleFlag) toggleFlag.className = 'fi fi-' + t('lang_toggle_flag');
   }
 
   function setLang(lang) {

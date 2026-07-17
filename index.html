@@ -46,6 +46,7 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7/css/flag-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <style>
@@ -61,7 +62,9 @@
       <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR">
     </a>
     <div class="flex items-center gap-2">
-      <button id="lang-toggle-btn" type="button" class="fk-nav-link border border-white/20 !px-3 font-bold tracking-wide">RU</button>
+      <button id="lang-toggle-btn" type="button" class="fk-nav-link border border-white/20 !px-2.5 flex items-center">
+        <span id="lang-toggle-flag" class="fi fi-ru" style="border-radius:2px;"></span>
+      </button>
       <div class="relative" id="admin-menu-wrap">
         <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
           <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN
