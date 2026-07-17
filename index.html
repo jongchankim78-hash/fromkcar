@@ -62,9 +62,14 @@
       <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR">
     </a>
     <div class="flex items-center gap-2">
-      <button id="lang-toggle-btn" type="button" class="fk-nav-link border border-white/20 !px-2.5 flex items-center">
-        <span id="lang-toggle-flag" class="fi fi-ru" style="border-radius:2px;"></span>
-      </button>
+      <div class="flex items-center gap-1.5" id="lang-switcher">
+        <button type="button" data-lang="ko" class="lang-flag-btn" aria-label="한국어">
+          <span class="fi fi-kr" style="border-radius:2px;"></span>
+        </button>
+        <button type="button" data-lang="ru" class="lang-flag-btn" aria-label="Русский">
+          <span class="fi fi-ru" style="border-radius:2px;"></span>
+        </button>
+      </div>
       <div class="relative" id="admin-menu-wrap">
         <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
           <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN

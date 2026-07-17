@@ -58,8 +58,7 @@
       options_empty: '등록된 옵션 정보가 없습니다.',
       desc_title: '매물 소개',
       memo_title: '메모',
-      load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
-      lang_toggle_flag: 'ru'
+      load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.'
     },
     ru: {
       admin_login: 'Вход для администратора',
@@ -112,8 +111,7 @@
       options_empty: 'Информация об опциях отсутствует.',
       desc_title: 'Описание',
       memo_title: 'Заметка',
-      load_error: 'Ошибка при загрузке списка автомобилей.',
-      lang_toggle_flag: 'kr'
+      load_error: 'Ошибка при загрузке списка автомобилей.'
     }
   };
 
@@ -133,8 +131,9 @@
     document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
     });
-    const toggleFlag = document.getElementById('lang-toggle-flag');
-    if (toggleFlag) toggleFlag.className = 'fi fi-' + t('lang_toggle_flag');
+    document.querySelectorAll('.lang-flag-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.lang === getLang());
+    });
   }
 
   function setLang(lang) {
@@ -146,10 +145,9 @@
 
   document.documentElement.lang = getLang() === 'ru' ? 'ru' : 'ko';
   applyStaticI18n();
-  const toggleBtn = document.getElementById('lang-toggle-btn');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => setLang(getLang() === 'ko' ? 'ru' : 'ko'));
-  }
+  document.querySelectorAll('.lang-flag-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
 
   global.KCarI18n = { t, getLang, setLang, applyStaticI18n };
 })(window);

@@ -141,6 +141,20 @@
     return BRAND_EN[brand] || String(brand).toUpperCase();
   }
 
+  const BRAND_LOGO_SLUG = {
+    '벤츠': 'mercedes-benz', 'BMW': 'bmw', '아우디': 'audi', '폭스바겐': 'volkswagen',
+    '포르쉐': 'porsche', '볼보': 'volvo', '랜드로버': 'land-rover', '재규어': 'jaguar',
+    '미니': 'mini', '푸조': 'peugeot', '렉서스': 'lexus', '토요타': 'toyota',
+    '혼다': 'honda', '닛산': 'nissan', '테슬라': 'tesla', '캐딜락': 'cadillac',
+    '쉐보레': 'chevrolet', '현대': 'hyundai', '기아': 'kia', '제네시스': 'genesis',
+    '쌍용': 'ssangyong', 'KG모빌리티': 'ssangyong', '르노': 'renault',
+    '르노코리아': 'renault', '시트로엥': 'citroen', '한국GM': 'chevrolet', 'GM': 'chevrolet'
+  };
+  function brandLogoUrl(brand) {
+    const slug = BRAND_LOGO_SLUG[brand];
+    return slug ? `https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset/logos/thumb/${slug}.png` : null;
+  }
+
   function renderHeroBrandStats(cars) {
     const counts = {};
     cars.forEach(c => { const b = effectiveBrand(c); if (b) counts[b] = (counts[b] || 0) + 1; });
@@ -151,12 +165,21 @@
     const orderedBrands = [...PRIMARY_BRANDS, ...otherBrands].filter(b => counts[b] > 0);
 
     const container = document.getElementById('hero-brand-stats');
-    container.innerHTML = orderedBrands.map(brand => `
-      <button type="button" class="hero-brand-badge inline-flex items-center gap-2 bg-white/8 backdrop-blur rounded-xl px-4 py-2.5 border border-white/10 hover:border-[var(--fk-gold)]/60 transition-colors cursor-pointer" data-brand="${KCarUtil.escapeHtml(brand)}">
-        <span class="font-extrabold text-white text-sm tracking-wide">${KCarUtil.escapeHtml(brandLabel(brand))}</span>
+    container.innerHTML = orderedBrands.map(brand => {
+      const logoUrl = brandLogoUrl(brand);
+      const label = KCarUtil.escapeHtml(brandLabel(brand));
+      const emblem = logoUrl
+        ? `<span class="w-7 h-7 rounded-full bg-white flex items-center justify-center p-1 flex-shrink-0">
+             <img src="${logoUrl}" alt="${label}" class="max-w-full max-h-full object-contain" onerror="this.parentElement.outerHTML='<span class=&quot;font-extrabold text-white text-sm tracking-wide&quot;>${label}</span>';">
+           </span>`
+        : `<span class="font-extrabold text-white text-sm tracking-wide">${label}</span>`;
+      return `
+      <button type="button" class="hero-brand-badge inline-flex items-center gap-2 bg-white/8 backdrop-blur rounded-xl px-3 py-2 border border-white/10 hover:border-[var(--fk-gold)]/60 transition-colors cursor-pointer" data-brand="${KCarUtil.escapeHtml(brand)}" title="${label}">
+        ${emblem}
         <span class="text-[var(--fk-gold)] font-bold text-sm">${counts[brand] || 0}대</span>
       </button>
-    `).join('');
+    `;
+    }).join('');
 
     container.querySelectorAll('.hero-brand-badge').forEach(btn => {
       btn.addEventListener('click', () => {
