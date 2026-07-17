@@ -53,7 +53,7 @@
       desc_title: '매물 소개',
       memo_title: '메모',
       load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
-      lang_toggle: 'RU'
+      lang_toggle: '🇷🇺'
     },
     ru: {
       admin_login: 'Вход для администратора',
@@ -101,7 +101,7 @@
       desc_title: 'Описание',
       memo_title: 'Заметка',
       load_error: 'Ошибка при загрузке списка автомобилей.',
-      lang_toggle: 'KO'
+      lang_toggle: '🇰🇷'
     }
   };
 
