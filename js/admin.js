@@ -217,6 +217,7 @@
         <td class="py-3 pr-3">${statusPill(car.status)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">${fmtDate(car.created_at)}</td>
         <td class="py-3 pr-3 text-right whitespace-nowrap">
+          ${car.source_url ? `<button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="refetch" data-id="${car.id}" title="원본에서 다시 불러오기"><i class="fa-solid fa-rotate"></i></button>` : ''}
           <button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="edit" data-id="${car.id}"><i class="fa-solid fa-pen"></i></button>
           <button class="btn-danger !py-1.5 !px-3 text-xs" data-action="delete" data-id="${car.id}"><i class="fa-solid fa-trash"></i></button>
         </td>
@@ -227,6 +228,38 @@
   document.getElementById('admin-table-body').addEventListener('click', async (e) => {
     const editBtn = e.target.closest('[data-action="edit"]');
     const delBtn = e.target.closest('[data-action="delete"]');
+    const refetchBtn = e.target.closest('[data-action="refetch"]');
+    if (refetchBtn) {
+      const car = adminCars.find(c => c.id === refetchBtn.dataset.id);
+      if (!car || !car.source_url) return;
+      const icon = refetchBtn.querySelector('i');
+      refetchBtn.disabled = true;
+      icon.classList.add('fa-spin');
+      try {
+        const fresh = await KCarParser.fetchAndParse(car.source_url);
+        // 관리자가 직접 입력/관리하는 값은 원본 재수집으로 덮어쓰지 않고 유지한다.
+        const merged = {
+          ...fresh,
+          id: car.id,
+          status: car.status,
+          memo: car.memo,
+          description_ko: car.description_ko,
+          description_ru: car.description_ru,
+          created_at: car.created_at
+        };
+        editingId = car.id;
+        fillFormFromData(merged);
+        submitBtnText.textContent = '수정 내용 저장';
+        previewSection.classList.remove('hidden');
+        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        KCarUtil.toast('원본에서 최신 정보를 다시 가져왔어요. 내용을 확인하고 저장해주세요.', 'success');
+      } catch (err) {
+        KCarUtil.toast(err.message || '원본 정보를 다시 가져오지 못했습니다.', 'error', 5000);
+      } finally {
+        refetchBtn.disabled = false;
+        icon.classList.remove('fa-spin');
+      }
+    }
     if (editBtn) {
       const car = adminCars.find(c => c.id === editBtn.dataset.id);
       if (!car) return;
