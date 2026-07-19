@@ -6,6 +6,7 @@
   let allCars = [];
   let currentModalImages = [];
   let currentModalIndex = 0;
+  let currentModalCar = null;
 
   function getCarIdFromUrl() {
     const m = window.location.pathname.match(/^\/car\/([^/]+)\/?$/);
@@ -237,11 +238,15 @@
 
   function panelDiagnosisHtml(pd, t) {
     if (!pd) return '';
-    const badgeCls = (status) => (status === '정상' ? 'badge-green' : 'badge-red');
+    // 번역 후에도 정상/비정상 색상 판정이 틀어지지 않도록, 원문 기준으로 미리 계산해둔 플래그가 있으면 그걸 우선 쓴다.
+    const isNormal = (item) => (item._isNormal !== undefined ? item._isNormal : item.status === '정상');
+    const badgeCls = (normal) => (normal ? 'badge-green' : 'badge-red');
+    const frameNormal = pd._frameIsNormal !== undefined ? pd._frameIsNormal : pd.frame_status === '정상';
+    const exteriorNormal = pd._exteriorIsNormal !== undefined ? pd._exteriorIsNormal : pd.exterior_status === '정상';
     const panelRows = (items) => items.map((item) => `
       <div class="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-[var(--fk-gray-100)] last:border-0">
         <span class="text-[var(--fk-gray-600)]">${KCarUtil.escapeHtml(item.label)}</span>
-        <span class="font-bold flex-shrink-0 ${item.status === '정상' ? 'text-[var(--fk-green)]' : 'text-[var(--fk-red)]'}">${KCarUtil.escapeHtml(item.status)}</span>
+        <span class="font-bold flex-shrink-0 ${isNormal(item) ? 'text-[var(--fk-green)]' : 'text-[var(--fk-red)]'}">${KCarUtil.escapeHtml(item.status)}</span>
       </div>
     `).join('');
 
@@ -250,8 +255,8 @@
       <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-car-burst mr-1.5 text-[var(--fk-blue)]"></i>${t('panel_diagnosis_title')}</h3>
       ${pd.headline ? `<p class="text-sm text-[var(--fk-gray-800)] mb-3">${KCarUtil.escapeHtml(pd.headline)}</p>` : ''}
       <div class="flex flex-wrap gap-2 mb-4">
-        ${pd.frame_status ? `<span class="badge ${badgeCls(pd.frame_status)}">${t('panel_frame')} ${KCarUtil.escapeHtml(pd.frame_status)}</span>` : ''}
-        ${pd.exterior_status ? `<span class="badge ${badgeCls(pd.exterior_status)}">${t('panel_exterior')} ${KCarUtil.escapeHtml(pd.exterior_status)}</span>` : ''}
+        ${pd.frame_status ? `<span class="badge ${badgeCls(frameNormal)}">${t('panel_frame')} ${KCarUtil.escapeHtml(pd.frame_status)}</span>` : ''}
+        ${pd.exterior_status ? `<span class="badge ${badgeCls(exteriorNormal)}">${t('panel_exterior')} ${KCarUtil.escapeHtml(pd.exterior_status)}</span>` : ''}
         ${pd.weld_count !== null && pd.weld_count !== undefined ? `<span class="spec-chip">${t('panel_weld')} ${pd.weld_count}${t('panel_count_suffix')}</span>` : ''}
         ${pd.exchange_count !== null && pd.exchange_count !== undefined ? `<span class="spec-chip">${t('panel_exchange')} ${pd.exchange_count}${t('panel_count_suffix')}</span>` : ''}
       </div>
@@ -268,12 +273,157 @@
     </div>`;
   }
 
+  function buildCarInfoHtml(car, t) {
+    const showTranslateBtn = KCarI18n.getLang() === 'ru' && !car._translated;
+    return `
+      <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
+        <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
+        ${statusBadge(car.status)}
+        ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+      </div>
+      <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)] mb-2">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
+      <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+
+      ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>Перевести на русский</button>` : ''}
+
+      <div class="grid sm:grid-cols-2 gap-6 mb-6">
+        <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-list-check mr-1.5 text-[var(--fk-blue)]"></i>${t('spec_title')}</h3>
+          <table class="spec-table">
+            ${specRow(t('spec_year'), car.year_info)}
+            ${specRow(t('spec_mileage'), car.mileage ? KCarUtil.formatMileage(car.mileage) : null)}
+            ${specRow(t('spec_fuel'), car.fuel_type)}
+            ${specRow(t('spec_transmission'), car.transmission)}
+            ${specRow(t('spec_displacement'), car.displacement)}
+            ${specRow(t('spec_color'), car.color)}
+            ${specRow(t('spec_seat_color'), car.seat_color)}
+            ${specRow(t('spec_region'), car.region)}
+          </table>
+        </div>
+        <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-shield-halved mr-1.5 text-[var(--fk-blue)]"></i>${t('diag_title')}</h3>
+          <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed mb-3">${KCarUtil.escapeHtml(car.accident_info || t('no_accident_info'))}</p>
+          ${car.diagnosis_summary ? `<p class="text-xs text-[var(--fk-gray-600)] leading-relaxed border-t border-[var(--fk-gray-200)] pt-3">${KCarUtil.escapeHtml(car.diagnosis_summary)}</p>` : ''}
+        </div>
+      </div>
+
+      ${panelDiagnosisHtml(car.panel_diagnosis, t)}
+
+      <div class="mb-6">
+        <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-star mr-1.5 text-[var(--fk-blue)]"></i>${t('options_title')}</h3>
+        <div class="flex flex-wrap gap-2">${optionTagsHtml(car.options)}</div>
+      </div>
+
+      ${(() => {
+        const descText = KCarI18n.getLang() === 'ru' ? car.description_ru : car.description_ko;
+        if (!descText) return '';
+        return `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>${t('desc_title')}</h3>
+          <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed whitespace-pre-line">${KCarUtil.escapeHtml(descText)}</p>
+        </div>`;
+      })()}
+
+      ${car.memo ? `<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+        <h3 class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>${t('memo_title')}</h3>
+        <p class="text-sm text-amber-900">${KCarUtil.escapeHtml(car.memo)}</p>
+      </div>` : ''}
+
+      <div class="flex gap-3">
+        ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-primary flex-1 text-center">
+          <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>${t('original_listing_btn')}
+        </a>` : ''}
+      </div>
+    `;
+  }
+
+  const translationCache = new Map();
+
+  async function translateCarFields(car) {
+    if (translationCache.has(car.id)) return translationCache.get(car.id);
+
+    const keys = [];
+    const texts = [];
+    const push = (key, val) => {
+      if (val) { keys.push(key); texts.push(String(val).replace(/\n/g, ' ')); }
+    };
+
+    // 연식/지역처럼 압축된 한글 표기(예: "23년형", "경기")는 기계번역이 엉뚱하게 옮기는 경우가 많아 제외한다.
+    push('accident_info', car.accident_info);
+    push('diagnosis_summary', car.diagnosis_summary);
+    push('color', car.color);
+    push('seat_color', car.seat_color);
+    push('fuel_type', car.fuel_type);
+    push('transmission', car.transmission);
+    push('memo', car.memo);
+    if (!car.description_ru && car.description_ko) push('description_ko_as_ru', car.description_ko);
+
+    const pd = car.panel_diagnosis;
+    if (pd) {
+      push('pd_headline', pd.headline);
+      push('pd_frame_status', pd.frame_status);
+      push('pd_exterior_status', pd.exterior_status);
+      (pd.exterior_panels || []).forEach((p, i) => { push(`pd_ext_l_${i}`, p.label); push(`pd_ext_s_${i}`, p.status); });
+      (pd.frame_groups || []).forEach((p, i) => { push(`pd_frm_l_${i}`, p.label); push(`pd_frm_s_${i}`, p.status); });
+    }
+    (car.options || []).forEach((o, i) => push(`opt_${i}`, o));
+
+    const translated = JSON.parse(JSON.stringify(car));
+    translated._translated = true;
+
+    if (translated.panel_diagnosis) {
+      translated.panel_diagnosis._frameIsNormal = translated.panel_diagnosis.frame_status === '정상';
+      translated.panel_diagnosis._exteriorIsNormal = translated.panel_diagnosis.exterior_status === '정상';
+      (translated.panel_diagnosis.exterior_panels || []).forEach((p) => { p._isNormal = p.status === '정상'; });
+      (translated.panel_diagnosis.frame_groups || []).forEach((p) => { p._isNormal = p.status === '정상'; });
+    }
+
+    if (texts.length === 0) {
+      translationCache.set(car.id, translated);
+      return translated;
+    }
+
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ru&dt=t&q=${encodeURIComponent(texts.join('\n'))}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('번역 요청에 실패했습니다.');
+    const data = await res.json();
+    const parts = (data[0] || []).map((seg) => seg[0]).join('').split('\n');
+
+    const map = {};
+    keys.forEach((k, i) => { map[k] = parts[i] !== undefined ? parts[i] : texts[i]; });
+
+    ['accident_info', 'diagnosis_summary', 'color', 'seat_color', 'fuel_type', 'transmission', 'memo'].forEach((f) => {
+      if (map[f]) translated[f] = map[f];
+    });
+    if (map.description_ko_as_ru) translated.description_ru = map.description_ko_as_ru;
+
+    if (translated.panel_diagnosis) {
+      if (map.pd_headline) translated.panel_diagnosis.headline = map.pd_headline;
+      if (map.pd_frame_status) translated.panel_diagnosis.frame_status = map.pd_frame_status;
+      if (map.pd_exterior_status) translated.panel_diagnosis.exterior_status = map.pd_exterior_status;
+      (translated.panel_diagnosis.exterior_panels || []).forEach((p, i) => {
+        if (map[`pd_ext_l_${i}`]) p.label = map[`pd_ext_l_${i}`];
+        if (map[`pd_ext_s_${i}`]) p.status = map[`pd_ext_s_${i}`];
+      });
+      (translated.panel_diagnosis.frame_groups || []).forEach((p, i) => {
+        if (map[`pd_frm_l_${i}`]) p.label = map[`pd_frm_l_${i}`];
+        if (map[`pd_frm_s_${i}`]) p.status = map[`pd_frm_s_${i}`];
+      });
+    }
+    if (Array.isArray(translated.options)) {
+      translated.options = translated.options.map((o, i) => map[`opt_${i}`] || o);
+    }
+
+    translationCache.set(car.id, translated);
+    return translated;
+  }
+
   function openDetailModal(car, { pushState = true } = {}) {
     const t = KCarI18n.t;
     if (pushState) {
       history.pushState({ carId: car.id }, '', `/car/${car.id}`);
     }
     document.title = `${car.title || 'FROM K CAR'} — FROM K CAR`;
+    currentModalCar = car;
     currentModalImages = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
     currentModalIndex = 0;
 
@@ -293,61 +443,7 @@
           ${currentModalImages.map((img, i) => `<img src="${img}" data-idx="${i}" class="${i === 0 ? 'active' : ''}" onerror="this.style.display='none'">`).join('')}
         </div>` : ''}
 
-        <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
-          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
-          ${statusBadge(car.status)}
-          ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
-        </div>
-        <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)] mb-2">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
-        <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-5">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
-
-        <div class="grid sm:grid-cols-2 gap-6 mb-6">
-          <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
-            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-list-check mr-1.5 text-[var(--fk-blue)]"></i>${t('spec_title')}</h3>
-            <table class="spec-table">
-              ${specRow(t('spec_year'), car.year_info)}
-              ${specRow(t('spec_mileage'), car.mileage ? KCarUtil.formatMileage(car.mileage) : null)}
-              ${specRow(t('spec_fuel'), car.fuel_type)}
-              ${specRow(t('spec_transmission'), car.transmission)}
-              ${specRow(t('spec_displacement'), car.displacement)}
-              ${specRow(t('spec_color'), car.color)}
-              ${specRow(t('spec_seat_color'), car.seat_color)}
-              ${specRow(t('spec_region'), car.region)}
-            </table>
-          </div>
-          <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
-            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-shield-halved mr-1.5 text-[var(--fk-blue)]"></i>${t('diag_title')}</h3>
-            <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed mb-3">${KCarUtil.escapeHtml(car.accident_info || t('no_accident_info'))}</p>
-            ${car.diagnosis_summary ? `<p class="text-xs text-[var(--fk-gray-600)] leading-relaxed border-t border-[var(--fk-gray-200)] pt-3">${KCarUtil.escapeHtml(car.diagnosis_summary)}</p>` : ''}
-          </div>
-        </div>
-
-        ${panelDiagnosisHtml(car.panel_diagnosis, t)}
-
-        <div class="mb-6">
-          <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-star mr-1.5 text-[var(--fk-blue)]"></i>${t('options_title')}</h3>
-          <div class="flex flex-wrap gap-2">${optionTagsHtml(car.options)}</div>
-        </div>
-
-        ${(() => {
-          const descText = KCarI18n.getLang() === 'ru' ? car.description_ru : car.description_ko;
-          if (!descText) return '';
-          return `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
-            <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>${t('desc_title')}</h3>
-            <p class="text-sm text-[var(--fk-gray-800)] leading-relaxed whitespace-pre-line">${KCarUtil.escapeHtml(descText)}</p>
-          </div>`;
-        })()}
-
-        ${car.memo ? `<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <h3 class="text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>${t('memo_title')}</h3>
-          <p class="text-sm text-amber-900">${KCarUtil.escapeHtml(car.memo)}</p>
-        </div>` : ''}
-
-        <div class="flex gap-3">
-          ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-primary flex-1 text-center">
-            <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>${t('original_listing_btn')}
-          </a>` : ''}
-        </div>
+        <div id="car-info-panel">${buildCarInfoHtml(car, t)}</div>
       </div>
     `;
 
@@ -394,6 +490,23 @@
     if (document.getElementById('detail-modal').classList.contains('hidden')) return;
     if (e.key === 'ArrowLeft') shiftGalleryImage(-1);
     if (e.key === 'ArrowRight') shiftGalleryImage(1);
+  });
+
+  document.getElementById('detail-modal').addEventListener('click', async (e) => {
+    const btn = e.target.closest('#translate-all-btn');
+    if (!btn || !currentModalCar) return;
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Перевод...';
+    try {
+      const translated = await translateCarFields(currentModalCar);
+      currentModalCar = translated;
+      document.getElementById('car-info-panel').innerHTML = buildCarInfoHtml(translated, KCarI18n.t);
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      KCarUtil.toast('번역에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    }
   });
 
   gridEl.addEventListener('click', (e) => {
