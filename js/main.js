@@ -93,11 +93,13 @@
       <div class="car-card-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
         <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
              onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
+        <div class="car-card-thumb-status">${statusBadge(car.status)}</div>
       </div>
       <div class="p-3">
-        <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
+        <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-2 mb-1 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
+        <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
         <a href="/car/${car.id}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
           <i class="fa-solid fa-circle-info mr-1"></i>${t('detail_btn')}
         </a>
