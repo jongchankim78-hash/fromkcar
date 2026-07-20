@@ -126,7 +126,7 @@ a { text-decoration: none; color: inherit; }
 /* ---------------- 히어로 ---------------- */
 .fk-hero {
   background: linear-gradient(90deg, rgba(5,11,26,0.92) 0%, rgba(5,11,26,0.65) 40%, rgba(5,11,26,0.25) 70%, rgba(5,11,26,0.05) 100%),
-              url('../images/hero-bg.jpg') right center / cover no-repeat,
+              url('../images/hero-bg.jpg') right bottom / contain no-repeat,
               var(--fk-navy);
   position: relative;
   overflow: hidden;
