@@ -39,9 +39,9 @@
   function statusBadge(status) {
     const t = KCarI18n.t;
     const map = {
-      '판매중': `<span class="badge badge-green"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_selling')}</span>`,
-      '판매완료': `<span class="badge badge-gray"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_sold')}</span>`,
-      '확인필요': `<span class="badge badge-red"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_check')}</span>`
+      '판매중': `<span class="badge badge-status-green"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_selling')}</span>`,
+      '판매완료': `<span class="badge badge-status-gray"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_sold')}</span>`,
+      '확인필요': `<span class="badge badge-status-red"><i class="fa-solid fa-circle text-[8px]"></i>${t('status_check')}</span>`
     };
     return map[status] || map['판매중'];
   }

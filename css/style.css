@@ -210,6 +210,11 @@ a { text-decoration: none; color: inherit; }
   border: 1px solid rgba(255,255,255,0.4);
 }
 
+/* 매물 상태(판매중/판매완료/확인필요) 뱃지 — 사진 위에 올라가도 잘 보이도록 진하게 */
+.badge-status-green { background: var(--fk-green); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,0.45); }
+.badge-status-gray { background: var(--fk-gray-600); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+.badge-status-red { background: var(--fk-red); color: #fff; box-shadow: 0 2px 8px rgba(225,29,72,0.45); }
+
 .spec-chip {
   background: var(--fk-gray-100);
   color: var(--fk-gray-600);
