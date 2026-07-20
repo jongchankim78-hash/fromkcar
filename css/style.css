@@ -125,20 +125,11 @@ a { text-decoration: none; color: inherit; }
 
 /* ---------------- 히어로 ---------------- */
 .fk-hero {
-  background: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.25), transparent 45%),
-              radial-gradient(circle at 80% 0%, rgba(212,175,55,0.18), transparent 40%),
-              linear-gradient(160deg, var(--fk-navy) 0%, #0f2847 60%, var(--fk-navy-light) 100%);
+  background: linear-gradient(90deg, rgba(5,11,26,0.92) 0%, rgba(5,11,26,0.65) 40%, rgba(5,11,26,0.25) 70%, rgba(5,11,26,0.05) 100%),
+              url('../images/hero-bg.jpg') right center / cover no-repeat,
+              var(--fk-navy);
   position: relative;
   overflow: hidden;
-}
-.fk-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                     linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
 }
 
 /* ---------------- 카드 ---------------- */
