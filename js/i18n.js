@@ -1,5 +1,5 @@
 /**
- * FROM K CAR — UI 다국어(한국어/러시아어) 지원
+ * FROM K CAR — UI 다국어(한국어/러시아어/몽골어) 지원
  * 매물 데이터(차량명, 사고이력, 진단요약 등)는 번역 대상이 아니며,
  * 메뉴/버튼/라벨 등 고정 UI 텍스트만 전환한다.
  */
@@ -57,7 +57,8 @@
       options_empty: '등록된 옵션 정보가 없습니다.',
       desc_title: '매물 소개',
       memo_title: '메모',
-      load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.'
+      load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
+      translate_btn: '번역하기'
     },
     ru: {
       admin_login: 'Вход для администратора',
@@ -109,12 +110,69 @@
       options_empty: 'Информация об опциях отсутствует.',
       desc_title: 'Описание',
       memo_title: 'Заметка',
-      load_error: 'Ошибка при загрузке списка автомобилей.'
+      load_error: 'Ошибка при загрузке списка автомобилей.',
+      translate_btn: 'Перевести на русский'
+    },
+    mn: {
+      admin_login: 'Админ нэвтрэх',
+      admin_add: 'Машин нэмэх',
+      hero_showroom: 'Сувон хотын SKV1 Моторс автосалон',
+      dealer_role: 'FROM K CAR-ийн менежер',
+      search_placeholder: 'Нэр, бүс, дугаараар хайх',
+      filter_all_brand: 'Бүх брэнд',
+      filter_all_fuel: 'Бүх түлш',
+      sort_registered_desc: 'Шинээр нэмэгдсэн',
+      sort_price_asc: 'Үнэ өсөхөөр',
+      sort_price_desc: 'Үнэ буурахаар',
+      sort_mileage_asc: 'Гүйлт бага',
+      sort_year_desc: 'Он шинэ',
+      gallery_title: 'Бүртгэлтэй машинууд',
+      result_count_suffix: ' машин байна',
+      empty_title: 'Одоогоор бүртгэлтэй машин алга байна',
+      empty_desc: 'Админ хуудаснаас машины URL оруулж эхний зарыг нэмнэ үү.',
+      empty_cta: 'Машин нэмэх',
+      empty_filtered_title: 'Тохирох машин олдсонгүй',
+      empty_filtered_desc: 'Хайлт эсвэл шүүлтүүрээ өөрчилж үзнэ үү.',
+      status_selling: 'Зарагдаж байна',
+      status_sold: 'Зарагдсан',
+      badge_no_accident: 'Ослын түүхгүй',
+      car_title_fallback: 'Нэр тодорхойгүй',
+      car_image_alt_fallback: 'Машины зураг',
+      detail_btn: 'Дэлгэрэнгүй',
+      original_listing_title: 'Эх зарыг үзэх',
+      original_listing_btn: 'Эх зарын хуудсыг үзэх',
+      brand_fallback: 'Бусад',
+      spec_title: 'Үндсэн мэдээлэл',
+      spec_year: 'Үйлдвэрлэсэн он',
+      spec_mileage: 'Гүйлт',
+      spec_fuel: 'Түлш',
+      spec_transmission: 'Хурдны хайрцаг',
+      spec_displacement: 'Хөдөлгүүрийн багтаамж',
+      spec_color: 'Өнгө',
+      spec_seat_color: 'Дотоод өнгө',
+      spec_region: 'Бүс нутаг',
+      diag_title: 'Оношилгоо · Ослын түүх',
+      no_accident_info: 'Мэдээлэл байхгүй',
+      panel_diagnosis_title: 'Фрэйм ба гадна панелийн оношилгоо',
+      panel_frame: 'Фрэйм',
+      panel_exterior: 'Гадна панель',
+      panel_weld: 'Гагнуур/засвар',
+      panel_exchange: 'Солилт',
+      panel_count_suffix: ' удаа',
+      options_title: 'Гол тохиргоо',
+      options_empty: 'Бүртгэлтэй тохиргооны мэдээлэл байхгүй.',
+      desc_title: 'Машины танилцуулга',
+      memo_title: 'Тэмдэглэл',
+      load_error: 'Машины жагсаалтыг ачаалахад алдаа гарлаа.',
+      translate_btn: 'Монгол хэл рүү орчуулах'
     }
   };
 
+  const SUPPORTED_LANGS = ['ko', 'ru', 'mn'];
+
   function getLang() {
-    return localStorage.getItem(STORAGE_KEY) || 'ko';
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return SUPPORTED_LANGS.includes(stored) ? stored : 'ko';
   }
 
   function t(key) {
@@ -135,13 +193,13 @@
   }
 
   function setLang(lang) {
-    localStorage.setItem(STORAGE_KEY, lang);
-    document.documentElement.lang = lang === 'ru' ? 'ru' : 'ko';
+    localStorage.setItem(STORAGE_KEY, SUPPORTED_LANGS.includes(lang) ? lang : 'ko');
+    document.documentElement.lang = getLang();
     applyStaticI18n();
-    document.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
+    document.dispatchEvent(new CustomEvent('langchange', { detail: { lang: getLang() } }));
   }
 
-  document.documentElement.lang = getLang() === 'ru' ? 'ru' : 'ko';
+  document.documentElement.lang = getLang();
   applyStaticI18n();
   document.querySelectorAll('.lang-flag-btn').forEach((btn) => {
     btn.addEventListener('click', () => setLang(btn.dataset.lang));

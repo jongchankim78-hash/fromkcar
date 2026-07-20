@@ -46,38 +46,42 @@
     }
   });
 
-  /* ---------------- 한글 -> 러시아어 자동 번역 (초안) ---------------- */
-  async function translateKoToRu(text) {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+  /* ---------------- 한글 -> 외국어 자동 번역 (초안) ---------------- */
+  async function translateKoTo(text, targetLang) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('번역 요청에 실패했습니다.');
     const data = await res.json();
     return (data[0] || []).map((seg) => seg[0]).join('');
   }
 
-  const translateRuBtn = document.getElementById('translate-ru-btn');
-  if (translateRuBtn) {
-    translateRuBtn.addEventListener('click', async () => {
+  function wireTranslateBtn(btnId, targetFieldId, targetLang, successLabel) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
       const koText = document.getElementById('f-description-ko').value.trim();
       if (!koText) {
         KCarUtil.toast('먼저 매물 소개(한글)를 입력해주세요.', 'error');
         return;
       }
-      translateRuBtn.disabled = true;
-      const originalHtml = translateRuBtn.innerHTML;
-      translateRuBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>번역 중...';
+      btn.disabled = true;
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>번역 중...';
       try {
-        const translated = await translateKoToRu(koText);
-        document.getElementById('f-description-ru').value = translated;
-        KCarUtil.toast('러시아어로 초안 번역했어요. 내용을 확인 후 저장해주세요.', 'success');
+        const translated = await translateKoTo(koText, targetLang);
+        document.getElementById(targetFieldId).value = translated;
+        KCarUtil.toast(`${successLabel}로 초안 번역했어요. 내용을 확인 후 저장해주세요.`, 'success');
       } catch (err) {
         KCarUtil.toast('자동 번역에 실패했습니다. 직접 입력해주세요.', 'error');
       } finally {
-        translateRuBtn.disabled = false;
-        translateRuBtn.innerHTML = originalHtml;
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
       }
     });
   }
+
+  wireTranslateBtn('translate-ru-btn', 'f-description-ru', 'ru', '러시아어');
+  wireTranslateBtn('translate-mn-btn', 'f-description-mn', 'mn', '몽골어');
 
   /* ---------------- 폼 채우기 / 읽기 ---------------- */
   function fillFormFromData(data) {
@@ -102,6 +106,7 @@
     document.getElementById('f-diagnosis').value = data.diagnosis_summary || '';
     document.getElementById('f-description-ko').value = data.description_ko || '';
     document.getElementById('f-description-ru').value = data.description_ru || '';
+    document.getElementById('f-description-mn').value = data.description_mn || '';
     document.getElementById('f-options').value = Array.isArray(data.options) ? data.options.join(', ') : (data.options || '');
     document.getElementById('f-memo').value = data.memo || '';
     document.getElementById('f-status').value = data.status || '판매중';
@@ -159,6 +164,7 @@
       diagnosis_summary: document.getElementById('f-diagnosis').value.trim(),
       description_ko: document.getElementById('f-description-ko').value.trim(),
       description_ru: document.getElementById('f-description-ru').value.trim(),
+      description_mn: document.getElementById('f-description-mn').value.trim(),
       options: options,
       memo: document.getElementById('f-memo').value.trim(),
       status: document.getElementById('f-status').value,
@@ -298,6 +304,7 @@
           memo: car.memo,
           description_ko: car.description_ko,
           description_ru: car.description_ru,
+          description_mn: car.description_mn,
           created_at: car.created_at
         };
         editingId = car.id;

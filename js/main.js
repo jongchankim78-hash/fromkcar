@@ -273,7 +273,7 @@
   }
 
   function buildCarInfoHtml(car, t) {
-    const showTranslateBtn = KCarI18n.getLang() === 'ru' && !car._translated;
+    const showTranslateBtn = KCarI18n.getLang() !== 'ko' && !car._translated;
     return `
       <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
         <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
@@ -283,7 +283,7 @@
       <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)] mb-2">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
       <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
 
-      ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>Перевести на русский</button>` : ''}
+      ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>${t('translate_btn')}</button>` : ''}
 
       <div class="grid sm:grid-cols-2 gap-6 mb-6">
         <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
@@ -314,7 +314,8 @@
       </div>
 
       ${(() => {
-        const descText = KCarI18n.getLang() === 'ru' ? car.description_ru : car.description_ko;
+        const lang = KCarI18n.getLang();
+        const descText = lang === 'ko' ? car.description_ko : car['description_' + lang];
         if (!descText) return '';
         return `<div class="mb-6 bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] rounded-2xl p-4 sm:p-5">
           <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-align-left mr-1.5 text-[var(--fk-blue)]"></i>${t('desc_title')}</h3>
@@ -338,8 +339,12 @@
   const translationCache = new Map();
 
   async function translateCarFields(car) {
-    if (translationCache.has(car.id)) return translationCache.get(car.id);
+    const lang = KCarI18n.getLang();
+    const cacheKey = `${car.id}_${lang}`;
+    if (translationCache.has(cacheKey)) return translationCache.get(cacheKey);
+    if (lang === 'ko') return car;
 
+    const descField = 'description_' + lang;
     const keys = [];
     const texts = [];
     const push = (key, val) => {
@@ -354,7 +359,7 @@
     push('fuel_type', car.fuel_type);
     push('transmission', car.transmission);
     push('memo', car.memo);
-    if (!car.description_ru && car.description_ko) push('description_ko_as_ru', car.description_ko);
+    if (!car[descField] && car.description_ko) push('description_ko_translated', car.description_ko);
 
     const pd = car.panel_diagnosis;
     if (pd) {
@@ -377,11 +382,11 @@
     }
 
     if (texts.length === 0) {
-      translationCache.set(car.id, translated);
+      translationCache.set(cacheKey, translated);
       return translated;
     }
 
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ru&dt=t&q=${encodeURIComponent(texts.join('\n'))}`;
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=${lang}&dt=t&q=${encodeURIComponent(texts.join('\n'))}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('번역 요청에 실패했습니다.');
     const data = await res.json();
@@ -393,7 +398,7 @@
     ['accident_info', 'diagnosis_summary', 'color', 'seat_color', 'fuel_type', 'transmission', 'memo'].forEach((f) => {
       if (map[f]) translated[f] = map[f];
     });
-    if (map.description_ko_as_ru) translated.description_ru = map.description_ko_as_ru;
+    if (map.description_ko_translated) translated[descField] = map.description_ko_translated;
 
     if (translated.panel_diagnosis) {
       if (map.pd_headline) translated.panel_diagnosis.headline = map.pd_headline;
@@ -412,7 +417,7 @@
       translated.options = translated.options.map((o, i) => map[`opt_${i}`] || o);
     }
 
-    translationCache.set(car.id, translated);
+    translationCache.set(cacheKey, translated);
     return translated;
   }
 
