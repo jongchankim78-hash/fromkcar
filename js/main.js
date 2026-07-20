@@ -517,6 +517,10 @@
         ${currentModalImages.length > 1 ? `<div class="thumb-strip mb-3" id="thumb-strip">
           ${currentModalImages.map((img, i) => `<img src="${img}" data-idx="${i}" class="${i === 0 ? 'active' : ''}" onerror="this.style.display='none'">`).join('')}
         </div>` : ''}
+        ${currentModalImages.length ? `
+        <a href="/car/${car.id}/images.zip" class="btn-secondary block w-full !py-2.5 text-sm text-center mb-4">
+          <i class="fa-solid fa-file-zipper mr-1.5"></i>${t('download_images_btn')}
+        </a>` : ''}
 
         <div id="car-info-panel">${buildCarInfoHtml(car, t)}</div>
       </div>

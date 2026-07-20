@@ -4,9 +4,11 @@
  * js/api.js가 호출하는 tables/car_listings REST API를 JSON 파일 저장소로 구현한다.
  */
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { URL } = require('url');
 
 const ROOT_DIR = __dirname;
@@ -265,6 +267,182 @@ function handleCarDetailPage(req, res, carId) {
   res.end(html);
 }
 
+// --- 매물 이미지 일괄 ZIP 다운로드 -----------------------------------------
+// 이미지가 외부 CDN(KB차차차)에 있으므로 서버가 각 URL을 내려받아 그 자리에서
+// ZIP(비압축 지원 없이 zlib deflate만 사용하는 최소 구현)으로 묶어 스트리밍한다.
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buf) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) {
+    crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosDateTime(date) {
+  const time = ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | ((date.getSeconds() >> 1) & 0x1f);
+  const dosDate = (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0xf) << 5) | (date.getDate() & 0x1f);
+  return { time, dosDate };
+}
+
+function buildZip(entries) {
+  const { time, dosDate } = dosDateTime(new Date());
+  const localChunks = [];
+  const centralChunks = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBuf = Buffer.from(entry.name, 'utf-8');
+    const crc = crc32(entry.data);
+    const compressed = zlib.deflateRawSync(entry.data);
+    const useStore = compressed.length >= entry.data.length;
+    const method = useStore ? 0 : 8;
+    const dataToWrite = useStore ? entry.data : compressed;
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0x0800, 6);
+    localHeader.writeUInt16LE(method, 8);
+    localHeader.writeUInt16LE(time, 10);
+    localHeader.writeUInt16LE(dosDate, 12);
+    localHeader.writeUInt32LE(crc, 14);
+    localHeader.writeUInt32LE(dataToWrite.length, 18);
+    localHeader.writeUInt32LE(entry.data.length, 22);
+    localHeader.writeUInt16LE(nameBuf.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+    localChunks.push(localHeader, nameBuf, dataToWrite);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0x0800, 8);
+    centralHeader.writeUInt16LE(method, 10);
+    centralHeader.writeUInt16LE(time, 12);
+    centralHeader.writeUInt16LE(dosDate, 14);
+    centralHeader.writeUInt32LE(crc, 16);
+    centralHeader.writeUInt32LE(dataToWrite.length, 20);
+    centralHeader.writeUInt32LE(entry.data.length, 24);
+    centralHeader.writeUInt16LE(nameBuf.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+    centralChunks.push(centralHeader, nameBuf);
+
+    offset += localHeader.length + nameBuf.length + dataToWrite.length;
+  }
+
+  const centralOffset = offset;
+  const centralSize = centralChunks.reduce((sum, b) => sum + b.length, 0);
+
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralSize, 12);
+  end.writeUInt32LE(centralOffset, 16);
+  end.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localChunks, ...centralChunks, end]);
+}
+
+function fetchBuffer(url, redirectsLeft = 3) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return reject(new Error('Invalid image URL'));
+    }
+    const client = parsed.protocol === 'http:' ? http : https;
+    const req = client.get(parsed, { timeout: 15000 }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirectsLeft > 0) {
+        res.resume();
+        return resolve(fetchBuffer(new URL(res.headers.location, parsed).toString(), redirectsLeft - 1));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`Image fetch failed: ${res.statusCode}`));
+      }
+      const chunks = [];
+      let size = 0;
+      res.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > 20 * 1024 * 1024) {
+          req.destroy();
+          reject(new Error('Image too large'));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error('Image fetch timed out')));
+    req.on('error', reject);
+  });
+}
+
+async function handleImagesZip(req, res, carId) {
+  const car = readListings().find((c) => c.id === carId && !c.deleted);
+  if (!car) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Not Found');
+  }
+
+  const images = Array.isArray(car.images) && car.images.length
+    ? car.images
+    : (car.main_image ? [car.main_image] : []);
+  if (!images.length) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('No images');
+  }
+  const limited = images.slice(0, 30);
+
+  let entries;
+  try {
+    const buffers = await Promise.all(limited.map((url) => fetchBuffer(url)));
+    entries = buffers.map((data, i) => {
+      let ext = '.jpg';
+      try {
+        ext = (path.extname(new URL(limited[i]).pathname) || '.jpg').toLowerCase();
+      } catch (e) { /* keep default */ }
+      return { name: `${String(i + 1).padStart(2, '0')}${ext}`, data };
+    });
+  } catch (e) {
+    res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Failed to fetch one or more images');
+  }
+
+  const zipBuffer = buildZip(entries);
+  const asciiName = (car.title || 'images').replace(/[^\x00-\x7F]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'images';
+  const utf8Name = encodeURIComponent(`${car.title || car.id}_images.zip`);
+  res.writeHead(200, {
+    'Content-Type': 'application/zip',
+    'Content-Disposition': `attachment; filename="${asciiName}.zip"; filename*=UTF-8''${utf8Name}`,
+    'Content-Length': zipBuffer.length
+  });
+  res.end(zipBuffer);
+}
+
 function handleSitemap(req, res) {
   const cars = readListings().filter((c) => !c.deleted);
   const urls = [
@@ -321,6 +499,16 @@ function serveStatic(req, res, urlObj) {
 
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
+
+  const imagesZipMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/images\.zip$/);
+  if (imagesZipMatch && req.method === 'GET') {
+    try {
+      return await handleImagesZip(req, res, decodeURIComponent(imagesZipMatch[1]));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Server error');
+    }
+  }
 
   const carDetailMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/?$/);
   if (carDetailMatch && (req.method === 'GET' || req.method === 'HEAD')) {

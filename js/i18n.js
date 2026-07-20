@@ -59,7 +59,8 @@
       desc_title: '매물 소개',
       memo_title: '메모',
       load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
-      translate_btn: '번역하기'
+      translate_btn: '번역하기',
+      download_images_btn: '사진 전체 다운로드 (ZIP)'
     },
     ru: {
       hero_showroom: 'Автосалон SKV1 Motors, Сувон',
@@ -113,7 +114,8 @@
       desc_title: 'Описание',
       memo_title: 'Заметка',
       load_error: 'Ошибка при загрузке списка автомобилей.',
-      translate_btn: 'Перевести на русский'
+      translate_btn: 'Перевести на русский',
+      download_images_btn: 'Скачать все фото (ZIP)'
     },
     mn: {
       hero_showroom: 'Сувон хотын SKV1 Моторс автосалон',
@@ -167,7 +169,8 @@
       desc_title: 'Машины танилцуулга',
       memo_title: 'Тэмдэглэл',
       load_error: 'Машины жагсаалтыг ачаалахад алдаа гарлаа.',
-      translate_btn: 'Монгол хэл рүү орчуулах'
+      translate_btn: 'Монгол хэл рүү орчуулах',
+      download_images_btn: 'Бүх зургийг татах (ZIP)'
     },
     en: {
       hero_showroom: 'SKV1 Motors Showroom, Suwon',
@@ -221,7 +224,8 @@
       desc_title: 'Description',
       memo_title: 'Note',
       load_error: 'Failed to load the listings.',
-      translate_btn: 'Translate to English'
+      translate_btn: 'Translate to English',
+      download_images_btn: 'Download all photos (ZIP)'
     }
   };
 
