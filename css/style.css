@@ -132,6 +132,12 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   min-height: 480px;
 }
+@media (max-width: 640px) {
+  .fk-hero {
+    background-size: auto, cover;
+    background-position: 0 0, center;
+  }
+}
 
 /* ---------------- 카드 ---------------- */
 .car-card {
