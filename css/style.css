@@ -188,7 +188,15 @@ a { text-decoration: none; color: inherit; }
 
 @media (max-width: 639px) {
   #car-grid.car-grid-mobile-thumb { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  #car-grid.car-grid-mobile-thumb .car-card { border-radius: var(--radius-md); }
+}
+
+.car-card-thumb {
+  background: #fff;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--fk-gray-200);
+  display: flex;
+  flex-direction: column;
 }
 
 .car-card-list {

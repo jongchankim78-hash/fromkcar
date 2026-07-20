@@ -84,6 +84,27 @@
     </article>`;
   }
 
+  function carCardThumbHtml(car) {
+    const t = KCarI18n.t;
+    const images = Array.isArray(car.images) ? car.images : [];
+    const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
+    return `
+    <article class="car-card-thumb fade-in" data-id="${car.id}">
+      <div class="car-card-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+        <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
+             onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
+      </div>
+      <div class="p-3">
+        <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
+          ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
+        </h3>
+        <a href="/car/${car.id}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
+          <i class="fa-solid fa-circle-info mr-1"></i>${t('detail_btn')}
+        </a>
+      </div>
+    </article>`;
+  }
+
   function carCardListHtml(car) {
     const t = KCarI18n.t;
     const images = Array.isArray(car.images) ? car.images : [];
@@ -168,8 +189,10 @@
 
     const isMobile = window.matchMedia('(max-width: 639px)').matches;
     const isListView = isMobile && getViewMode() === 'list';
-    gridEl.classList.toggle('car-grid-mobile-thumb', isMobile && !isListView);
-    gridEl.innerHTML = filtered.map(isListView ? carCardListHtml : carCardHtml).join('');
+    const isThumbView = isMobile && !isListView;
+    gridEl.classList.toggle('car-grid-mobile-thumb', isThumbView);
+    const cardFn = isListView ? carCardListHtml : (isThumbView ? carCardThumbHtml : carCardHtml);
+    gridEl.innerHTML = filtered.map(cardFn).join('');
   }
 
   const BRAND_EN = {
