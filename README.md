@@ -91,7 +91,7 @@
 | description_ko | rich_text | 매물 소개 (한글) |
 | description_ru | rich_text | 매물 소개 (러시아어 번역) |
 | memo | text | 관리자 메모 |
-| status | text | 판매중 / 판매완료 / 확인필요 |
+| status | text | 판매중 / 판매완료 |
 | registered_at | datetime | 등록 일시 |
 
 - 데이터 저장/조회는 RESTful Table API(`tables/car_listings`)를 사용합니다.

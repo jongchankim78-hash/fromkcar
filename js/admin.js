@@ -216,13 +216,12 @@
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  function statusPill(status) {
-    const map = {
-      '판매중': '<span class="badge badge-green">판매중</span>',
-      '판매완료': '<span class="badge badge-gray">판매완료</span>',
-      '확인필요': '<span class="badge badge-red">확인필요</span>'
-    };
-    return map[status] || map['판매중'];
+  function statusSelectHtml(car) {
+    const bg = car.status === '판매완료' ? 'var(--fk-gray-600)' : 'var(--fk-green)';
+    return `<select class="text-xs font-bold text-white rounded-full px-2.5 py-1 border-0 cursor-pointer" style="background:${bg};" data-action="quick-status" data-id="${car.id}">
+      <option value="판매중" ${car.status === '판매완료' ? '' : 'selected'}>판매중</option>
+      <option value="판매완료" ${car.status === '판매완료' ? 'selected' : ''}>판매완료</option>
+    </select>`;
   }
 
   function renderAdminTable() {
@@ -247,7 +246,7 @@
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">
           ${KCarUtil.escapeHtml(car.year_info || '-')}<br>${KCarUtil.formatMileage(car.mileage)}
         </td>
-        <td class="py-3 pr-3">${statusPill(car.status)}</td>
+        <td class="py-3 pr-3">${statusSelectHtml(car)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">${fmtDate(car.created_at)}</td>
         <td class="py-3 pr-3 text-right whitespace-nowrap">
           ${car.source_url ? `<button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="refetch" data-id="${car.id}" title="원본에서 다시 불러오기"><i class="fa-solid fa-rotate"></i></button>` : ''}
@@ -257,6 +256,27 @@
       </tr>
     `).join('');
   }
+
+  document.getElementById('admin-table-body').addEventListener('change', async (e) => {
+    const select = e.target.closest('[data-action="quick-status"]');
+    if (!select) return;
+    const car = adminCars.find(c => c.id === select.dataset.id);
+    if (!car) return;
+    const newStatus = select.value;
+    const prevStatus = car.status;
+    select.disabled = true;
+    try {
+      await KCarAPI.updateCar(car.id, { status: newStatus });
+      car.status = newStatus;
+      select.style.background = newStatus === '판매완료' ? 'var(--fk-gray-600)' : 'var(--fk-green)';
+      KCarUtil.toast('상태를 변경했습니다.', 'success');
+    } catch (err) {
+      select.value = prevStatus;
+      KCarUtil.toast('상태 변경에 실패했습니다.', 'error');
+    } finally {
+      select.disabled = false;
+    }
+  });
 
   document.getElementById('admin-table-body').addEventListener('click', async (e) => {
     const editBtn = e.target.closest('[data-action="edit"]');
