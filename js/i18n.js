@@ -1,5 +1,5 @@
 /**
- * FROM K CAR — UI 다국어(한국어/러시아어/몽골어) 지원
+ * FROM K CAR — UI 다국어(한국어/러시아어/몽골어/영어) 지원
  * 매물 데이터(차량명, 사고이력, 진단요약 등)는 번역 대상이 아니며,
  * 메뉴/버튼/라벨 등 고정 UI 텍스트만 전환한다.
  */
@@ -8,10 +8,9 @@
 
   const DICT = {
     ko: {
-      admin_login: '관리자 로그인',
-      admin_add: '매물 추가',
       hero_showroom: '수원 SKV1모터스 전시장',
       dealer_role: 'FROM K CAR 담당',
+      dealer_name: '김종찬 팀장',
       search_placeholder: '차량명, 지역, 번호판으로 검색',
       filter_all_brand: '전체 브랜드',
       filter_all_fuel: '전체 연료',
@@ -22,6 +21,8 @@
       sort_year_desc: '연식 최신순',
       gallery_title: '등록된 매물',
       result_count_suffix: '건의 매물을 보고 있어요',
+      view_list: '리스트로 보기',
+      view_grid: '썸네일로 보기',
       empty_title: '아직 등록된 매물이 없어요',
       empty_desc: '관리자 페이지에서 매물 URL을 입력해 첫 매물을 추가해보세요.',
       empty_cta: '매물 추가하러 가기',
@@ -61,10 +62,9 @@
       translate_btn: '번역하기'
     },
     ru: {
-      admin_login: 'Вход для администратора',
-      admin_add: 'Добавить автомобиль',
       hero_showroom: 'Автосалон SKV1 Motors, Сувон',
       dealer_role: 'Менеджер FROM K CAR',
+      dealer_name: 'KIM JONG CHAN',
       search_placeholder: 'Поиск по названию, региону, номеру',
       filter_all_brand: 'Все марки',
       filter_all_fuel: 'Все виды топлива',
@@ -75,6 +75,8 @@
       sort_year_desc: 'Новее по году',
       gallery_title: 'Автомобили в наличии',
       result_count_suffix: ' объявлений найдено',
+      view_list: 'Список',
+      view_grid: 'Плитка',
       empty_title: 'Пока нет зарегистрированных автомобилей',
       empty_desc: 'Добавьте первое объявление через страницу администратора.',
       empty_cta: 'Добавить автомобиль',
@@ -114,10 +116,9 @@
       translate_btn: 'Перевести на русский'
     },
     mn: {
-      admin_login: 'Админ нэвтрэх',
-      admin_add: 'Машин нэмэх',
       hero_showroom: 'Сувон хотын SKV1 Моторс автосалон',
       dealer_role: 'FROM K CAR-ийн менежер',
+      dealer_name: 'KIM JONG CHAN',
       search_placeholder: 'Нэр, бүс, дугаараар хайх',
       filter_all_brand: 'Бүх брэнд',
       filter_all_fuel: 'Бүх түлш',
@@ -128,6 +129,8 @@
       sort_year_desc: 'Он шинэ',
       gallery_title: 'Бүртгэлтэй машинууд',
       result_count_suffix: ' машин байна',
+      view_list: 'Жагсаалт',
+      view_grid: 'Хавтгай',
       empty_title: 'Одоогоор бүртгэлтэй машин алга байна',
       empty_desc: 'Админ хуудаснаас машины URL оруулж эхний зарыг нэмнэ үү.',
       empty_cta: 'Машин нэмэх',
@@ -165,10 +168,64 @@
       memo_title: 'Тэмдэглэл',
       load_error: 'Машины жагсаалтыг ачаалахад алдаа гарлаа.',
       translate_btn: 'Монгол хэл рүү орчуулах'
+    },
+    en: {
+      hero_showroom: 'SKV1 Motors Showroom, Suwon',
+      dealer_role: 'FROM K CAR Manager',
+      dealer_name: 'KIM JONG CHAN',
+      search_placeholder: 'Search by name, region, plate number',
+      filter_all_brand: 'All brands',
+      filter_all_fuel: 'All fuel types',
+      sort_registered_desc: 'Newest first',
+      sort_price_asc: 'Price: low to high',
+      sort_price_desc: 'Price: high to low',
+      sort_mileage_asc: 'Lowest mileage',
+      sort_year_desc: 'Newest model year',
+      gallery_title: 'Available Listings',
+      result_count_suffix: ' listings found',
+      view_list: 'List',
+      view_grid: 'Grid',
+      empty_title: 'No listings registered yet',
+      empty_desc: 'Add your first listing from the admin page by entering a URL.',
+      empty_cta: 'Add a listing',
+      empty_filtered_title: 'No listings match your filters',
+      empty_filtered_desc: 'Try adjusting your search or filters.',
+      status_selling: 'For sale',
+      status_sold: 'Sold',
+      badge_no_accident: 'Accident-free',
+      car_title_fallback: 'Title not available',
+      car_image_alt_fallback: 'Car photo',
+      detail_btn: 'Details',
+      original_listing_title: 'View original listing',
+      original_listing_btn: 'View original listing page',
+      brand_fallback: 'Other',
+      spec_title: 'Basic Info',
+      spec_year: 'Model year',
+      spec_mileage: 'Mileage',
+      spec_fuel: 'Fuel',
+      spec_transmission: 'Transmission',
+      spec_displacement: 'Displacement',
+      spec_color: 'Exterior color',
+      spec_seat_color: 'Interior color',
+      spec_region: 'Region',
+      diag_title: 'Diagnosis & Accident History',
+      no_accident_info: 'No information',
+      panel_diagnosis_title: 'Frame & Exterior Panel Diagnosis',
+      panel_frame: 'Frame',
+      panel_exterior: 'Exterior panel',
+      panel_weld: 'Sheet metal/weld',
+      panel_exchange: 'Replaced',
+      panel_count_suffix: 'x',
+      options_title: 'Key Options',
+      options_empty: 'No option information registered.',
+      desc_title: 'Description',
+      memo_title: 'Note',
+      load_error: 'Failed to load the listings.',
+      translate_btn: 'Translate to English'
     }
   };
 
-  const SUPPORTED_LANGS = ['ko', 'ru', 'mn'];
+  const SUPPORTED_LANGS = ['ko', 'ru', 'mn', 'en'];
 
   function getLang() {
     const stored = localStorage.getItem(STORAGE_KEY);

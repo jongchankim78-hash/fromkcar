@@ -84,6 +84,48 @@
     </article>`;
   }
 
+  function carCardListHtml(car) {
+    const t = KCarI18n.t;
+    const images = Array.isArray(car.images) ? car.images : [];
+    const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
+    return `
+    <article class="car-card-list fade-in" data-id="${car.id}">
+      <div class="car-card-list-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+        <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
+             onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
+        <div class="car-card-list-status">${statusBadge(car.status)}</div>
+      </div>
+      <div class="car-card-list-body cursor-pointer" data-action="open-detail" data-id="${car.id}">
+        <div class="flex items-center gap-1.5">
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
+          ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+        </div>
+        <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-1">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h3>
+        <p class="text-base font-extrabold text-[var(--fk-navy)]">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="spec-chip">${KCarUtil.escapeHtml(car.year_info || '-')}</span>
+          <span class="spec-chip">${KCarUtil.formatMileage(car.mileage)}</span>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  const VIEW_STORAGE_KEY = 'fkcar_view';
+  function getViewMode() {
+    return localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'grid';
+  }
+  function updateViewToggleUI() {
+    const mode = getViewMode();
+    document.querySelectorAll('.view-toggle-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.view === mode);
+    });
+  }
+  function setViewMode(mode) {
+    localStorage.setItem(VIEW_STORAGE_KEY, mode);
+    updateViewToggleUI();
+    applyFiltersAndRender();
+  }
+
   function applyFiltersAndRender() {
     const q = (searchInput.value || '').trim().toLowerCase();
     const brand = brandFilter.value;
@@ -123,7 +165,11 @@
     }
     emptyEl.classList.add('hidden');
     gridEl.classList.remove('hidden');
-    gridEl.innerHTML = filtered.map(carCardHtml).join('');
+
+    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    const isListView = isMobile && getViewMode() === 'list';
+    gridEl.classList.toggle('car-grid-mobile-thumb', isMobile && !isListView);
+    gridEl.innerHTML = filtered.map(isListView ? carCardListHtml : carCardHtml).join('');
   }
 
   const BRAND_EN = {
@@ -536,25 +582,12 @@
   brandFilter.addEventListener('change', applyFiltersAndRender);
   fuelFilter.addEventListener('change', applyFiltersAndRender);
   sortSelect.addEventListener('change', applyFiltersAndRender);
+  window.addEventListener('resize', KCarUtil.debounce(applyFiltersAndRender, 200));
 
-  /* ---------------- ADMIN 드롭다운 메뉴 ---------------- */
-  const adminMenuBtn = document.getElementById('admin-menu-btn');
-  const adminMenuDropdown = document.getElementById('admin-menu-dropdown');
-  const adminMenuChevron = document.getElementById('admin-menu-chevron');
-  if (adminMenuBtn && adminMenuDropdown) {
-    adminMenuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isHidden = adminMenuDropdown.classList.contains('hidden');
-      adminMenuDropdown.classList.toggle('hidden', !isHidden);
-      adminMenuChevron.classList.toggle('rotate-180', isHidden);
-    });
-    document.addEventListener('click', (e) => {
-      if (!document.getElementById('admin-menu-wrap').contains(e.target)) {
-        adminMenuDropdown.classList.add('hidden');
-        adminMenuChevron.classList.remove('rotate-180');
-      }
-    });
-  }
+  document.querySelectorAll('.view-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setViewMode(btn.dataset.view));
+  });
+  updateViewToggleUI();
 
   document.addEventListener('langchange', () => {
     populateFilterOptions(allCars);

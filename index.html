@@ -74,16 +74,9 @@
         <button type="button" data-lang="mn" class="lang-flag-btn" aria-label="Монгол">
           <span class="fi fi-mn" style="border-radius:2px;"></span>
         </button>
-      </div>
-      <div class="relative" id="admin-menu-wrap">
-        <button id="admin-menu-btn" type="button" class="fk-nav-link flex items-center gap-1.5">
-          <i class="fa-solid fa-user-shield text-[12px]"></i>ADMIN
-          <i class="fa-solid fa-chevron-down text-[10px] transition-transform" id="admin-menu-chevron"></i>
+        <button type="button" data-lang="en" class="lang-flag-btn" aria-label="English">
+          <span class="fi fi-us" style="border-radius:2px;"></span>
         </button>
-        <div id="admin-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-2xl border border-[var(--fk-gray-200)] overflow-hidden">
-          <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-lock text-[var(--fk-blue)]"></i><span data-i18n="admin_login">관리자 로그인</span></a>
-          <a href="admin.html" class="admin-menu-item"><i class="fa-solid fa-plus text-[var(--fk-blue)]"></i><span data-i18n="admin_add">매물 추가</span></a>
-        </div>
       </div>
     </div>
   </div>
@@ -94,7 +87,7 @@
   <div class="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20 relative z-10">
     <h1 class="text-2xl sm:text-4xl font-extrabold leading-tight mb-3">
       NO PAINT TAX100%<br>
-      <span class="text-[var(--fk-gold)]">BMW, BENZ, VOLVO</span><br>
+      <span class="text-[var(--fk-gold)]">BMW, BENZ, VOLVO, AUDI, RANGE ROVER</span><br>
       <span data-i18n="hero_showroom">수원 SKV1모터스 전시장</span>
     </h1>
     <div class="flex flex-wrap gap-3" id="hero-brand-stats"></div>
@@ -104,7 +97,7 @@
       <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
       <div>
         <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5" data-i18n="dealer_role">FROM K CAR 담당</p>
-        <p class="text-lg sm:text-xl font-extrabold text-white">김종찬 팀장</p>
+        <p class="text-lg sm:text-xl font-extrabold text-white" data-i18n="dealer_name">김종찬 팀장</p>
         <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
           <i class="fa-solid fa-phone"></i>010-7449-8282
         </a>
@@ -163,6 +156,10 @@
       <h2 class="text-xl sm:text-2xl font-extrabold text-[var(--fk-navy)]" data-i18n="gallery_title">등록된 매물</h2>
       <p class="text-sm text-[var(--fk-gray-600)] mt-1"><span id="result-count">0</span><span data-i18n="result_count_suffix">건의 매물을 보고 있어요</span></p>
     </div>
+    <div class="flex sm:hidden items-center gap-1 bg-[var(--fk-gray-100)] rounded-lg p-1" id="view-toggle">
+      <button type="button" data-view="list" class="view-toggle-btn" aria-label="List view"><i class="fa-solid fa-list"></i></button>
+      <button type="button" data-view="grid" class="view-toggle-btn" aria-label="Grid view"><i class="fa-solid fa-table-cells-large"></i></button>
+    </div>
   </div>
 
   <div id="loading-state" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -208,6 +205,9 @@
       <p>E-mail. <a href="mailto:chanini78@naver.com" class="hover:underline">chanini78@naver.com</a></p>
       <p class="mt-1">Addr. 314, 45, Pyeongdong-ro 79beon-gil, Gwonseon-gu, Suwon-si, Gyeonggi-do<br class="hidden sm:block"> (SK V1 Motors, Pyeong-dong) Seoul, Korea</p>
     </address>
+  </div>
+  <div class="border-t border-[var(--fk-gray-100)] py-3 text-center">
+    <a href="admin.html" class="text-[11px] text-[var(--fk-gray-400)] hover:text-[var(--fk-gray-600)] hover:underline">ADMIN</a>
   </div>
 </footer>
 
