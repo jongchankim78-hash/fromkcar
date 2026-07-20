@@ -94,14 +94,33 @@
     </h1>
     <div class="flex flex-wrap gap-3" id="hero-brand-stats"></div>
 
-    <!-- 담당자 프로필 카드 -->
-    <div id="dealer-info-card" class="mt-8 inline-flex items-center gap-4 bg-white/8 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 max-w-xl">
-      <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
-      <div>
-        <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5" data-i18n="dealer_role">FROM K CAR 담당</p>
-        <p class="text-lg sm:text-xl font-extrabold text-white">김종찬 팀장</p>
-        <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
-          <i class="fa-solid fa-phone"></i>010-7449-8282
+    <div class="mt-8 flex flex-wrap items-center gap-4">
+      <!-- 담당자 프로필 카드 -->
+      <div id="dealer-info-card" class="inline-flex items-center gap-4 bg-white/8 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 max-w-xl">
+        <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
+        <div>
+          <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5" data-i18n="dealer_role">FROM K CAR 담당</p>
+          <p class="text-lg sm:text-xl font-extrabold text-white">김종찬 팀장</p>
+          <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
+            <i class="fa-solid fa-phone"></i>010-7449-8282
+          </a>
+        </div>
+      </div>
+
+      <!-- 바로 문의하기 -->
+      <div class="flex items-center gap-3">
+        <a href="https://wa.me/821074498282" target="_blank" rel="noopener" title="WhatsApp"
+           class="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white text-xl shadow-lg hover:scale-105 transition-transform">
+          <i class="fa-brands fa-whatsapp"></i>
+        </a>
+        <a href="https://t.me/fromkcar" target="_blank" rel="noopener" title="Telegram"
+           class="w-12 h-12 rounded-full bg-[#26A5E4] flex items-center justify-center text-white text-xl shadow-lg hover:scale-105 transition-transform">
+          <i class="fa-brands fa-telegram"></i>
+        </a>
+        <a href="https://www.instagram.com/fromkcar" target="_blank" rel="noopener" title="Instagram"
+           class="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl shadow-lg hover:scale-105 transition-transform"
+           style="background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);">
+          <i class="fa-brands fa-instagram"></i>
         </a>
       </div>
     </div>
