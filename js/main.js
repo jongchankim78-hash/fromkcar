@@ -351,8 +351,8 @@
       <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
         ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
         <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
-        ${statusBadge(car.status)}
         ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+        ${statusBadge(car.status)}
       </div>
       <div class="flex items-start justify-between gap-3 mb-2">
         <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)]">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
