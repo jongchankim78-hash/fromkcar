@@ -36,7 +36,7 @@
     const prevBrand = brandFilter.value;
     const prevFuel = fuelFilter.value;
     brandFilter.innerHTML = `<option value="">${t('filter_all_brand')}</option>` + brands.map(b => `<option value="${KCarUtil.escapeHtml(b)}">${KCarUtil.escapeHtml(isKo ? b : brandLabel(b))}</option>`).join('');
-    fuelFilter.innerHTML = `<option value="">${t('filter_all_fuel')}</option>` + fuels.map(f => `<option value="${KCarUtil.escapeHtml(f)}">${KCarUtil.escapeHtml(f)}</option>`).join('');
+    fuelFilter.innerHTML = `<option value="">${t('filter_all_fuel')}</option>` + fuels.map(f => `<option value="${KCarUtil.escapeHtml(f)}">${KCarUtil.escapeHtml(isKo ? f : fuelLabel(f))}</option>`).join('');
     if (brands.includes(prevBrand)) brandFilter.value = prevBrand;
     if (fuels.includes(prevFuel)) fuelFilter.value = prevFuel;
   }
@@ -214,6 +214,15 @@
     '르노코리아': 'RENAULT KOREA', '시트로엥': 'CITROEN', '한국GM': 'CHEVROLET', 'GM': 'CHEVROLET'
   };
   const PRIMARY_BRANDS = ['벤츠', 'BMW', '볼보'];
+
+  const FUEL_EN = {
+    '가솔린': 'Gasoline', '디젤': 'Diesel', '하이브리드': 'Hybrid',
+    '하이브리드(가솔린)': 'Hybrid (Gasoline)', '하이브리드(디젤)': 'Hybrid (Diesel)',
+    '전기': 'Electric', 'LPG': 'LPG', '수소': 'Hydrogen'
+  };
+  function fuelLabel(fuel) {
+    return FUEL_EN[fuel] || fuel;
+  }
 
   function brandLabel(brand) {
     return BRAND_EN[brand] || String(brand).toUpperCase();
