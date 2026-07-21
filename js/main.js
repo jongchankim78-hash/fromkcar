@@ -361,6 +361,10 @@
             <i class="fa-solid fa-share-nodes"></i>
           </button>
           <div id="share-menu" class="hidden share-menu-popover w-52 bg-white rounded-xl shadow-lg border border-[var(--fk-gray-200)] overflow-hidden">
+            <button type="button" id="share-kakao" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)] text-left">
+              <span class="w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0" style="background:#FEE500"><i class="fa-solid fa-comment text-[9px]" style="color:#3C1E1E"></i></span>
+              카카오톡
+            </button>
             <a href="#" id="share-whatsapp" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)]"><i class="ti ti-brand-whatsapp text-[16px]" style="color:#25D366"></i>WhatsApp</a>
             <a href="#" id="share-telegram" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)]"><i class="ti ti-brand-telegram text-[16px]" style="color:#26A5E4"></i>Telegram</a>
             <button type="button" id="share-copy" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)] text-left"><i class="fa-solid fa-link text-[15px] text-[var(--fk-gray-500)]"></i>${t('copy_link_btn')}</button>
@@ -611,6 +615,31 @@
         }
         menu.classList.toggle('hidden');
       }
+      return;
+    }
+
+    const kakaoBtn = e.target.closest('#share-kakao');
+    if (kakaoBtn) {
+      const car = currentModalCar;
+      if (!car) return;
+      if (!window.Kakao || !Kakao.Share) {
+        KCarUtil.toast('카카오 공유를 불러오지 못했습니다.', 'error');
+      } else {
+        const shareUrl = `${window.location.origin}/car/${car.id}`;
+        const images = Array.isArray(car.images) && car.images.length ? car.images : [];
+        const imageUrl = car.main_image || images[0] || `${window.location.origin}/images/og-image.png`;
+        Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''}`.trim(),
+            description: `${car.price_display || ''} · ${car.year_info || ''}`.trim(),
+            imageUrl,
+            link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+          },
+          buttons: [{ title: KCarI18n.t('detail_btn'), link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }]
+        });
+      }
+      if (menu) menu.classList.add('hidden');
       return;
     }
 
