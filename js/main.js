@@ -32,8 +32,13 @@
     const brands = [...new Set(cars.map(c => effectiveBrand(c)).filter(Boolean))].sort();
     const fuels = [...new Set(cars.map(c => c.fuel_type).filter(Boolean))].sort();
     const t = KCarI18n.t;
-    brandFilter.innerHTML = `<option value="">${t('filter_all_brand')}</option>` + brands.map(b => `<option value="${KCarUtil.escapeHtml(b)}">${KCarUtil.escapeHtml(b)}</option>`).join('');
+    const isKo = KCarI18n.getLang() === 'ko';
+    const prevBrand = brandFilter.value;
+    const prevFuel = fuelFilter.value;
+    brandFilter.innerHTML = `<option value="">${t('filter_all_brand')}</option>` + brands.map(b => `<option value="${KCarUtil.escapeHtml(b)}">${KCarUtil.escapeHtml(isKo ? b : brandLabel(b))}</option>`).join('');
     fuelFilter.innerHTML = `<option value="">${t('filter_all_fuel')}</option>` + fuels.map(f => `<option value="${KCarUtil.escapeHtml(f)}">${KCarUtil.escapeHtml(f)}</option>`).join('');
+    if (brands.includes(prevBrand)) brandFilter.value = prevBrand;
+    if (fuels.includes(prevFuel)) fuelFilter.value = prevFuel;
   }
 
   function statusBadge(status) {
