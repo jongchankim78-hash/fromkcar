@@ -240,6 +240,37 @@
     });
   }
 
+  const GNB_PRIMARY_BRANDS = ['BMW', '벤츠', '아우디'];
+
+  function renderHeaderBrandNav(cars) {
+    const counts = {};
+    cars.forEach(c => { const b = effectiveBrand(c); if (b) counts[b] = (counts[b] || 0) + 1; });
+
+    const otherBrands = Object.keys(counts)
+      .filter(b => !GNB_PRIMARY_BRANDS.includes(b))
+      .sort((a, b) => counts[b] - counts[a]);
+    const orderedBrands = [...GNB_PRIMARY_BRANDS, ...otherBrands].filter(b => counts[b] > 0);
+
+    const container = document.getElementById('brand-nav-inner');
+    if (!container) return;
+    const t = KCarI18n.t;
+    const current = brandFilter.value;
+    container.innerHTML = `
+      <button type="button" class="brand-nav-item${current ? '' : ' active'}" data-brand="">${t('filter_all_brand')}</button>
+      ${orderedBrands.map(brand => `
+        <button type="button" class="brand-nav-item${current === brand ? ' active' : ''}" data-brand="${KCarUtil.escapeHtml(brand)}">${KCarUtil.escapeHtml(brandLabel(brand))}</button>
+      `).join('')}
+    `;
+    container.querySelectorAll('.brand-nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        brandFilter.value = btn.dataset.brand;
+        applyFiltersAndRender();
+        renderHeaderBrandNav(allCars);
+        document.getElementById('gallery').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
   function injectVehicleSchema(cars) {
     const prev = document.getElementById('vehicle-schema');
     if (prev) prev.remove();
@@ -283,6 +314,7 @@
       loadingEl.classList.add('hidden');
       populateFilterOptions(allCars);
       renderHeroBrandStats(allCars);
+      renderHeaderBrandNav(allCars);
       applyFiltersAndRender();
       injectVehicleSchema(allCars);
 
@@ -707,7 +739,7 @@
   });
 
   searchInput.addEventListener('input', KCarUtil.debounce(applyFiltersAndRender, 250));
-  brandFilter.addEventListener('change', applyFiltersAndRender);
+  brandFilter.addEventListener('change', () => { applyFiltersAndRender(); renderHeaderBrandNav(allCars); });
   fuelFilter.addEventListener('change', applyFiltersAndRender);
   sortSelect.addEventListener('change', applyFiltersAndRender);
   window.addEventListener('resize', KCarUtil.debounce(applyFiltersAndRender, 200));
@@ -720,6 +752,7 @@
   document.addEventListener('langchange', () => {
     populateFilterOptions(allCars);
     renderHeroBrandStats(allCars);
+    renderHeaderBrandNav(allCars);
     applyFiltersAndRender();
     const openCarId = getCarIdFromUrl();
     const openCar = openCarId ? allCars.find(c => c.id === openCarId) : null;
