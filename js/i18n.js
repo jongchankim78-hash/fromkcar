@@ -60,7 +60,11 @@
       memo_title: '메모',
       load_error: '매물 목록을 불러오는 중 오류가 발생했습니다.',
       translate_btn: '번역하기',
-      download_images_btn: '사진 전체 다운로드 (ZIP)'
+      download_images_btn: '사진 전체 다운로드 (ZIP)',
+      share_btn: '공유하기',
+      copy_link_btn: '링크 복사',
+      link_copied_toast: '링크가 복사되었습니다.',
+      link_copy_failed_toast: '링크 복사에 실패했습니다.'
     },
     ru: {
       hero_showroom: 'Автосалон SKV1 Motors, Сувон',
@@ -115,7 +119,11 @@
       memo_title: 'Заметка',
       load_error: 'Ошибка при загрузке списка автомобилей.',
       translate_btn: 'Перевести на русский',
-      download_images_btn: 'Скачать все фото (ZIP)'
+      download_images_btn: 'Скачать все фото (ZIP)',
+      share_btn: 'Поделиться',
+      copy_link_btn: 'Скопировать ссылку',
+      link_copied_toast: 'Ссылка скопирована.',
+      link_copy_failed_toast: 'Не удалось скопировать ссылку.'
     },
     mn: {
       hero_showroom: 'Сувон хотын SKV1 Моторс автосалон',
@@ -170,7 +178,11 @@
       memo_title: 'Тэмдэглэл',
       load_error: 'Машины жагсаалтыг ачаалахад алдаа гарлаа.',
       translate_btn: 'Монгол хэл рүү орчуулах',
-      download_images_btn: 'Бүх зургийг татах (ZIP)'
+      download_images_btn: 'Бүх зургийг татах (ZIP)',
+      share_btn: 'Хуваалцах',
+      copy_link_btn: 'Холбоос хуулах',
+      link_copied_toast: 'Холбоос хуулагдлаа.',
+      link_copy_failed_toast: 'Холбоос хуулж чадсангүй.'
     },
     en: {
       hero_showroom: 'SKV1 Motors Showroom, Suwon',
@@ -225,7 +237,11 @@
       memo_title: 'Note',
       load_error: 'Failed to load the listings.',
       translate_btn: 'Translate to English',
-      download_images_btn: 'Download all photos (ZIP)'
+      download_images_btn: 'Download all photos (ZIP)',
+      share_btn: 'Share',
+      copy_link_btn: 'Copy link',
+      link_copied_toast: 'Link copied.',
+      link_copy_failed_toast: 'Failed to copy the link.'
     }
   };
 

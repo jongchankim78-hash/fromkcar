@@ -200,6 +200,8 @@ a { text-decoration: none; color: inherit; }
 }
 .car-card-thumb-status { position: absolute; top: 6px; left: 6px; transform: scale(0.82); transform-origin: top left; }
 
+.share-menu-popover { position: fixed; z-index: 200; }
+
 .car-card-list {
   display: flex;
   gap: 12px;

@@ -351,7 +351,19 @@
         ${statusBadge(car.status)}
         ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
       </div>
-      <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)] mb-2">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <h2 class="text-2xl font-extrabold text-[var(--fk-gray-800)]">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h2>
+        <div class="relative shrink-0">
+          <button type="button" id="share-btn" title="${t('share_btn')}" class="w-10 h-10 rounded-full border border-[var(--fk-gray-200)] flex items-center justify-center text-[var(--fk-gray-600)] hover:border-[var(--fk-blue)] hover:text-[var(--fk-blue)] transition-colors">
+            <i class="fa-solid fa-share-nodes"></i>
+          </button>
+          <div id="share-menu" class="hidden share-menu-popover w-52 bg-white rounded-xl shadow-lg border border-[var(--fk-gray-200)] overflow-hidden">
+            <a href="#" id="share-whatsapp" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)]"><i class="ti ti-brand-whatsapp text-[16px]" style="color:#25D366"></i>WhatsApp</a>
+            <a href="#" id="share-telegram" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)]"><i class="ti ti-brand-telegram text-[16px]" style="color:#26A5E4"></i>Telegram</a>
+            <button type="button" id="share-copy" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-50)] text-left"><i class="fa-solid fa-link text-[15px] text-[var(--fk-gray-500)]"></i>${t('copy_link_btn')}</button>
+          </div>
+        </div>
+      </div>
       <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
 
       ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>${t('translate_btn')}</button>` : ''}
@@ -560,6 +572,11 @@
     }
   }
 
+  document.getElementById('modal-body').addEventListener('scroll', () => {
+    const menu = document.getElementById('share-menu');
+    if (menu) menu.classList.add('hidden');
+  });
+
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.getElementById('detail-modal').addEventListener('click', (e) => {
     if (e.target.id === 'detail-modal') closeModal();
@@ -569,6 +586,56 @@
     if (document.getElementById('detail-modal').classList.contains('hidden')) return;
     if (e.key === 'ArrowLeft') shiftGalleryImage(-1);
     if (e.key === 'ArrowRight') shiftGalleryImage(1);
+  });
+
+  document.getElementById('detail-modal').addEventListener('click', (e) => {
+    const shareBtn = e.target.closest('#share-btn');
+    const menu = document.getElementById('share-menu');
+    if (shareBtn) {
+      e.stopPropagation();
+      const car = currentModalCar;
+      if (!car) return;
+      const shareUrl = `${window.location.origin}/car/${car.id}`;
+      const shareText = `${car.title || ''} ${car.price_display || ''}`.trim();
+      if (navigator.share) {
+        navigator.share({ title: shareText, url: shareUrl }).catch(() => {});
+      } else if (menu) {
+        const isHidden = menu.classList.contains('hidden');
+        if (isHidden) {
+          const rect = shareBtn.getBoundingClientRect();
+          menu.style.top = `${rect.bottom + 8}px`;
+          menu.style.right = `${window.innerWidth - rect.right}px`;
+        }
+        menu.classList.toggle('hidden');
+      }
+      return;
+    }
+
+    const whatsappBtn = e.target.closest('#share-whatsapp');
+    const telegramBtn = e.target.closest('#share-telegram');
+    const copyBtn = e.target.closest('#share-copy');
+    if (whatsappBtn || telegramBtn || copyBtn) {
+      e.preventDefault();
+      const car = currentModalCar;
+      if (!car) return;
+      const shareUrl = `${window.location.origin}/car/${car.id}`;
+      const shareText = `${car.title || ''} ${car.price_display || ''}`.trim();
+      if (whatsappBtn) {
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank', 'noopener');
+      } else if (telegramBtn) {
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
+      } else if (copyBtn) {
+        navigator.clipboard.writeText(shareUrl)
+          .then(() => KCarUtil.toast(KCarI18n.t('link_copied_toast'), 'success'))
+          .catch(() => KCarUtil.toast(KCarI18n.t('link_copy_failed_toast'), 'error'));
+      }
+      if (menu) menu.classList.add('hidden');
+      return;
+    }
+
+    if (menu && !menu.classList.contains('hidden') && !e.target.closest('#share-menu')) {
+      menu.classList.add('hidden');
+    }
   });
 
   document.getElementById('detail-modal').addEventListener('click', async (e) => {
