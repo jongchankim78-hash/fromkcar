@@ -60,8 +60,8 @@
       </div>
       <div class="p-4 flex flex-col flex-1">
         <div class="flex items-center gap-1.5 mb-1.5">
-          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
           ${car.accident_info && car.accident_info.startsWith('무사고') ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
         </div>
@@ -121,8 +121,8 @@
       </div>
       <div class="car-card-list-body cursor-pointer" data-action="open-detail" data-id="${car.id}">
         <div class="flex items-center gap-1.5">
-          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
+          <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
         </div>
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-1">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h3>
@@ -349,9 +349,9 @@
     const showTranslateBtn = KCarI18n.getLang() !== 'ko' && !car._translated;
     return `
       <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
+        ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
         <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
         ${statusBadge(car.status)}
-        ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
         ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
       </div>
       <div class="flex items-start justify-between gap-3 mb-2">
