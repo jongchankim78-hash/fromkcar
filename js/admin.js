@@ -246,7 +246,7 @@
         </td>
         <td class="py-3 pr-3 max-w-[220px]">
           <p class="font-semibold text-[var(--fk-gray-800)] line-clamp-2">${KCarUtil.escapeHtml(car.title || '-')}</p>
-          <p class="text-xs text-[var(--fk-gray-600)]">${KCarUtil.escapeHtml(car.car_number || '')}</p>
+          <p class="text-xs text-[var(--fk-gray-600)]">${car.listing_no ? `No.${car.listing_no} · ` : ''}${KCarUtil.escapeHtml(car.car_number || '')}</p>
         </td>
         <td class="py-3 pr-3 font-bold text-[var(--fk-navy)] whitespace-nowrap">${car.price_display || KCarUtil.formatPrice(car.price)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">

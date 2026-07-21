@@ -75,6 +75,22 @@ function writeListings(list) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2), 'utf-8');
 }
 
+// 매물마다 고객 문의용으로 참조할 수 있는 고정 일련번호(listing_no)를 부여한다.
+// 삭제되어도 번호가 재사용되지 않도록, 등록된 적 있는 모든 매물(soft-delete 포함) 중 최댓값 기준으로 다음 번호를 매긴다.
+function nextListingNo(list) {
+  const max = list.reduce((m, c) => Math.max(m, c.listing_no || 0), 0);
+  return max + 1;
+}
+
+function migrateListingNumbers() {
+  const list = readListings();
+  const missing = list.filter((c) => !c.listing_no).sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
+  if (missing.length === 0) return;
+  let next = nextListingNo(list);
+  missing.forEach((c) => { c.listing_no = next++; });
+  writeListings(list);
+}
+
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
@@ -181,6 +197,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     const item = {
       id: crypto.randomUUID(),
       ...body,
+      listing_no: nextListingNo(list),
       created_at: now,
       updated_at: now,
       deleted: false
@@ -539,6 +556,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 ensureDataFile();
+migrateListingNumbers();
 server.listen(PORT, () => {
   console.log(`FROM K CAR server running at http://localhost:${PORT}`);
 });
