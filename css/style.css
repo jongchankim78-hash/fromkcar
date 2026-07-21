@@ -69,7 +69,7 @@ a { text-decoration: none; color: inherit; }
   transition: color .15s ease, background-color .15s ease;
 }
 .brand-nav-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
-.brand-nav-item.active { color: var(--fk-navy); background: var(--fk-gold); }
+.brand-nav-item.active { color: var(--fk-gold); }
 
 /* ---------------- 업로드 로고 배지 ---------------- */
 .fk-logo-badge {
