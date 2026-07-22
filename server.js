@@ -180,15 +180,55 @@ function telegramApiCall(method, payload) {
 
 // 새 매물이 등록되면 텔레그램 채널에 소개글(+대표사진)을 자동으로 올린다.
 // 등록 응답을 늦추지 않도록 호출부에서 await 없이 fire-and-forget으로 부른다.
+// 구글 번역 비공식 엔드포인트(프론트엔드 on-demand 번역과 동일한 방식)로 소개글만 번역한다.
+// 연식/지역처럼 압축된 한글 표기는 번역이 엉뚱하게 나오는 경우가 많아 대상에서 제외한다(js/main.js와 동일 원칙).
+function translateText(text, targetLang) {
+  return new Promise((resolve, reject) => {
+    if (!text) return resolve('');
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    https.get(url, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          resolve((data[0] || []).map((seg) => seg[0]).join(''));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
 async function notifyTelegramNewListing(car) {
   if (!TELEGRAM_BOT_TOKEN) return;
   try {
     const mileageText = car.mileage ? `${Number(car.mileage).toLocaleString('ko-KR')}km` : '';
-    const lines = [
-      `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`,
-      [car.price_display, car.year_info, mileageText, car.region].filter(Boolean).join(' · ')
-    ];
-    if (car.description_ko) lines.push('', car.description_ko);
+    const titleLine = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
+    const specLine = [car.price_display && `💰 ${car.price_display}`, car.year_info && `📅 ${car.year_info}`, mileageText && `🛣 ${mileageText}`, car.region && `📍 ${car.region}`]
+      .filter(Boolean).join(' · ');
+
+    const lines = [titleLine];
+    if (specLine) lines.push(specLine);
+
+    if (car.description_ko) {
+      let descRu = car.description_ru || '';
+      let descEn = '';
+      try {
+        const [ru, en] = await Promise.all([
+          descRu ? Promise.resolve(descRu) : translateText(car.description_ko, 'ru'),
+          translateText(car.description_ko, 'en')
+        ]);
+        descRu = ru;
+        descEn = en;
+      } catch (e) {
+        console.error('Telegram description translate failed:', e.message);
+      }
+      lines.push('', `🇰🇷 ${car.description_ko}`);
+      if (descRu) lines.push('', `🇷🇺 ${descRu}`);
+      if (descEn) lines.push('', `🇬🇧 ${descEn}`);
+    }
     lines.push('', `${SITE_ORIGIN}/car/${car.id}`);
 
     let caption = lines.join('\n');
