@@ -26,7 +26,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '4887asdf';
 // 새 매물이 등록될 때 텔레그램 채널(@fromkcar)에 자동으로 소개글을 올리는 데 쓰는 봇 정보.
 // 둘 다 설정 안 하면 조용히 건너뛴다 (로컬 개발 환경에서 굳이 필요 없음).
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL || '@fromkcar';
+const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL || '@from_k_car';
 const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://www.fromkcar.kr';
 
 function isAuthorized(req) {
