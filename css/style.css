@@ -71,6 +71,9 @@ a { text-decoration: none; color: inherit; }
 .brand-nav-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
 .brand-nav-item.active { color: var(--fk-gold); }
 
+/* 한국어에서는 "명함 다운로드"를 줄바꿈 없이 한 줄로 보여준다. */
+html[lang="ko"] .i18n-br { display: none; }
+
 /* ---------------- 업로드 로고 배지 ---------------- */
 .fk-logo-badge {
   display: inline-flex;
