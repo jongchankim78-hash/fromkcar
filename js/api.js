@@ -5,6 +5,18 @@
 (function (global) {
   const TABLE = 'car_listings';
 
+  function authHeaders() {
+    const token = global.KCarAuth && global.KCarAuth.getToken();
+    return token ? { 'Authorization': 'Basic ' + token } : {};
+  }
+
+  function handleAuthFailure(res) {
+    if (res.status === 401 && global.KCarAuth) {
+      global.KCarAuth.clearToken();
+      global.KCarAuth.showGate();
+    }
+  }
+
   async function listCars({ page = 1, limit = 100, search = '', sort = '' } = {}) {
     const params = new URLSearchParams();
     params.set('page', page);
@@ -25,26 +37,26 @@
   async function createCar(data) {
     const res = await fetch(`tables/${TABLE}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('등록에 실패했습니다.');
+    if (!res.ok) { handleAuthFailure(res); throw new Error('등록에 실패했습니다.'); }
     return res.json();
   }
 
   async function updateCar(id, data) {
     const res = await fetch(`tables/${TABLE}/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('수정에 실패했습니다.');
+    if (!res.ok) { handleAuthFailure(res); throw new Error('수정에 실패했습니다.'); }
     return res.json();
   }
 
   async function deleteCar(id) {
-    const res = await fetch(`tables/${TABLE}/${id}`, { method: 'DELETE' });
-    if (!res.ok && res.status !== 204) throw new Error('삭제에 실패했습니다.');
+    const res = await fetch(`tables/${TABLE}/${id}`, { method: 'DELETE', headers: { ...authHeaders() } });
+    if (!res.ok && res.status !== 204) { handleAuthFailure(res); throw new Error('삭제에 실패했습니다.'); }
     return true;
   }
 

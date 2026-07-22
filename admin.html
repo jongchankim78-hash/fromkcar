@@ -25,20 +25,25 @@
     <div class="flex justify-center mb-6">
       <img src="images/from-k-car-logo-white.jpg" alt="FROM K CAR" class="h-12">
     </div>
-    <div class="bg-[#0f1115] border border-white/10 rounded-3xl p-7 shadow-2xl">
+    <div id="admin-login-card" class="bg-[#0f1115] border border-white/10 rounded-3xl p-7 shadow-2xl">
       <div class="flex items-center gap-2 mb-1.5">
         <i class="fa-solid fa-shield-halved text-[var(--fk-gold)]"></i>
         <h2 class="text-white font-bold text-lg">관리자 인증</h2>
       </div>
-      <p class="text-white/50 text-xs mb-5">관리자 비밀번호를 입력해야 매물 관리 페이지에 접근할 수 있습니다.</p>
+      <p class="text-white/50 text-xs mb-5">아이디와 비밀번호를 입력해야 매물 관리 페이지에 접근할 수 있습니다.</p>
       <form id="admin-login-form" class="space-y-3">
         <div class="relative">
-          <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-white/30"></i>
-          <input id="admin-password-input" type="password" required placeholder="비밀번호 입력"
+          <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-white/30"></i>
+          <input id="admin-username-input" type="text" required autocomplete="username" placeholder="사용자 이름"
             class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[var(--fk-gold)] focus:ring-2 focus:ring-[var(--fk-gold)]/20">
         </div>
-        <p id="admin-login-error" class="hidden text-xs text-red-400"><i class="fa-solid fa-circle-exclamation mr-1"></i>비밀번호가 올바르지 않습니다.</p>
-        <button type="submit" class="w-full btn-primary !justify-center flex items-center">
+        <div class="relative">
+          <i class="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-white/30"></i>
+          <input id="admin-password-input" type="password" required autocomplete="current-password" placeholder="비밀번호 입력"
+            class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[var(--fk-gold)] focus:ring-2 focus:ring-[var(--fk-gold)]/20">
+        </div>
+        <p id="admin-login-error" class="hidden text-xs text-red-400"><i class="fa-solid fa-circle-exclamation mr-1"></i>아이디 또는 비밀번호가 올바르지 않습니다.</p>
+        <button type="submit" id="admin-login-submit" class="w-full btn-primary !justify-center flex items-center">
           <i class="fa-solid fa-unlock mr-2"></i>입장하기
         </button>
       </form>

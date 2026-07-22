@@ -1,17 +1,20 @@
 /**
- * FROM K CAR — 관리자 페이지 비밀번호 게이트
- * 주의: 이 인증은 "클라이언트 측 간단 잠금"입니다. 완전한 보안이 필요하면
- * Hosted 배포 시 Access Rules(접근 제어)로 서버 단에서 경로를 보호하는 것을 권장합니다.
+ * FROM K CAR — 관리자 페이지 로그인 게이트
+ * 아이디+비번을 /admin/verify로 검증한 뒤, 통과하면 Basic Auth 토큰을 세션에 저장해
+ * 이후 매물 등록/수정/삭제 요청에 KCarAuth.getToken()으로 실어 보낸다.
+ * (서버는 WWW-Authenticate를 보내지 않으므로 브라우저 네이티브 로그인 창은 뜨지 않는다.)
  */
 (function () {
-  const ADMIN_PASSWORD = '4887asdf';
-  const SESSION_KEY = 'fkcar_admin_authed';
+  const SESSION_KEY = 'fkcar_admin_token';
 
   const gate = document.getElementById('admin-login-gate');
   const content = document.getElementById('admin-content');
+  const card = document.getElementById('admin-login-card');
   const form = document.getElementById('admin-login-form');
-  const input = document.getElementById('admin-password-input');
+  const userInput = document.getElementById('admin-username-input');
+  const passInput = document.getElementById('admin-password-input');
   const errorEl = document.getElementById('admin-login-error');
+  const submitBtn = document.getElementById('admin-login-submit');
   const logoutBtn = document.getElementById('admin-logout-btn');
 
   function showContent() {
@@ -22,39 +25,63 @@
   function showGate() {
     content.classList.add('hidden');
     gate.classList.remove('hidden');
-    setTimeout(() => input && input.focus(), 50);
+    setTimeout(() => userInput && userInput.focus(), 50);
   }
 
-  // 이미 인증된 세션이면 바로 통과
-  if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+  function getToken() {
+    return sessionStorage.getItem(SESSION_KEY);
+  }
+
+  function clearToken() {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
+  if (getToken()) {
     showContent();
   } else {
     showGate();
   }
 
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const value = input.value;
-      if (value === ADMIN_PASSWORD) {
-        sessionStorage.setItem(SESSION_KEY, 'true');
+      const username = userInput.value;
+      const password = passInput.value;
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('admin/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({ ok: false }));
+        if (!res.ok || !data.ok) throw new Error('invalid credentials');
+
+        sessionStorage.setItem(SESSION_KEY, btoa(`${username}:${password}`));
         errorEl.classList.add('hidden');
-        input.value = '';
+        userInput.value = '';
+        passInput.value = '';
         showContent();
-      } else {
+      } catch (err) {
         errorEl.classList.remove('hidden');
-        input.value = '';
-        input.focus();
-        input.closest('div').parentElement.classList.add('shake');
-        setTimeout(() => input.closest('div').parentElement.classList.remove('shake'), 400);
+        passInput.value = '';
+        passInput.focus();
+        if (card) {
+          card.classList.add('shake');
+          setTimeout(() => card.classList.remove('shake'), 400);
+        }
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   }
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem(SESSION_KEY);
+      clearToken();
       showGate();
     });
   }
+
+  window.KCarAuth = { getToken, clearToken, showGate };
 })();

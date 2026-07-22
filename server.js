@@ -16,7 +16,9 @@ const DATA_DIR = path.join(ROOT_DIR, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'car_listings.json');
 const PORT = process.env.PORT || 8080;
 
-// 관리자 전용 구간(admin.html 열람, 매물 등록/수정/삭제)을 지키는 서버 측 인증.
+// 매물 등록/수정/삭제(POST/PATCH/DELETE)를 지키는 서버 측 인증.
+// admin.html 자체는 정적 파일이라 누구나 열람 가능하지만, 실제 데이터 변경은 여기서 막힌다.
+// admin.html의 로그인 화면(아이디+비번)이 이 값과 대조해 세션을 발급한다 (/admin/verify).
 // 배포 시 반드시 ADMIN_USER / ADMIN_PASSWORD 환경변수를 설정해서 기본값을 덮어쓸 것.
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '4887asdf';
@@ -34,10 +36,9 @@ function isAuthorized(req) {
 
 function requireAuth(req, res) {
   if (isAuthorized(req)) return true;
-  res.writeHead(401, {
-    'WWW-Authenticate': 'Basic realm="FROM K CAR Admin"',
-    'Content-Type': 'text/plain; charset=utf-8'
-  });
+  // WWW-Authenticate를 보내지 않아야 브라우저 네이티브 Basic Auth 팝업이 뜨지 않는다.
+  // 인증은 admin.html의 자체 로그인 화면(아이디+비번) 하나로만 이뤄지도록 한다.
+  res.writeHead(401, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Authentication required');
   return false;
 }
@@ -488,10 +489,6 @@ function serveStatic(req, res, urlObj) {
   let reqPath = decodeURIComponent(urlObj.pathname);
   if (reqPath === '/') reqPath = '/index.html';
 
-  if (reqPath === '/admin.html') {
-    if (!requireAuth(req, res)) return;
-  }
-
   const filePath = path.normalize(path.join(ROOT_DIR, reqPath));
   if (!filePath.startsWith(ROOT_DIR)) {
     res.writeHead(403);
@@ -516,6 +513,17 @@ function serveStatic(req, res, urlObj) {
 
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
+
+  if (urlObj.pathname === '/admin/verify' && req.method === 'POST') {
+    let body;
+    try {
+      body = await readRequestBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { ok: false });
+    }
+    const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
+    return sendJson(res, ok ? 200 : 401, { ok });
+  }
 
   const imagesZipMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/images\.zip$/);
   if (imagesZipMatch && req.method === 'GET') {
