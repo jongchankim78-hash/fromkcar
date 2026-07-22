@@ -214,19 +214,23 @@ async function notifyTelegramNewListing(car) {
 
     if (car.description_ko) {
       let descRu = car.description_ru || '';
+      let descMn = car.description_mn || '';
       let descEn = '';
       try {
-        const [ru, en] = await Promise.all([
+        const [ru, mn, en] = await Promise.all([
           descRu ? Promise.resolve(descRu) : translateText(car.description_ko, 'ru'),
+          descMn ? Promise.resolve(descMn) : translateText(car.description_ko, 'mn'),
           translateText(car.description_ko, 'en')
         ]);
         descRu = ru;
+        descMn = mn;
         descEn = en;
       } catch (e) {
         console.error('Telegram description translate failed:', e.message);
       }
       lines.push('', `🇰🇷 ${car.description_ko}`);
       if (descRu) lines.push('', `🇷🇺 ${descRu}`);
+      if (descMn) lines.push('', `🇲🇳 ${descMn}`);
       if (descEn) lines.push('', `🇬🇧 ${descEn}`);
     }
     lines.push('', `${SITE_ORIGIN}/car/${car.id}`);
