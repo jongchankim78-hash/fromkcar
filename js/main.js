@@ -634,8 +634,41 @@
   document.getElementById('detail-modal').addEventListener('click', (e) => {
     if (e.target.id === 'detail-modal') closeModal();
   });
+
+  /* ---------------- 명함 다운로드 모달 ---------------- */
+  const IDCARD_IMAGES = { ko: 'images/idcard-kr.jpg', ru: 'images/idcard-en.jpg', mn: 'images/idcard-en.jpg', en: 'images/idcard-en.jpg' };
+  const IDCARD_FILENAMES = { ko: 'FROMKCAR_명함.jpg', ru: 'FROMKCAR_business_card.jpg', mn: 'FROMKCAR_business_card.jpg', en: 'FROMKCAR_business_card.jpg' };
+
+  function openIdCardModal() {
+    const lang = KCarI18n.getLang();
+    const src = IDCARD_IMAGES[lang] || IDCARD_IMAGES.en;
+    document.getElementById('idcard-modal-img').src = src;
+    const downloadBtn = document.getElementById('idcard-download-btn');
+    downloadBtn.href = src;
+    downloadBtn.setAttribute('download', IDCARD_FILENAMES[lang] || IDCARD_FILENAMES.en);
+    const modal = document.getElementById('idcard-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeIdCardModal() {
+    const modal = document.getElementById('idcard-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+  }
+  const businessCardBtn = document.getElementById('business-card-btn');
+  if (businessCardBtn) businessCardBtn.addEventListener('click', openIdCardModal);
+  document.getElementById('idcard-modal-close').addEventListener('click', closeIdCardModal);
+  document.getElementById('idcard-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'idcard-modal') closeIdCardModal();
+  });
+
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      closeIdCardModal();
+    }
     if (document.getElementById('detail-modal').classList.contains('hidden')) return;
     if (e.key === 'ArrowLeft') shiftGalleryImage(-1);
     if (e.key === 'ArrowRight') shiftGalleryImage(1);

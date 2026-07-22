@@ -96,9 +96,9 @@
     <div class="flex flex-wrap gap-3" id="hero-brand-stats"></div>
 
     <!-- 담당자 프로필 카드 -->
-    <div id="dealer-info-card" class="mt-2 sm:mt-8 inline-flex items-center gap-4 bg-white/8 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 max-w-xl">
-      <img src="images/dealer-photo.png" alt="김종찬 팀장" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
-      <div>
+    <div id="dealer-info-card" class="mt-2 sm:mt-8 flex flex-wrap items-stretch gap-4 sm:gap-5 bg-white/8 backdrop-blur rounded-2xl px-4 sm:px-5 py-4 border border-white/10 max-w-2xl">
+      <img src="images/dealer-photo-v2.jpg" alt="김종찬 팀장" class="w-24 sm:w-32 rounded-2xl object-cover border-2 border-[var(--fk-gold)] flex-shrink-0">
+      <div class="flex-1 min-w-[180px]">
         <p class="text-[11px] text-slate-300 uppercase tracking-wide mb-0.5" data-i18n="dealer_role">FROM K CAR 담당</p>
         <p class="text-lg sm:text-xl font-extrabold text-white" data-i18n="dealer_name">김종찬 팀장</p>
         <a href="tel:010-7449-8282" class="inline-flex items-center gap-1.5 text-[var(--fk-gold)] font-bold text-base sm:text-lg mt-0.5 hover:underline">
@@ -129,6 +129,16 @@
             <span data-i18n="telegram_channel_promo_2">프롬케이카 텔레그램 채널</span>
           </span>
         </a>
+      </div>
+
+      <div class="flex items-center border-l border-dashed border-white/25 pl-4 sm:pl-5">
+        <button type="button" id="business-card-btn" class="flex flex-col items-center gap-2 text-[var(--fk-gold)] hover:text-white transition-colors">
+          <i class="fa-solid fa-address-card text-3xl"></i>
+          <span class="text-xs font-bold text-center leading-tight whitespace-nowrap">
+            <span data-i18n="business_card_btn_1">명함</span><br>
+            <span data-i18n="business_card_btn_2">다운로드</span>
+          </span>
+        </button>
       </div>
     </div>
 
@@ -200,6 +210,23 @@
       <i class="fa-solid fa-xmark text-lg text-[var(--fk-gray-800)]"></i>
     </button>
     <div id="modal-body" class="p-0 overflow-y-auto flex-1"></div>
+  </div>
+</div>
+
+<!-- ================= 명함 다운로드 모달 ================= -->
+<div id="idcard-modal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4 bg-black/80">
+  <div class="relative w-full max-w-xs sm:max-w-sm">
+    <button id="idcard-modal-close" class="absolute -top-3 -right-3 z-10 w-9 h-9 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-[var(--fk-gray-100)]">
+      <i class="fa-solid fa-xmark text-lg text-[var(--fk-gray-800)]"></i>
+    </button>
+    <div class="bg-white rounded-2xl overflow-hidden shadow-2xl fade-in">
+      <img id="idcard-modal-img" src="" alt="Business Card" class="w-full h-auto block">
+      <div class="p-4">
+        <a id="idcard-download-btn" href="#" download class="btn-primary w-full !justify-center flex items-center">
+          <i class="fa-solid fa-download mr-2"></i><span data-i18n="idcard_download_btn">명함 이미지 다운로드</span>
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 
