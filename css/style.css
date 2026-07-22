@@ -73,6 +73,7 @@ a { text-decoration: none; color: inherit; }
 
 /* 한국어에서는 "명함 다운로드"를 줄바꿈 없이 한 줄로 보여준다. */
 html[lang="ko"] .i18n-br { display: none; }
+html[lang="ko"] #business-card-btn-mobile { flex-direction: row; align-items: center; gap: 5px; }
 
 /* ---------------- 업로드 로고 배지 ---------------- */
 .fk-logo-badge {
