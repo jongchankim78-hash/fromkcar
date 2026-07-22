@@ -657,8 +657,10 @@
     modal.classList.remove('flex');
     document.body.style.overflow = '';
   }
-  const businessCardBtn = document.getElementById('business-card-btn');
-  if (businessCardBtn) businessCardBtn.addEventListener('click', openIdCardModal);
+  ['business-card-btn', 'business-card-btn-mobile'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', openIdCardModal);
+  });
   document.getElementById('idcard-modal-close').addEventListener('click', closeIdCardModal);
   document.getElementById('idcard-modal').addEventListener('click', (e) => {
     if (e.target.id === 'idcard-modal') closeIdCardModal();
