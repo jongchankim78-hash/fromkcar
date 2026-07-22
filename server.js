@@ -209,9 +209,11 @@ async function notifyTelegramNewListing(car) {
     const specLine = [car.price_display && `💰 ${car.price_display}`, car.year_info && `📅 ${car.year_info}`, mileageText && `🛣 ${mileageText}`, car.region && `📍 ${car.region}`]
       .filter(Boolean).join(' · ');
 
-    const lines = [titleLine];
-    if (specLine) lines.push(specLine);
+    const headerLines = [titleLine];
+    if (specLine) headerLines.push(specLine);
+    const header = headerLines.join('\n');
 
+    const descLines = [];
     if (car.description_ko) {
       let descRu = car.description_ru || '';
       let descMn = car.description_mn || '';
@@ -228,22 +230,37 @@ async function notifyTelegramNewListing(car) {
       } catch (e) {
         console.error('Telegram description translate failed:', e.message);
       }
-      lines.push('', `🇰🇷 ${car.description_ko}`);
-      if (descRu) lines.push('', `🇷🇺 ${descRu}`);
-      if (descMn) lines.push('', `🇲🇳 ${descMn}`);
-      if (descEn) lines.push('', `🇬🇧 ${descEn}`);
+      descLines.push('', `🇰🇷 ${car.description_ko}`);
+      if (descRu) descLines.push('', `🇷🇺 ${descRu}`);
+      if (descMn) descLines.push('', `🇲🇳 ${descMn}`);
+      if (descEn) descLines.push('', `🇬🇧 ${descEn}`);
     }
-    lines.push('', `${SITE_ORIGIN}/car/${car.id}`);
+    const descBlock = descLines.join('\n');
 
-    let caption = lines.join('\n');
+    // 항상 붙는 하단 판매자 연락처. 길이 제한에 걸려도 이 부분은 절대 잘리지 않도록
+    // 소개글 쪽만 줄여서 맞춘다.
+    const footer = [
+      '',
+      `${SITE_ORIGIN}/car/${car.id}`,
+      '',
+      '📞 차량 구입문의: 김종찬 팀장 010-7449-8282',
+      '✈️ Telegram: @fromkcar'
+    ].join('\n');
+
     const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : null);
+    const maxLen = image ? 1024 : 4096;
+
+    let caption = header + descBlock + footer;
+    if (caption.length > maxLen) {
+      const budget = maxLen - header.length - footer.length - 1; // '…' 자리
+      const trimmedDesc = budget > 0 ? descBlock.slice(0, budget) + '…' : '';
+      caption = header + trimmedDesc + footer;
+    }
 
     let result;
     if (image) {
-      if (caption.length > 1024) caption = caption.slice(0, 1000) + '…';
       result = await telegramApiCall('sendPhoto', { chat_id: TELEGRAM_CHANNEL, photo: image, caption });
     } else {
-      if (caption.length > 4096) caption = caption.slice(0, 4000) + '…';
       result = await telegramApiCall('sendMessage', { chat_id: TELEGRAM_CHANNEL, text: caption });
     }
     if (result.status >= 400) {
