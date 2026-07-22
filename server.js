@@ -23,6 +23,12 @@ const PORT = process.env.PORT || 8080;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '4887asdf';
 
+// 새 매물이 등록될 때 텔레그램 채널(@fromkcar)에 자동으로 소개글을 올리는 데 쓰는 봇 정보.
+// 둘 다 설정 안 하면 조용히 건너뛴다 (로컬 개발 환경에서 굳이 필요 없음).
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL || '@fromkcar';
+const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://www.fromkcar.kr';
+
 function isAuthorized(req) {
   const header = req.headers['authorization'] || '';
   if (!header.startsWith('Basic ')) return false;
@@ -153,6 +159,57 @@ function sortListings(list, sort) {
   return sorted;
 }
 
+function telegramApiCall(method, payload) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(payload);
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      path: `/bot${TELEGRAM_BOT_TOKEN}/${method}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+// 새 매물이 등록되면 텔레그램 채널에 소개글(+대표사진)을 자동으로 올린다.
+// 등록 응답을 늦추지 않도록 호출부에서 await 없이 fire-and-forget으로 부른다.
+async function notifyTelegramNewListing(car) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  try {
+    const mileageText = car.mileage ? `${Number(car.mileage).toLocaleString('ko-KR')}km` : '';
+    const lines = [
+      `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`,
+      [car.price_display, car.year_info, mileageText, car.region].filter(Boolean).join(' · ')
+    ];
+    if (car.description_ko) lines.push('', car.description_ko);
+    lines.push('', `${SITE_ORIGIN}/car/${car.id}`);
+
+    let caption = lines.join('\n');
+    const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : null);
+
+    let result;
+    if (image) {
+      if (caption.length > 1024) caption = caption.slice(0, 1000) + '…';
+      result = await telegramApiCall('sendPhoto', { chat_id: TELEGRAM_CHANNEL, photo: image, caption });
+    } else {
+      if (caption.length > 4096) caption = caption.slice(0, 4000) + '…';
+      result = await telegramApiCall('sendMessage', { chat_id: TELEGRAM_CHANNEL, text: caption });
+    }
+    if (result.status >= 400) {
+      console.error('Telegram notify failed:', result.status, result.body);
+    }
+  } catch (e) {
+    console.error('Telegram notify failed:', e.message);
+  }
+}
+
 async function handleTablesApi(req, res, urlObj, idFromPath) {
   const method = req.method;
 
@@ -205,6 +262,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     };
     list.push(item);
     writeListings(list);
+    notifyTelegramNewListing(item).catch(() => {});
     return sendJson(res, 201, item);
   }
 
