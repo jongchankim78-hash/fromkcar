@@ -278,6 +278,8 @@ html[lang="ko"] #business-card-btn-mobile { flex-direction: row; align-items: ce
   padding: 3px 9px;
   border-radius: 999px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .badge-blue { background: rgba(37,99,235,0.1); color: var(--fk-blue); }
 .badge-gold { background: rgba(212,175,55,0.15); color: #a3821e; }

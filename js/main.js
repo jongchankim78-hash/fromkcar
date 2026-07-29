@@ -72,7 +72,7 @@
         <div class="absolute top-3 left-3 flex gap-1.5">${statusBadge(car.status)}</div>
       </div>
       <div class="p-4 flex flex-col flex-1">
-        <div class="flex items-center gap-1.5 mb-1.5">
+        <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
@@ -136,7 +136,7 @@
         <div class="car-card-list-status">${statusBadge(car.status)}</div>
       </div>
       <div class="car-card-list-body cursor-pointer" data-action="open-detail" data-id="${car.id}">
-        <div class="flex items-center gap-1.5">
+        <div class="flex flex-wrap items-center gap-1.5">
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
