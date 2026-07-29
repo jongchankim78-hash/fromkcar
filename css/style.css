@@ -195,6 +195,29 @@ html[lang="ko"] #business-card-btn-mobile { flex-direction: row; align-items: ce
   backdrop-filter: blur(2px);
 }
 
+/* 판매완료 매물 썸네일: 사진을 살짝 흐리게 처리하고 SOLD OUT을 크게 표기한다. */
+.car-card-img-wrap.is-sold img,
+.car-card-list-img-wrap.is-sold img {
+  filter: grayscale(35%) brightness(0.75) blur(0.5px);
+}
+.car-card-img-wrap.is-sold::after,
+.car-card-list-img-wrap.is-sold::after {
+  content: 'SOLD OUT';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.2);
+  z-index: 2;
+}
+.car-card-img-wrap.is-sold::after { font-size: 17px; letter-spacing: 1.5px; }
+.car-card-list-img-wrap.is-sold::after { font-size: 9px; letter-spacing: 0.5px; }
+
 /* ---------------- 모바일 리스트/썸네일 뷰 전환 ---------------- */
 .view-toggle-btn {
   width: 30px;

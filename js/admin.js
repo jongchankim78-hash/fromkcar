@@ -111,6 +111,14 @@
     document.getElementById('f-memo').value = data.memo || '';
     document.getElementById('f-status').value = data.status || '판매중';
 
+    document.getElementById('f-badge-no-accident').checked = data.badge_no_accident !== undefined && data.badge_no_accident !== null
+      ? !!data.badge_no_accident
+      : !!(data.accident_info && data.accident_info.startsWith('무사고'));
+    document.getElementById('f-badge-no-paint').checked = !!data.badge_no_paint;
+
+    document.getElementById('f-listing-no').value = data.listing_no || '';
+    document.getElementById('f-listing-no-wrap').classList.toggle('hidden', !data.id);
+
     currentExtractedImages = Array.isArray(data.images) ? data.images : (data.main_image ? [data.main_image] : []);
     document.getElementById('f-images').value = JSON.stringify(currentExtractedImages);
     document.getElementById('f-main-image').value = data.main_image || currentExtractedImages[0] || '';
@@ -248,6 +256,9 @@
       options: options,
       memo: document.getElementById('f-memo').value.trim(),
       status: document.getElementById('f-status').value,
+      badge_no_accident: document.getElementById('f-badge-no-accident').checked,
+      badge_no_paint: document.getElementById('f-badge-no-paint').checked,
+      listing_no: document.getElementById('f-listing-no').value ? Number(document.getElementById('f-listing-no').value) : undefined,
       main_image: document.getElementById('f-main-image').value || (images[0] || ''),
       images: images,
       panel_diagnosis: panelDiagnosis
@@ -284,6 +295,7 @@
     urlInput.value = '';
     previewSection.classList.add('hidden');
     submitBtnText.textContent = '매물 등록하기';
+    document.getElementById('f-listing-no-wrap').classList.add('hidden');
   }
 
   cancelEditBtn.addEventListener('click', resetForm);
@@ -317,8 +329,8 @@
       tbody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-[var(--fk-gray-600)]">등록된 매물이 없습니다.</td></tr>`;
       return;
     }
-    const sorted = [...adminCars].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    tbody.innerHTML = sorted.map(car => `
+    const sorted = [...adminCars].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    tbody.innerHTML = sorted.map((car, i) => `
       <tr class="border-b border-[var(--fk-gray-100)]">
         <td class="py-3 pr-3">
           <img src="${car.main_image || (car.images && car.images[0]) || 'https://via.placeholder.com/80x60?text=No+Img'}"
@@ -335,6 +347,8 @@
         <td class="py-3 pr-3">${statusSelectHtml(car)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">${fmtDate(car.created_at)}</td>
         <td class="py-3 pr-3 text-right whitespace-nowrap">
+          <button class="btn-secondary !py-1.5 !px-2 text-xs" data-action="move-up" data-id="${car.id}" title="위로" ${i === 0 ? 'disabled style="opacity:.35;cursor:default;"' : ''}><i class="fa-solid fa-arrow-up"></i></button>
+          <button class="btn-secondary !py-1.5 !px-2 text-xs mr-1.5" data-action="move-down" data-id="${car.id}" title="아래로" ${i === sorted.length - 1 ? 'disabled style="opacity:.35;cursor:default;"' : ''}><i class="fa-solid fa-arrow-down"></i></button>
           ${car.source_url ? `<button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="refetch" data-id="${car.id}" title="원본에서 다시 불러오기"><i class="fa-solid fa-rotate"></i></button>` : ''}
           <button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="edit" data-id="${car.id}"><i class="fa-solid fa-pen"></i></button>
           <button class="btn-danger !py-1.5 !px-3 text-xs" data-action="delete" data-id="${car.id}"><i class="fa-solid fa-trash"></i></button>
@@ -368,6 +382,33 @@
     const editBtn = e.target.closest('[data-action="edit"]');
     const delBtn = e.target.closest('[data-action="delete"]');
     const refetchBtn = e.target.closest('[data-action="refetch"]');
+    const upBtn = e.target.closest('[data-action="move-up"]');
+    const downBtn = e.target.closest('[data-action="move-down"]');
+    if (upBtn || downBtn) {
+      const moveBtn = upBtn || downBtn;
+      const sorted = [...adminCars].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      const idx = sorted.findIndex(c => c.id === moveBtn.dataset.id);
+      const swapIdx = upBtn ? idx - 1 : idx + 1;
+      if (idx === -1 || swapIdx < 0 || swapIdx >= sorted.length) return;
+      const a = sorted[idx];
+      const b = sorted[swapIdx];
+      const aOrder = a.display_order ?? 0;
+      const bOrder = b.display_order ?? 0;
+      moveBtn.disabled = true;
+      try {
+        await Promise.all([
+          KCarAPI.updateCar(a.id, { display_order: bOrder }),
+          KCarAPI.updateCar(b.id, { display_order: aOrder })
+        ]);
+        a.display_order = bOrder;
+        b.display_order = aOrder;
+        renderAdminTable();
+      } catch (err) {
+        KCarUtil.toast('순서 변경에 실패했습니다.', 'error');
+        moveBtn.disabled = false;
+      }
+      return;
+    }
     if (refetchBtn) {
       const car = adminCars.find(c => c.id === refetchBtn.dataset.id);
       if (!car || !car.source_url) return;
@@ -385,7 +426,11 @@
           description_ko: car.description_ko,
           description_ru: car.description_ru,
           description_mn: car.description_mn,
-          created_at: car.created_at
+          created_at: car.created_at,
+          listing_no: car.listing_no,
+          display_order: car.display_order,
+          badge_no_accident: car.badge_no_accident,
+          badge_no_paint: car.badge_no_paint
         };
         editingId = car.id;
         fillFormFromData(merged);

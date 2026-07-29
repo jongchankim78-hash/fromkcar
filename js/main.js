@@ -50,14 +50,22 @@
     return map[status] || map['판매중'];
   }
 
+  // 완전무사고 배지는 관리자가 직접 체크한 값을 우선하고, 값이 아예 없는(과거) 매물은
+  // 기존 방식대로 사고이력 텍스트에서 자동 판단한다.
+  function effectiveNoAccident(car) {
+    if (car.badge_no_accident !== undefined && car.badge_no_accident !== null) return !!car.badge_no_accident;
+    return !!(car.accident_info && car.accident_info.startsWith('무사고'));
+  }
+
   function carCardHtml(car) {
     const t = KCarI18n.t;
     const images = Array.isArray(car.images) ? car.images : [];
     const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
     const imgCount = images.length;
+    const isSold = car.status === '판매완료';
     return `
     <article class="car-card fade-in" data-id="${car.id}">
-      <div class="car-card-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+      <div class="car-card-img-wrap cursor-pointer${isSold ? ' is-sold' : ''}" data-action="open-detail" data-id="${car.id}">
         <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
              onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
         ${imgCount > 1 ? `<div class="car-card-count"><i class="fa-solid fa-images text-[11px]"></i>${imgCount}</div>` : ''}
@@ -68,7 +76,8 @@
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
-          ${car.accident_info && car.accident_info.startsWith('무사고') ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${car.badge_no_paint ? `<span class="badge badge-nosplit"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
         </div>
         <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
@@ -94,9 +103,10 @@
     const t = KCarI18n.t;
     const images = Array.isArray(car.images) ? car.images : [];
     const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
+    const isSold = car.status === '판매완료';
     return `
     <article class="car-card-thumb fade-in" data-id="${car.id}">
-      <div class="car-card-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+      <div class="car-card-img-wrap cursor-pointer${isSold ? ' is-sold' : ''}" data-action="open-detail" data-id="${car.id}">
         <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
              onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
         <div class="car-card-thumb-status">${statusBadge(car.status)}</div>
@@ -117,9 +127,10 @@
     const t = KCarI18n.t;
     const images = Array.isArray(car.images) ? car.images : [];
     const mainImg = car.main_image || images[0] || 'https://via.placeholder.com/480x360?text=No+Image';
+    const isSold = car.status === '판매완료';
     return `
     <article class="car-card-list fade-in" data-id="${car.id}">
-      <div class="car-card-list-img-wrap cursor-pointer" data-action="open-detail" data-id="${car.id}">
+      <div class="car-card-list-img-wrap cursor-pointer${isSold ? ' is-sold' : ''}" data-action="open-detail" data-id="${car.id}">
         <img src="${mainImg}" alt="${KCarUtil.escapeHtml(car.title || t('car_image_alt_fallback'))}" loading="lazy"
              onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
         <div class="car-card-list-status">${statusBadge(car.status)}</div>
@@ -178,7 +189,8 @@
         case 'price_desc': return (b.price ?? -Infinity) - (a.price ?? -Infinity);
         case 'mileage_asc': return (a.mileage ?? Infinity) - (b.mileage ?? Infinity);
         case 'year_desc': return String(b.year_info || '').localeCompare(String(a.year_info || ''));
-        default: return (b.created_at || 0) - (a.created_at || 0);
+        // 관리자가 목록에서 직접 조정하는 노출 순서(오름차순 = 먼저 노출).
+        default: return (a.display_order ?? 0) - (b.display_order ?? 0);
       }
     });
 

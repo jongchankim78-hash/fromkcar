@@ -105,6 +105,33 @@ function migrateListingNumbers() {
   writeListings(list);
 }
 
+// 매물 노출 순서(display_order, 오름차순 = 먼저 노출). 관리자가 목록에서 위/아래로
+// 옮기면 인접한 매물과 이 값을 맞바꾼다. 새 매물은 가장 작은 값보다 하나 작게 받아
+// 기본적으로 맨 앞에 노출된다 (기존 "최근 등록순"과 동일한 체감).
+function nextDisplayOrder(list) {
+  const min = list.reduce((m, c) => Math.min(m, c.display_order ?? Infinity), Infinity);
+  return (min === Infinity ? 0 : min) - 1;
+}
+
+function migrateDisplayOrder() {
+  const list = readListings();
+  const hasAny = list.some((c) => c.display_order !== undefined && c.display_order !== null);
+  if (hasAny) {
+    // 일부만 순서가 있는 상태(부분 마이그레이션 이후 새로 생긴 매물 등) - 빠진 것만 맨 뒤로 보낸다.
+    const missing = list.filter((c) => c.display_order === undefined || c.display_order === null)
+      .sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
+    if (missing.length === 0) return;
+    let max = list.reduce((m, c) => Math.max(m, c.display_order ?? -Infinity), -Infinity);
+    missing.forEach((c) => { c.display_order = ++max; });
+  } else {
+    if (list.length === 0) return;
+    // 처음 도입 - 기존 "최근 등록순"(created_at desc)과 동일한 순서로 초기화한다.
+    const sorted = [...list].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    sorted.forEach((c, i) => { c.display_order = i; });
+  }
+  writeListings(list);
+}
+
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
@@ -160,7 +187,8 @@ function sortListings(list, sort) {
       break;
     case 'registered_desc':
     default:
-      sorted.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+      // 관리자가 목록에서 직접 조정할 수 있는 노출 순서(오름차순 = 먼저 노출).
+      sorted.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
       break;
   }
   return sorted;
@@ -324,6 +352,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
       id: crypto.randomUUID(),
       ...body,
       listing_no: nextListingNo(list),
+      display_order: nextDisplayOrder(list),
       created_at: now,
       updated_at: now,
       deleted: false
@@ -748,6 +777,7 @@ const server = http.createServer(async (req, res) => {
 
 ensureDataFile();
 migrateListingNumbers();
+migrateDisplayOrder();
 server.listen(PORT, () => {
   console.log(`FROM K CAR server running at http://localhost:${PORT}`);
 });

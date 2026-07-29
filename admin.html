@@ -248,6 +248,24 @@
           <textarea id="f-memo" rows="2" placeholder="예: 성능점검 예약함, 딜러 연락처 등" class="fk-input resize-none"></textarea>
         </label>
 
+        <div class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">배지 표시</span>
+          <div class="flex flex-wrap gap-4">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="f-badge-no-accident" class="w-4 h-4">
+              <span><i class="fa-solid fa-shield-heart text-[var(--fk-green)] mr-1"></i>완전무사고</span>
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="f-badge-no-paint" class="w-4 h-4">
+              <span><i class="fa-solid fa-paint-roller text-[var(--fk-green)] mr-1"></i>NO PAINT</span>
+            </label>
+          </div>
+        </div>
+
+        <label class="text-sm hidden" id="f-listing-no-wrap">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">매물번호</span>
+          <input id="f-listing-no" type="number" min="1" class="fk-input">
+        </label>
         <label class="text-sm">
           <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">상태</span>
           <select id="f-status" class="fk-input">
@@ -255,7 +273,7 @@
             <option value="판매완료">판매완료</option>
           </select>
         </label>
-        <label class="text-sm">
+        <label class="text-sm sm:col-span-2">
           <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">원본 URL</span>
           <input id="f-source-url-display" type="text" disabled class="fk-input bg-[var(--fk-gray-50)] text-[var(--fk-gray-600)]">
         </label>
