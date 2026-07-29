@@ -119,20 +119,100 @@
     renderPreviewImages();
   }
 
+  function syncImagesField() {
+    document.getElementById('f-images').value = JSON.stringify(currentExtractedImages);
+  }
+
   function renderPreviewImages() {
     const mainImg = document.getElementById('f-main-image').value;
     document.getElementById('preview-main-img').src = mainImg || 'https://via.placeholder.com/480x360?text=No+Image';
     document.getElementById('preview-image-count').textContent = `이미지 ${currentExtractedImages.length}장 확보`;
     const thumbs = document.getElementById('preview-thumbs');
-    thumbs.innerHTML = currentExtractedImages.slice(0, 20).map((img, i) => `
-      <img src="${img}" data-idx="${i}" class="w-14 h-14 rounded-lg object-cover cursor-pointer flex-shrink-0 border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
-           onerror="this.style.display='none'">
+    thumbs.innerHTML = currentExtractedImages.map((img, i) => `
+      <div class="relative flex-shrink-0" data-idx="${i}">
+        <img src="${img}" class="w-14 h-14 rounded-lg object-cover cursor-pointer border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
+             onerror="this.style.display='none'">
+        <button type="button" data-action="remove-image" class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center hover:bg-red-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
     `).join('');
-    thumbs.querySelectorAll('img').forEach(img => {
+    thumbs.querySelectorAll('img').forEach((img, i) => {
       img.addEventListener('click', () => {
-        document.getElementById('f-main-image').value = img.src;
+        document.getElementById('f-main-image').value = currentExtractedImages[i];
         renderPreviewImages();
       });
+    });
+    thumbs.querySelectorAll('[data-action="remove-image"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.closest('[data-idx]').dataset.idx);
+        const removed = currentExtractedImages[idx];
+        currentExtractedImages.splice(idx, 1);
+        syncImagesField();
+        if (document.getElementById('f-main-image').value === removed) {
+          document.getElementById('f-main-image').value = currentExtractedImages[0] || '';
+        }
+        renderPreviewImages();
+      });
+    });
+  }
+
+  /* ---------------- 사진 직접 업로드 ---------------- */
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('파일을 읽지 못했습니다.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadImageFile(file) {
+    const dataUrl = await fileToDataUrl(file);
+    const token = window.KCarAuth && KCarAuth.getToken();
+    const res = await fetch('admin/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Basic ' + token } : {})
+      },
+      body: JSON.stringify({ dataUrl })
+    });
+    if (res.status === 401 && window.KCarAuth) {
+      KCarAuth.clearToken();
+      KCarAuth.showGate();
+      throw new Error('인증이 만료되었습니다.');
+    }
+    if (!res.ok) throw new Error('업로드에 실패했습니다.');
+    const data = await res.json();
+    return data.url;
+  }
+
+  const imageUploadInput = document.getElementById('f-image-upload');
+  const uploadStatus = document.getElementById('upload-status');
+  if (imageUploadInput) {
+    imageUploadInput.addEventListener('change', async () => {
+      const files = [...imageUploadInput.files];
+      if (files.length === 0) return;
+      uploadStatus.classList.remove('hidden');
+      let done = 0;
+      for (const file of files) {
+        uploadStatus.textContent = `업로드 중... (${done + 1}/${files.length})`;
+        try {
+          const url = await uploadImageFile(file);
+          currentExtractedImages.push(url);
+          syncImagesField();
+          if (!document.getElementById('f-main-image').value) {
+            document.getElementById('f-main-image').value = url;
+          }
+          renderPreviewImages();
+        } catch (err) {
+          KCarUtil.toast(err.message || '사진 업로드에 실패했습니다.', 'error');
+        }
+        done++;
+      }
+      uploadStatus.classList.add('hidden');
+      imageUploadInput.value = '';
     });
   }
 

@@ -132,7 +132,12 @@
           <img id="preview-main-img" src="" alt="" class="w-full h-full object-cover">
         </div>
         <p class="text-xs text-[var(--fk-gray-600)] mb-1" id="preview-image-count">이미지 0장 확보</p>
-        <div class="flex gap-1.5 overflow-x-auto pb-1" id="preview-thumbs"></div>
+        <div class="flex gap-1.5 overflow-x-auto pb-1 mb-2" id="preview-thumbs"></div>
+        <label class="btn-secondary text-xs !py-2 cursor-pointer inline-flex items-center w-full justify-center">
+          <i class="fa-solid fa-upload mr-1.5"></i>사진 업로드
+          <input type="file" id="f-image-upload" accept="image/*" multiple class="hidden">
+        </label>
+        <p class="text-xs text-[var(--fk-gray-600)] mt-1.5 hidden" id="upload-status"></p>
       </div>
 
       <form id="car-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">

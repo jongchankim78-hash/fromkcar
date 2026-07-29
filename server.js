@@ -14,6 +14,9 @@ const { URL } = require('url');
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'car_listings.json');
+// 관리자가 직접 업로드한 매물 사진 저장 위치. 영구 디스크(DATA_DIR) 안에 둬야
+// 배포할 때마다 새로 받아오는 리포지토리 코드(images/ 등)와 달리 데이터가 살아남는다.
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PORT = process.env.PORT || 8080;
 
 // 매물 등록/수정/삭제(POST/PATCH/DELETE)를 지키는 서버 측 인증.
@@ -68,6 +71,10 @@ function ensureDataFile() {
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]', 'utf-8');
 }
 
+function ensureUploadsDir() {
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
 function readListings() {
   ensureDataFile();
   try {
@@ -107,13 +114,13 @@ function sendJson(res, status, body) {
   res.end(payload);
 }
 
-function readRequestBody(req) {
+function readRequestBody(req, maxSize = 20 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let chunks = [];
     let size = 0;
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > 20 * 1024 * 1024) {
+      if (size > maxSize) {
         reject(new Error('Request body too large'));
         req.destroy();
         return;
@@ -604,6 +611,50 @@ ${urls.map((u) => `  <url>
   res.end(xml);
 }
 
+const UPLOAD_MIME_EXT = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif'
+};
+
+// 관리자가 "직접 입력으로 추가"에서 올린 사진을 저장한다. 개수 제한은 없고,
+// 요청 본문(base64) 크기만 넉넉히 30MB로 제한해 한 장씩 순차 업로드하는 클라이언트를 지원한다.
+async function handleImageUpload(req, res) {
+  if (!requireAuth(req, res)) return;
+  let body;
+  try {
+    body = await readRequestBody(req, 30 * 1024 * 1024);
+  } catch (e) {
+    return sendJson(res, 400, { error: e.message || '업로드에 실패했습니다.' });
+  }
+  const dataUrl = body && body.dataUrl;
+  const match = typeof dataUrl === 'string' && dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return sendJson(res, 400, { error: '이미지 데이터가 올바르지 않습니다.' });
+  const ext = UPLOAD_MIME_EXT[match[1]] || '.jpg';
+  const buffer = Buffer.from(match[2], 'base64');
+
+  ensureUploadsDir();
+  const filename = `${crypto.randomUUID()}${ext}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+  return sendJson(res, 201, { url: `/uploads/${filename}` });
+}
+
+function serveUpload(req, res, filename) {
+  ensureUploadsDir();
+  const filePath = path.join(UPLOADS_DIR, path.basename(filename));
+  fs.stat(filePath, (err, stat) => {
+    if (err || !stat.isFile()) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Not Found');
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': contentType });
+    fs.createReadStream(filePath).pipe(res);
+  });
+}
+
 function serveStatic(req, res, urlObj) {
   let reqPath = decodeURIComponent(urlObj.pathname);
   if (reqPath === '/') reqPath = '/index.html';
@@ -642,6 +693,19 @@ const server = http.createServer(async (req, res) => {
     }
     const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
     return sendJson(res, ok ? 200 : 401, { ok });
+  }
+
+  if (urlObj.pathname === '/admin/upload' && req.method === 'POST') {
+    try {
+      return await handleImageUpload(req, res);
+    } catch (e) {
+      return sendJson(res, 500, { error: e.message || 'Server error' });
+    }
+  }
+
+  const uploadMatch = urlObj.pathname.match(/^\/uploads\/([^/]+)$/);
+  if (uploadMatch && req.method === 'GET') {
+    return serveUpload(req, res, decodeURIComponent(uploadMatch[1]));
   }
 
   const imagesZipMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/images\.zip$/);
