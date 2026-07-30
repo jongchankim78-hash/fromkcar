@@ -163,14 +163,14 @@
       <input id="search-input" type="text" placeholder="차량명, 지역, 번호판으로 검색" data-i18n-placeholder="search_placeholder"
         class="w-full pl-11 pr-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--fk-blue)]/30 focus:border-[var(--fk-blue)]">
     </div>
-    <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0">
-      <select id="filter-brand" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[110px]">
+    <div class="grid grid-cols-3 gap-1.5 sm:gap-2 md:flex">
+      <select id="filter-brand" class="min-w-0 px-1.5 sm:px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-[11px] sm:text-sm bg-white md:min-w-[110px]">
         <option value="" data-i18n="filter_all_brand">전체 브랜드</option>
       </select>
-      <select id="filter-fuel" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[100px]">
+      <select id="filter-fuel" class="min-w-0 px-1.5 sm:px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-[11px] sm:text-sm bg-white md:min-w-[100px]">
         <option value="" data-i18n="filter_all_fuel">전체 연료</option>
       </select>
-      <select id="sort-select" class="px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-sm bg-white min-w-[130px]">
+      <select id="sort-select" class="min-w-0 px-1.5 sm:px-4 py-3 rounded-xl border border-[var(--fk-gray-200)] text-[11px] sm:text-sm bg-white md:min-w-[130px]">
         <option value="registered_desc" data-i18n="sort_registered_desc">최근 등록순</option>
         <option value="price_asc" data-i18n="sort_price_asc">가격 낮은순</option>
         <option value="price_desc" data-i18n="sort_price_desc">가격 높은순</option>
