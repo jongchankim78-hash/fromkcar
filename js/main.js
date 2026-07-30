@@ -73,11 +73,11 @@
       </div>
       <div class="p-4 flex flex-col flex-1">
         <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${car.badge_no_paint ? `<span class="badge badge-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
-          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
-          ${car.badge_no_paint ? `<span class="badge badge-nosplit"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
         </div>
         <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
