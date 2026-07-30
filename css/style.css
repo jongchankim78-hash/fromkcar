@@ -293,6 +293,13 @@ html[lang="ko"] #business-card-btn-mobile { flex-direction: row; align-items: ce
   box-shadow: 0 2px 8px rgba(22,163,74,0.45);
   border: 1px solid rgba(255,255,255,0.4);
 }
+.badge-solid-blue {
+  background: var(--fk-blue);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.45);
+  border: 1px solid rgba(255,255,255,0.4);
+}
 
 /* 매물 상태(판매중/판매완료) 뱃지 — 사진 위에 올라가도 잘 보이도록 진하게 */
 .badge-status-green { background: var(--fk-green); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,0.45); }
