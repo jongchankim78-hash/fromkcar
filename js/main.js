@@ -137,6 +137,8 @@
       </div>
       <div class="car-card-list-body cursor-pointer" data-action="open-detail" data-id="${car.id}">
         <div class="flex flex-wrap items-center gap-1.5">
+          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${car.badge_no_paint ? `<span class="badge badge-solid-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
@@ -407,6 +409,8 @@
     const showTranslateBtn = KCarI18n.getLang() !== 'ko' && !car._translated;
     return `
       <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
+        ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+        ${car.badge_no_paint ? `<span class="badge badge-solid-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
         ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
         <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
         ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
