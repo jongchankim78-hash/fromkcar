@@ -282,7 +282,7 @@ async function notifyTelegramNewListing(car) {
       '✈️ Telegram: @fromkcar'
     ].join('\n');
 
-    const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : null);
+    const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : null));
     const maxLen = image ? 1024 : 4096;
 
     let caption = header + descBlock + footer;
@@ -360,6 +360,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     list.push(item);
     writeListings(list);
     notifyTelegramNewListing(item).catch(() => {});
+    enqueueLocalize(item.id);
     return sendJson(res, 201, item);
   }
 
@@ -376,6 +377,8 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
     list[idx] = { ...list[idx], ...body, id: idFromPath, updated_at: Date.now() };
     writeListings(list);
+    // "원본에서 다시 불러오기" 후 저장하면 사진이 외부 주소로 되돌아오므로, 사진이 바뀐 수정은 다시 내재화한다.
+    if (body.images !== undefined || body.main_image !== undefined) enqueueLocalize(idFromPath);
     return sendJson(res, 200, list[idx]);
   }
 
@@ -421,7 +424,7 @@ function handleCarDetailPage(req, res, carId) {
   const priceText = car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '');
   const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ' — FROM K CAR';
   const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · 한국 중고차 수출 FROM K CAR`.replace(/\s+/g, ' ').trim();
-  const image = car.main_image || (Array.isArray(car.images) ? car.images[0] : '') || 'https://www.fromkcar.kr/images/og-image.png';
+  const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || 'https://www.fromkcar.kr/images/og-image.png';
   const canonicalUrl = `https://www.fromkcar.kr/car/${car.id}`;
 
   let html = indexHtml;
@@ -574,6 +577,95 @@ function fetchBuffer(url, redirectsLeft = 3) {
   });
 }
 
+// --- 외부 사진(KB차차차 CDN 등) 내재화 ------------------------------------
+// 외부 주소 사진을 영구 디스크(data/uploads)로 내려받아 /uploads/... 주소로 바꿔 저장한다.
+// 파일명을 원본 URL의 해시로 정해서, 같은 사진은 다시 받지 않고(재시도/재수집에도 안전) 그대로 재사용한다.
+const ALLOWED_IMG_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+
+function isExternalImage(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url);
+}
+
+// 텔레그램/OG 미리보기/카카오 공유처럼 사이트 밖에서 읽는 곳에는 절대 주소가 필요하다.
+function absoluteImageUrl(url) {
+  return typeof url === 'string' && url.startsWith('/') ? `${SITE_ORIGIN}${url}` : url;
+}
+
+function readImageBuffer(url) {
+  if (typeof url === 'string' && url.startsWith('/uploads/')) {
+    return fs.promises.readFile(path.join(UPLOADS_DIR, path.basename(url)));
+  }
+  return fetchBuffer(url);
+}
+
+async function localizeImage(url) {
+  let ext = '.jpg';
+  try {
+    const e = path.extname(new URL(url).pathname).toLowerCase();
+    if (ALLOWED_IMG_EXT.has(e)) ext = e;
+  } catch (e) { /* keep default */ }
+  const filename = crypto.createHash('sha1').update(url).digest('hex').slice(0, 24) + ext;
+  const filePath = path.join(UPLOADS_DIR, filename);
+  ensureUploadsDir();
+  if (!fs.existsSync(filePath)) {
+    const buf = await fetchBuffer(url);
+    const tmp = `${filePath}.tmp`;
+    fs.writeFileSync(tmp, buf);
+    fs.renameSync(tmp, filePath);
+  }
+  return `/uploads/${filename}`;
+}
+
+async function localizeCarImages(carId) {
+  const car = readListings().find((c) => c.id === carId);
+  if (!car) return;
+  const urls = new Set([...(Array.isArray(car.images) ? car.images : []), car.main_image].filter(isExternalImage));
+  if (urls.size === 0) return;
+
+  const map = new Map();
+  const pending = [...urls];
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (pending.length) {
+      const u = pending.shift();
+      try {
+        map.set(u, await localizeImage(u));
+      } catch (e) {
+        // 실패한 사진은 원래 외부 주소를 그대로 두고, 다음 서버 시작 때 다시 시도한다.
+        console.error(`[localize] ${carId} ${u}: ${e.message}`);
+      }
+    }
+  }));
+  if (map.size === 0) return;
+
+  // 다운로드하는 동안 관리자가 수정했을 수 있으니, 저장 직전에 최신 데이터를 다시 읽어 사진 필드만 바꾼다.
+  const list = readListings();
+  const cur = list.find((c) => c.id === carId);
+  if (!cur) return;
+  const swap = (u) => map.get(u) || u;
+  if (Array.isArray(cur.images)) cur.images = cur.images.map(swap);
+  if (cur.main_image) cur.main_image = swap(cur.main_image);
+  writeListings(list);
+  console.log(`[localize] ${carId}: ${map.size}/${urls.size} photos stored locally`);
+}
+
+let localizeChain = Promise.resolve();
+function enqueueLocalize(carId) {
+  localizeChain = localizeChain
+    .then(() => localizeCarImages(carId))
+    .catch((e) => console.error('[localize]', e.message));
+  return localizeChain;
+}
+
+function backfillLocalImages() {
+  const ids = readListings()
+    .filter((c) => !c.deleted && ((Array.isArray(c.images) && c.images.some(isExternalImage)) || isExternalImage(c.main_image)))
+    .map((c) => c.id);
+  if (ids.length === 0) return;
+  console.log(`[localize] backfill start: ${ids.length} listings`);
+  ids.forEach((id) => enqueueLocalize(id));
+  localizeChain = localizeChain.then(() => console.log('[localize] backfill done'));
+}
+
 async function handleImagesZip(req, res, carId) {
   const car = readListings().find((c) => c.id === carId && !c.deleted);
   if (!car) {
@@ -592,11 +684,11 @@ async function handleImagesZip(req, res, carId) {
 
   let entries;
   try {
-    const buffers = await Promise.all(limited.map((url) => fetchBuffer(url)));
+    const buffers = await Promise.all(limited.map((url) => readImageBuffer(url)));
     entries = buffers.map((data, i) => {
       let ext = '.jpg';
       try {
-        ext = (path.extname(new URL(limited[i]).pathname) || '.jpg').toLowerCase();
+        ext = (path.extname(new URL(limited[i], 'http://local').pathname) || '.jpg').toLowerCase();
       } catch (e) { /* keep default */ }
       return { name: `${String(i + 1).padStart(2, '0')}${ext}`, data };
     });
@@ -780,4 +872,6 @@ migrateListingNumbers();
 migrateDisplayOrder();
 server.listen(PORT, () => {
   console.log(`FROM K CAR server running at http://localhost:${PORT}`);
+  // 서버가 뜬 뒤 백그라운드에서 기존 매물의 외부 사진을 천천히 내재화한다 (요청 처리를 막지 않는다).
+  setTimeout(backfillLocalImages, 3000);
 });

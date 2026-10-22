@@ -22,6 +22,11 @@
   const fuelFilter = document.getElementById('filter-fuel');
   const sortSelect = document.getElementById('sort-select');
 
+  // 내재화된 사진은 /uploads/... 상대 경로라서, 카카오 공유·검색엔진 등 사이트 밖에서 읽는 곳에는 절대 주소로 넘긴다.
+  function absUrl(u) {
+    return typeof u === 'string' && u.startsWith('/') ? window.location.origin + u : u;
+  }
+
   function effectiveBrand(car) {
     // 옛 표기("현대 제네시스 ...")로 등록된 매물은 브랜드가 '현대'로 저장돼 있어도 실제로는 제네시스다.
     if (car.brand === '현대' && car.title && car.title.includes('제네시스')) return '제네시스';
@@ -314,7 +319,7 @@
           '@type': 'Car',
           name: car.title,
           brand: effectiveBrand(car),
-          image: car.main_image || (Array.isArray(car.images) ? car.images[0] : undefined),
+          image: absUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : undefined)),
           vehicleModelDate: car.year_info,
           mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'KMT' } : undefined,
           offers: {
@@ -724,7 +729,7 @@
       } else {
         const shareUrl = `${window.location.origin}/car/${car.id}`;
         const images = Array.isArray(car.images) && car.images.length ? car.images : [];
-        const imageUrl = car.main_image || images[0] || `${window.location.origin}/images/og-image.png`;
+        const imageUrl = absUrl(car.main_image || images[0]) || `${window.location.origin}/images/og-image.png`;
         Kakao.Share.sendDefault({
           objectType: 'feed',
           content: {
