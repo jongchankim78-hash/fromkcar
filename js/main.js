@@ -443,6 +443,70 @@
     </div>`;
   }
 
+  // 문의 메시지는 보는 사람의 언어와 상관없이 담당자가 어떤 차량인지 바로 알 수 있도록 한/영 병기로 만든다.
+  function inquiryMessage(car) {
+    const url = `${window.location.origin}/car/${car.id}`;
+    const title = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''}`.trim();
+    return `안녕하세요, 이 차량 문의드립니다. / Hello, I'm interested in this car.\n${title}\n${car.price_display || ''}\n${url}`.replace(/\n\n/g, '\n');
+  }
+
+  // 문의 버튼 줄. WhatsApp은 문구를 미리 채워 열고, 텔레그램/카카오톡은 문구 자동 입력이 안 돼서
+  // 누를 때 문구를 클립보드에 복사해 두고 대화창에 붙여넣게 한다 (복사 처리는 detail-modal 클릭 핸들러).
+  function inquiryButtonsHtml(car, t) {
+    const wa = `https://wa.me/821074498282?text=${encodeURIComponent(inquiryMessage(car))}`;
+    const cls = 'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-sm font-bold hover:opacity-90 transition-opacity';
+    return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <a href="${wa}" target="_blank" rel="noopener" class="${cls} text-white" style="background:#25D366"><i class="ti ti-brand-whatsapp text-lg"></i>WhatsApp</a>
+      <a href="https://t.me/fromkcar" target="_blank" rel="noopener" data-copy-inquiry class="${cls} text-white" style="background:#26A5E4"><i class="ti ti-brand-telegram text-lg"></i>Telegram</a>
+      <a href="http://pf.kakao.com/_jWCxnX/chat" target="_blank" rel="noopener" data-copy-inquiry class="${cls}" style="background:#FEE500;color:#3C1E1E"><i class="fa-solid fa-comment"></i>KakaoTalk</a>
+      <a href="tel:010-7449-8282" class="${cls} text-white" style="background:var(--fk-navy)"><i class="fa-solid fa-phone"></i>${t('inquiry_phone')}</a>
+    </div>`;
+  }
+
+  // 같은 브랜드 + 비슷한 가격대(±20%) + 같은 연료 순으로 점수를 매겨 판매중인 다른 차량을 최대 4대 고른다.
+  function similarCars(car) {
+    const price = Number(car.price) || 0;
+    return allCars
+      .filter((c) => c.id !== car.id && c.status !== '판매완료')
+      .map((c) => {
+        let score = 0;
+        if (effectiveBrand(c) === effectiveBrand(car)) score += 3;
+        const p = Number(c.price) || 0;
+        if (price && p) {
+          const gap = Math.abs(p - price) / price;
+          if (gap <= 0.2) score += 3;
+          else if (gap <= 0.4) score += 1;
+        }
+        if (c.fuel_type && c.fuel_type === car.fuel_type) score += 1;
+        return { c, score };
+      })
+      .sort((a, b) => b.score - a.score || (a.c.display_order ?? 0) - (b.c.display_order ?? 0))
+      .slice(0, 4)
+      .map((x) => x.c);
+  }
+
+  function similarCarsHtml(car, t) {
+    const list = similarCars(car);
+    if (!list.length) return '';
+    const esc = KCarUtil.escapeHtml;
+    return `<div class="mt-8">
+      <h3 class="text-sm font-bold text-[var(--fk-gray-800)] mb-3"><i class="fa-solid fa-car-side mr-1.5 text-[var(--fk-blue)]"></i>${t('similar_title')}</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        ${list.map((c) => {
+          const img = c.main_image || (Array.isArray(c.images) && c.images[0]) || 'https://via.placeholder.com/480x360?text=No+Image';
+          return `<a href="/car/${encodeURIComponent(c.id)}" data-similar-id="${esc(c.id)}" class="block rounded-xl border border-[var(--fk-gray-200)] overflow-hidden bg-white hover:shadow-md transition-shadow">
+            <img src="${esc(img)}" alt="${esc(c.title)}" loading="lazy" class="w-full aspect-[4/3] object-cover" onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
+            <div class="p-2.5">
+              <p class="text-xs font-bold text-[var(--fk-gray-800)] truncate">${esc(c.title)}</p>
+              <p class="text-sm font-extrabold text-[var(--fk-navy)]">${esc(c.price_display || KCarUtil.formatPrice(c.price))}</p>
+              <p class="text-[11px] text-[var(--fk-gray-600)] truncate">${esc([c.year_info, c.mileage ? KCarUtil.formatMileage(c.mileage) : ''].filter(Boolean).join(' · '))}</p>
+            </div>
+          </a>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
   function buildCarInfoHtml(car, t) {
     const showTranslateBtn = KCarI18n.getLang() !== 'ko' && !car._translated;
     return `
@@ -475,6 +539,14 @@
       <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
 
       ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>${t('translate_btn')}</button>` : ''}
+
+      ${car.status === '판매완료' ? `<div class="mb-4 rounded-2xl bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)] px-4 py-3 text-sm font-semibold text-[var(--fk-gray-800)]"><i class="fa-solid fa-circle-info mr-1.5 text-[var(--fk-gray-600)]"></i>${t('sold_notice')}</div>` : ''}
+
+      <div class="mb-6 rounded-2xl border border-[var(--fk-gray-200)] bg-white p-4 sm:p-5">
+        <h3 class="text-base font-extrabold text-[var(--fk-gray-800)]">${t('inquiry_title')}</h3>
+        <p class="text-xs text-[var(--fk-gray-600)] mt-0.5 mb-3">${t('inquiry_desc')}</p>
+        ${inquiryButtonsHtml(car, t)}
+      </div>
 
       <div class="grid sm:grid-cols-2 gap-6 mb-6">
         <div class="bg-[var(--fk-gray-50)] rounded-2xl p-4 sm:p-5">
@@ -519,11 +591,15 @@
         <p class="text-sm text-amber-900">${KCarUtil.escapeHtml(car.memo)}</p>
       </div>` : ''}
 
+      <div class="mb-3">${inquiryButtonsHtml(car, t)}</div>
+
       <div class="flex gap-3">
         ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-primary flex-1 text-center">
           <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>${t('original_listing_btn')}
         </a>` : ''}
       </div>
+
+      ${similarCarsHtml(car, t)}
     `;
   }
 
@@ -804,6 +880,25 @@
 
     if (menu && !menu.classList.contains('hidden') && !e.target.closest('#share-menu')) {
       menu.classList.add('hidden');
+    }
+  });
+
+  document.getElementById('detail-modal').addEventListener('click', (e) => {
+    const copyLink = e.target.closest('[data-copy-inquiry]');
+    if (copyLink && currentModalCar && navigator.clipboard) {
+      navigator.clipboard.writeText(inquiryMessage(currentModalCar))
+        .then(() => KCarUtil.toast(KCarI18n.t('inquiry_copied_toast'), 'success'))
+        .catch(() => {});
+    }
+
+    const similar = e.target.closest('[data-similar-id]');
+    if (similar) {
+      const next = allCars.find((c) => c.id === similar.dataset.similarId);
+      if (next) {
+        e.preventDefault();
+        openDetailModal(next);
+        document.getElementById('modal-body').scrollTop = 0;
+      }
     }
   });
 
