@@ -408,4 +408,52 @@ async function scrapeKbListing(url) {
   return data;
 }
 
-module.exports = { scrapeKbListing, fetchKbHtml, fetchKbPage, parseKbHtml, isRobotCheckPage, describePage };
+// KB차차차가 서버(데이터센터) IP의 자동 접근을 막고 있어서(응답이 "ERROR" 한 단어), 관리자가 자기 브라우저로
+// 연 매물 페이지의 소스를 붙여넣으면 서버는 KB에 접속하지 않고 그 내용만 분석한다.
+function pageCarSeq(html) {
+  const m = html.match(/<meta[^>]+property=["']og:url["'][^>]*carSeq=(\d+)/i)
+    || html.match(/<link[^>]+rel=["']canonical["'][^>]*carSeq=(\d+)/i)
+    || html.match(/carSeq=(\d+)/);
+  return m ? m[1] : null;
+}
+
+function parsePastedKbHtml(html, url) {
+  if (typeof html !== 'string' || html.length < 2000) {
+    throw new Error('붙여넣은 내용이 너무 짧습니다. 매물 페이지 소스 전체(Ctrl+A)를 복사해서 붙여넣어 주세요.');
+  }
+  let sourceUrl = String(url || '').trim();
+  let urlSeq = null;
+  if (sourceUrl) {
+    let u;
+    try {
+      u = new URL(sourceUrl);
+    } catch (e) {
+      throw new Error('올바른 URL이 아닙니다.');
+    }
+    if (!ALLOWED_HOSTS.test(u.hostname)) throw new Error('KB차차차(kbchachacha.com) 매물 URL만 지원합니다.');
+    urlSeq = (sourceUrl.match(/carSeq=(\d+)/) || [])[1] || null;
+  }
+
+  if (isRobotCheckPage(html)) {
+    throw new Error('붙여넣은 내용이 매물 페이지가 아니라 KB차차차의 "로봇 확인" 화면입니다. 그 화면을 통과한 뒤 매물 페이지의 소스를 다시 복사해주세요.');
+  }
+
+  const htmlSeq = pageCarSeq(html);
+  if (urlSeq && htmlSeq && urlSeq !== htmlSeq) {
+    throw new Error(`입력한 주소(carSeq=${urlSeq})와 붙여넣은 페이지(carSeq=${htmlSeq})의 매물이 다릅니다. 같은 매물의 페이지를 복사했는지 확인해주세요.`);
+  }
+  const seq = urlSeq || htmlSeq;
+  if (!seq) {
+    throw new Error('붙여넣은 내용에서 매물 번호(carSeq)를 찾지 못했습니다. KB차차차 매물 상세페이지의 소스인지 확인해주세요.');
+  }
+  if (!urlSeq) sourceUrl = `https://www.kbchachacha.com/public/car/detail.kbc?carSeq=${seq}`;
+
+  const data = parseKbHtml(html, sourceUrl);
+  if (!data.title && !data.price) {
+    const d = describePage(html, sourceUrl);
+    throw new Error(`차량 정보를 찾지 못했습니다. 붙여넣은 페이지의 제목은 "${d.title}"입니다. KB차차차 매물 상세페이지가 맞는지 확인해주세요.`);
+  }
+  return data;
+}
+
+module.exports = { scrapeKbListing, parsePastedKbHtml, fetchKbHtml, fetchKbPage, parseKbHtml, isRobotCheckPage, describePage };

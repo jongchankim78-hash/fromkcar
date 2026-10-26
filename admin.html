@@ -109,9 +109,41 @@
       <i class="fa-solid fa-circle-info mt-0.5 text-[var(--fk-blue)]"></i>
       <div>
         <p><b>로그인이 필요 없는 공개 매물 상세페이지</b> URL만 지원합니다 (예: KB차차차 <code class="bg-white px-1 py-0.5 rounded">detail.kbc?carSeq=...</code> 페이지).</p>
-        <p class="mt-1">로그인 후에만 보이는 페이지, 혹은 봇 접근을 차단한 페이지는 자동 추출이 되지 않을 수 있어요. 이 경우 아래 "직접 입력"으로 등록해주세요.</p>
+        <p class="mt-1">KB차차차가 서버의 자동 접근을 막고 있으면 "정보 가져오기"가 실패할 수 있어요. 그럴 땐 아래 <b>페이지 소스 붙여넣기</b>를 쓰시면 같은 정보가 채워집니다.</p>
       </div>
     </div>
+
+    <details id="paste-panel" class="mt-4 rounded-2xl border border-[var(--fk-gray-200)] bg-white" open>
+      <summary class="cursor-pointer select-none px-4 sm:px-5 py-3.5 text-sm font-bold text-[var(--fk-gray-800)] flex items-center gap-2">
+        <i class="fa-solid fa-paste text-[var(--fk-blue)]"></i>자동으로 안 될 때: KB차차차 페이지 소스 붙여넣기
+      </summary>
+      <div class="px-4 sm:px-5 pb-5">
+        <p id="paste-note" class="hidden mb-3 text-xs font-semibold text-[var(--fk-blue)] bg-[var(--fk-blue)]/10 rounded-lg px-3 py-2"></p>
+        <ol class="text-xs text-[var(--fk-gray-600)] leading-relaxed list-decimal pl-5 space-y-1.5 mb-3">
+          <li>KB차차차 매물 상세페이지를 <b>새 탭</b>에서 엽니다.</li>
+          <li>
+            페이지 내용을 복사합니다. 아래 둘 중 편한 방법을 쓰세요.
+            <ul class="list-disc pl-4 mt-1 space-y-1">
+              <li>
+                <b>즐겨찾기 버튼</b>: 오른쪽 <a id="copy-bookmarklet"
+                  href="javascript:(function(){var h='<!DOCTYPE html>\n'+document.documentElement.outerHTML;var m='FROM K CAR: 페이지 내용을 복사했습니다. 관리자 화면에 붙여넣기(Ctrl+V) 하세요.';function f(){var t=document.createElement('textarea');t.value=h;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(t);alert(ok?m:'복사에 실패했습니다. Ctrl+U로 소스를 복사해주세요.')}if(navigator.clipboard&amp;&amp;navigator.clipboard.writeText){navigator.clipboard.writeText(h).then(function(){alert(m)},f)}else{f()}})();"
+                  onclick="alert('이 버튼은 클릭하지 말고, 브라우저 위쪽 즐겨찾기 바로 끌어다 놓으세요.\n그다음 KB차차차 매물 페이지에서 그 즐겨찾기를 클릭하면 페이지 내용이 복사됩니다.');return false;"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--fk-navy)] text-white font-bold cursor-grab"><i class="fa-solid fa-bookmark"></i>KB 페이지 복사</a>
+                를 즐겨찾기 바로 <b>끌어다 놓고</b>, KB 매물 페이지에서 그 즐겨찾기를 클릭
+              </li>
+              <li>또는 KB 페이지에서 <kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">Ctrl</kbd>+<kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">U</kbd> → 열린 소스 화면에서 <kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">Ctrl</kbd>+<kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">A</kbd> → <kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">Ctrl</kbd>+<kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">C</kbd></li>
+            </ul>
+          </li>
+          <li>아래 칸을 클릭하고 붙여넣기(<kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">Ctrl</kbd>+<kbd class="px-1.5 py-0.5 rounded bg-[var(--fk-gray-100)] border border-[var(--fk-gray-200)]">V</kbd>)한 뒤 <b>붙여넣은 내용으로 가져오기</b>를 누릅니다. (위 URL 칸은 비워도 돼요.)</li>
+        </ol>
+        <textarea id="paste-html" rows="4" spellcheck="false" placeholder="여기에 KB차차차 매물 페이지 소스를 붙여넣으세요 (내용이 길어도 괜찮아요)"
+          class="w-full px-3.5 py-3 rounded-xl border border-[var(--fk-gray-200)] text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--fk-blue)]/30 focus:border-[var(--fk-blue)]"></textarea>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button type="button" id="paste-parse-btn" class="btn-primary !py-2.5 text-sm"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>붙여넣은 내용으로 가져오기</button>
+          <button type="button" id="paste-clear-btn" class="btn-secondary !py-2.5 text-sm"><i class="fa-solid fa-eraser mr-2"></i>비우기</button>
+        </div>
+      </div>
+    </details>
 
     <div id="fetch-status" class="hidden mt-4 items-center gap-3 text-sm text-[var(--fk-blue)]">
       <div class="fk-spinner fk-spinner-dark"></div>

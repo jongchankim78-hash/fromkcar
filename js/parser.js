@@ -343,9 +343,31 @@
     }
   }
 
+  /**
+   * 관리자가 자기 브라우저로 연 KB차차차 매물 페이지의 소스(HTML)를 붙여넣었을 때 분석한다.
+   * KB차차차가 서버 IP의 자동 접근을 막고 있어서, 이 방식은 KB에 접속하지 않고 붙여넣은 내용만 사용한다.
+   */
+  async function parsePastedHtml(originalUrl, html) {
+    const token = global.KCarAuth && global.KCarAuth.getToken();
+    const res = await fetch('admin/parse-html', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Basic ' + token } : {}) },
+      body: JSON.stringify({ url: originalUrl || '', html })
+    });
+    if (res.status === 401 && global.KCarAuth) {
+      global.KCarAuth.clearToken();
+      global.KCarAuth.showGate();
+      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    }
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body.data) return body.data;
+    throw new Error(body.error || ('붙여넣은 내용을 분석하지 못했습니다 (status ' + res.status + ')'));
+  }
+
   global.KCarParser = {
     parseListing,
     fetchAndParse,
+    parsePastedHtml,
     toNumber,
     priceTextToWon
   };

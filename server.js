@@ -10,7 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const { URL } = require('url');
-const { scrapeKbListing } = require('./kb-scraper');
+const { scrapeKbListing, parsePastedKbHtml } = require('./kb-scraper');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -833,6 +833,24 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       console.error('[fetch-listing]', e.message);
       return sendJson(res, e.code === 'KB_RATE_LIMITED' ? 429 : 502, { error: e.message, code: e.code || null });
+    }
+  }
+
+  // KB차차차가 서버 IP를 막고 있을 때의 대안: 관리자가 브라우저로 연 매물 페이지의 소스를 붙여넣으면
+  // KB에 접속하지 않고 그 내용만 분석해서 같은 형태의 결과를 돌려준다.
+  if (urlObj.pathname === '/admin/parse-html' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    let body;
+    try {
+      body = await readRequestBody(req, 12 * 1024 * 1024);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    try {
+      const data = parsePastedKbHtml(body && body.html, body && body.url);
+      return sendJson(res, 200, { data });
+    } catch (e) {
+      return sendJson(res, 422, { error: e.message });
     }
   }
 

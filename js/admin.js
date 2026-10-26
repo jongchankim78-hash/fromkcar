@@ -38,12 +38,98 @@
       KCarUtil.toast('매물 정보를 성공적으로 가져왔어요. 내용을 확인하고 등록해주세요.', 'success');
     } catch (err) {
       KCarUtil.toast(err.message || '매물 정보를 가져오지 못했습니다.', 'error', 5000);
+      pasteTargetId = null;
+      showPastePanel('자동으로 가져오지 못했어요. 아래 방법으로 KB차차차 페이지 내용을 붙여넣으면 같은 정보를 채울 수 있어요.');
     } finally {
       fetchStatus.classList.add('hidden');
       fetchStatus.classList.remove('flex');
       fetchBtn.disabled = false;
       fetchBtn.style.opacity = '1';
     }
+  });
+
+  /* ---------------- KB차차차 페이지 소스 붙여넣기 ----------------
+   * KB차차차가 서버(데이터센터) IP의 자동 접근을 막고 있어서, 서버가 직접 가져오지 못할 때의 대안이다.
+   * 관리자가 자기 브라우저로 연 매물 페이지의 소스를 붙여넣으면 서버는 KB에 접속하지 않고 그 내용만 분석한다. */
+  const pastePanel = document.getElementById('paste-panel');
+  const pasteHtml = document.getElementById('paste-html');
+  const pasteNote = document.getElementById('paste-note');
+  const pasteParseBtn = document.getElementById('paste-parse-btn');
+  let pasteTargetId = null; // "원본에서 다시 불러오기"가 실패해서 붙여넣기로 이어가는 매물 id
+
+  function showPastePanel(note, url) {
+    if (url) urlInput.value = url;
+    pasteNote.textContent = note || '';
+    pasteNote.classList.toggle('hidden', !note);
+    pastePanel.open = true;
+    pastePanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => pasteHtml.focus(), 400);
+  }
+
+  // 매물 수정 화면에서 쓰는 병합 규칙: 관리자가 직접 입력/관리하는 값은 원본 재수집으로 덮어쓰지 않고 유지한다.
+  function applyRefetched(car, fresh) {
+    const merged = {
+      ...fresh,
+      id: car.id,
+      status: car.status,
+      memo: car.memo,
+      description_ko: car.description_ko,
+      description_ru: car.description_ru,
+      description_mn: car.description_mn,
+      created_at: car.created_at,
+      listing_no: car.listing_no,
+      display_order: car.display_order,
+      badge_no_accident: car.badge_no_accident,
+      badge_no_paint: car.badge_no_paint
+    };
+    editingId = car.id;
+    fillFormFromData(merged);
+    submitBtnText.textContent = '수정 내용 저장';
+    previewSection.classList.remove('hidden');
+    previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  pasteParseBtn.addEventListener('click', async () => {
+    const html = pasteHtml.value;
+    if (!html.trim()) {
+      KCarUtil.toast('먼저 KB차차차 매물 페이지 내용을 붙여넣어 주세요.', 'error');
+      return;
+    }
+    const target = pasteTargetId ? adminCars.find(c => c.id === pasteTargetId) : null;
+    // 다시 불러오기 중이면 그 매물의 원본 주소로 검증해서, 엉뚱한 매물 페이지를 붙여넣어도 걸러낸다.
+    const url = target ? target.source_url : urlInput.value.trim();
+
+    pasteParseBtn.disabled = true;
+    const original = pasteParseBtn.innerHTML;
+    pasteParseBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>분석 중...';
+    try {
+      const data = await KCarParser.parsePastedHtml(url, html);
+      if (target) {
+        applyRefetched(target, data);
+        KCarUtil.toast('붙여넣은 내용으로 최신 정보를 채웠어요. 확인하고 저장해주세요.', 'success');
+      } else {
+        editingId = null;
+        fillFormFromData(data);
+        submitBtnText.textContent = '매물 등록하기';
+        previewSection.classList.remove('hidden');
+        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        KCarUtil.toast('매물 정보를 성공적으로 가져왔어요. 내용을 확인하고 등록해주세요.', 'success');
+      }
+      pasteHtml.value = '';
+      pasteTargetId = null;
+      pasteNote.classList.add('hidden');
+    } catch (err) {
+      KCarUtil.toast(err.message || '붙여넣은 내용을 분석하지 못했습니다.', 'error', 6000);
+    } finally {
+      pasteParseBtn.disabled = false;
+      pasteParseBtn.innerHTML = original;
+    }
+  });
+
+  document.getElementById('paste-clear-btn').addEventListener('click', () => {
+    pasteHtml.value = '';
+    pasteTargetId = null;
+    pasteNote.classList.add('hidden');
   });
 
   /* ---------------- 한글 -> 외국어 자동 번역 (초안) ---------------- */
@@ -226,7 +312,8 @@
 
   function readFormToData() {
     const optionsRaw = document.getElementById('f-options').value.trim();
-    const options = optionsRaw ? optionsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    // 쉼표로 나누되, "통풍시트 (운전석, 동승석)"처럼 괄호 안의 쉼표는 하나의 옵션으로 유지한다.
+    const options = optionsRaw ? optionsRaw.split(/,(?![^()]*\))/).map(s => s.trim()).filter(Boolean) : [];
     let images = [];
     try { images = JSON.parse(document.getElementById('f-images').value || '[]'); } catch (e) { images = []; }
     let panelDiagnosis = null;
@@ -291,6 +378,7 @@
   function resetForm() {
     carForm.reset();
     editingId = null;
+    pasteTargetId = null;
     currentExtractedImages = [];
     urlInput.value = '';
     previewSection.classList.add('hidden');
@@ -417,29 +505,13 @@
       icon.classList.add('fa-spin');
       try {
         const fresh = await KCarParser.fetchAndParse(car.source_url);
-        // 관리자가 직접 입력/관리하는 값은 원본 재수집으로 덮어쓰지 않고 유지한다.
-        const merged = {
-          ...fresh,
-          id: car.id,
-          status: car.status,
-          memo: car.memo,
-          description_ko: car.description_ko,
-          description_ru: car.description_ru,
-          description_mn: car.description_mn,
-          created_at: car.created_at,
-          listing_no: car.listing_no,
-          display_order: car.display_order,
-          badge_no_accident: car.badge_no_accident,
-          badge_no_paint: car.badge_no_paint
-        };
-        editingId = car.id;
-        fillFormFromData(merged);
-        submitBtnText.textContent = '수정 내용 저장';
-        previewSection.classList.remove('hidden');
-        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        applyRefetched(car, fresh);
         KCarUtil.toast('원본에서 최신 정보를 다시 가져왔어요. 내용을 확인하고 저장해주세요.', 'success');
       } catch (err) {
         KCarUtil.toast(err.message || '원본 정보를 다시 가져오지 못했습니다.', 'error', 5000);
+        // 서버가 KB차차차에 접속하지 못하면, 사장님 브라우저로 연 페이지를 붙여넣는 방식으로 이어서 진행한다.
+        pasteTargetId = car.id;
+        showPastePanel(`"${car.title || '이 매물'}"의 원본 정보를 다시 불러오려면 아래 방법으로 KB차차차 페이지 내용을 붙여넣어 주세요.`, car.source_url);
       } finally {
         refetchBtn.disabled = false;
         icon.classList.remove('fa-spin');
