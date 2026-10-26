@@ -285,11 +285,34 @@
   }
 
   /**
-   * 원격 URL을 r.jina.ai 리더로 가져와 파싱까지 수행
+   * 1순위: 우리 서버(/admin/fetch-listing)가 KB차차차 페이지를 직접 받아 파싱한다.
+   *        (KB차차차가 r.jina.ai 접근을 막아서 이 방식으로 바꿨다. 서버 쪽 구현은 kb-scraper.js)
+   * 2순위: 예전 방식인 r.jina.ai 리더 (서버 호출 자체가 실패했을 때만 시도)
    */
-  async function fetchAndParse(originalUrl) {
-    const readerUrl = READER_PREFIX + originalUrl;
-    const res = await fetch(readerUrl);
+  async function fetchViaServer(originalUrl) {
+    const token = global.KCarAuth && global.KCarAuth.getToken();
+    const res = await fetch('admin/fetch-listing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Basic ' + token } : {}) },
+      body: JSON.stringify({ url: originalUrl })
+    });
+    if (res.status === 401 && global.KCarAuth) {
+      global.KCarAuth.clearToken();
+      global.KCarAuth.showGate();
+      const e = new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+      e.final = true;
+      throw e;
+    }
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body.data) return body.data;
+    const e = new Error(body.error || ('서버가 매물 정보를 가져오지 못했습니다 (status ' + res.status + ')'));
+    // KB차차차의 트래픽 제한은 다른 경로로 다시 시도해도 소용이 없으니 바로 안내한다.
+    e.final = res.status === 429;
+    throw e;
+  }
+
+  async function fetchViaJina(originalUrl) {
+    const res = await fetch(READER_PREFIX + originalUrl);
     if (!res.ok) {
       throw new Error('페이지를 가져오지 못했습니다 (status ' + res.status + ')');
     }
@@ -302,6 +325,22 @@
       throw new Error('차량 정보를 추출하지 못했습니다. 로그인 후에만 열람 가능한 매물이거나 페이지 구조가 다를 수 있습니다.');
     }
     return data;
+  }
+
+  async function fetchAndParse(originalUrl) {
+    let serverError;
+    try {
+      return await fetchViaServer(originalUrl);
+    } catch (e) {
+      if (e.final) throw e;
+      serverError = e;
+    }
+    try {
+      return await fetchViaJina(originalUrl);
+    } catch (e) {
+      // 두 방법이 모두 실패하면 더 구체적인 쪽(서버가 알려준 원인)을 보여준다.
+      throw serverError;
+    }
   }
 
   global.KCarParser = {

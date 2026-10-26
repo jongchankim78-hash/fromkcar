@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const { URL } = require('url');
+const { scrapeKbListing } = require('./kb-scraper');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -785,7 +786,7 @@ function serveStatic(req, res, urlObj) {
     res.writeHead(403);
     return res.end('Forbidden');
   }
-  if (filePath === path.join(ROOT_DIR, 'server.js') || filePath.startsWith(DATA_DIR)) {
+  if (filePath === path.join(ROOT_DIR, 'server.js') || filePath === path.join(ROOT_DIR, 'kb-scraper.js') || filePath.startsWith(DATA_DIR)) {
     res.writeHead(403);
     return res.end('Forbidden');
   }
@@ -814,6 +815,25 @@ const server = http.createServer(async (req, res) => {
     }
     const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
     return sendJson(res, ok ? 200 : 401, { ok });
+  }
+
+  // 관리자 화면의 "정보 가져오기"/"원본에서 다시 불러오기": KB차차차 페이지를 서버가 직접 받아 파싱해서 돌려준다.
+  // (예전에 쓰던 r.jina.ai 리더는 KB차차차가 접근을 막아 더 이상 동작하지 않는다.)
+  if (urlObj.pathname === '/admin/fetch-listing' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    let body;
+    try {
+      body = await readRequestBody(req);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    try {
+      const data = await scrapeKbListing(String((body && body.url) || '').trim());
+      return sendJson(res, 200, { data });
+    } catch (e) {
+      console.error('[fetch-listing]', e.message);
+      return sendJson(res, e.code === 'KB_RATE_LIMITED' ? 429 : 502, { error: e.message, code: e.code || null });
+    }
   }
 
   if (urlObj.pathname === '/admin/upload' && req.method === 'POST') {
