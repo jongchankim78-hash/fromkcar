@@ -619,6 +619,7 @@
     }
     document.title = `${car.title || 'FROM K CAR'} — FROM K CAR`;
     currentModalCar = car;
+    if (window.KCarTrack) KCarTrack.view(car.id);
     currentModalImages = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
     currentModalIndex = 0;
 

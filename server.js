@@ -11,9 +11,11 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const { URL } = require('url');
 const { scrapeKbListing, parsePastedKbHtml } = require('./kb-scraper');
+const { createStats } = require('./stats');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
+const stats = createStats(DATA_DIR);
 const DATA_FILE = path.join(DATA_DIR, 'car_listings.json');
 // 관리자가 직접 업로드한 매물 사진 저장 위치. 영구 디스크(DATA_DIR) 안에 둬야
 // 배포할 때마다 새로 받아오는 리포지토리 코드(images/ 등)와 달리 데이터가 살아남는다.
@@ -786,7 +788,7 @@ function serveStatic(req, res, urlObj) {
     res.writeHead(403);
     return res.end('Forbidden');
   }
-  if (filePath === path.join(ROOT_DIR, 'server.js') || filePath === path.join(ROOT_DIR, 'kb-scraper.js') || filePath.startsWith(DATA_DIR)) {
+  if (filePath === path.join(ROOT_DIR, 'server.js') || filePath === path.join(ROOT_DIR, 'kb-scraper.js') || filePath === path.join(ROOT_DIR, 'stats.js') || filePath.startsWith(DATA_DIR)) {
     res.writeHead(403);
     return res.end('Forbidden');
   }
@@ -815,6 +817,31 @@ const server = http.createServer(async (req, res) => {
     }
     const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
     return sendJson(res, ok ? 200 : 401, { ok });
+  }
+
+  // 방문/매물 조회/문의 클릭 집계. 브라우저의 sendBeacon이 보내며, 응답 내용은 필요 없다.
+  if (urlObj.pathname === '/track' && req.method === 'POST') {
+    try {
+      const evt = await readRequestBody(req, 4096);
+      const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+      stats.record(evt, { ua: req.headers['user-agent'] || '', ip: fwd || req.socket.remoteAddress || '' });
+    } catch (e) {
+      // 잘못된 요청은 무시
+    }
+    res.writeHead(204);
+    return res.end();
+  }
+
+  // 관리자 "사이트 리포트": 매물 현황 + 방문/조회/문의 집계
+  if (urlObj.pathname === '/admin/report' && req.method === 'GET') {
+    if (!requireAuth(req, res)) return;
+    const rangeDays = Math.min(90, Math.max(1, parseInt(urlObj.searchParams.get('days') || '30', 10) || 30));
+    const listings = readListings().filter((c) => !c.deleted);
+    return sendJson(res, 200, {
+      generated_at: Date.now(),
+      listings: stats.listingReport(listings),
+      traffic: stats.trafficReport(rangeDays, listings)
+    });
   }
 
   // 관리자 화면의 "정보 가져오기"/"원본에서 다시 불러오기": KB차차차 페이지를 서버가 직접 받아 파싱해서 돌려준다.
@@ -904,6 +931,12 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404);
   res.end('Not Found');
 });
+
+// 배포(재시작) 직전에 아직 디스크에 쓰지 못한 집계를 저장한다.
+['SIGTERM', 'SIGINT'].forEach((sig) => process.on(sig, () => {
+  stats.flushNow();
+  process.exit(0);
+}));
 
 ensureDataFile();
 migrateListingNumbers();

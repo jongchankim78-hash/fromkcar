@@ -80,12 +80,20 @@
 
 <main class="max-w-6xl mx-auto px-5 sm:px-8 py-10">
 
-  <div class="mb-8">
-    <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--fk-navy)] mb-2">매물 관리자</h1>
-    <p class="text-sm text-[var(--fk-gray-600)]">
-      매물 상세페이지 URL을 입력하면 차량 정보를 자동으로 추출합니다. 추출된 내용은 등록 전에 직접 확인 · 수정할 수 있어요.
-    </p>
+  <div class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--fk-navy)]">관리자</h1>
   </div>
+
+  <div class="flex gap-1 border-b border-[var(--fk-gray-200)] mb-8" role="tablist">
+    <button type="button" class="admin-tab active" data-tab="listings" role="tab"><i class="fa-solid fa-car mr-1.5"></i>매물 관리</button>
+    <button type="button" class="admin-tab" data-tab="report" role="tab"><i class="fa-solid fa-chart-column mr-1.5"></i>사이트 리포트</button>
+  </div>
+
+  <div id="tab-listings">
+
+  <p class="text-sm text-[var(--fk-gray-600)] mb-8">
+    매물 상세페이지 URL을 입력하면 차량 정보를 자동으로 추출합니다. 추출된 내용은 등록 전에 직접 확인 · 수정할 수 있어요.
+  </p>
 
   <!-- ================= STEP 1: URL 자동수집 ================= -->
   <section class="bg-white rounded-3xl shadow-sm border border-[var(--fk-gray-200)] p-6 sm:p-8 mb-8">
@@ -348,6 +356,25 @@
     </div>
   </section>
 
+  </div>
+  <!-- /tab-listings -->
+
+  <!-- ================= 사이트 리포트 ================= -->
+  <div id="tab-report" class="hidden">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <p class="text-sm text-[var(--fk-gray-600)]" id="report-since">방문 기록을 불러오는 중…</p>
+      <div class="flex items-center gap-2">
+        <select id="report-range" class="fk-input !w-auto !py-2">
+          <option value="7">최근 7일</option>
+          <option value="30" selected>최근 30일</option>
+          <option value="90">최근 90일</option>
+        </select>
+        <button type="button" id="report-refresh" class="btn-secondary text-sm !py-2"><i class="fa-solid fa-rotate mr-1.5"></i>새로고침</button>
+      </div>
+    </div>
+    <div id="report-body"></div>
+  </div>
+
 </main>
 
 </div>
@@ -366,6 +393,35 @@
     transition: all .15s ease;
   }
   .fk-input:focus { border-color: var(--fk-blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+  .admin-tab {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fk-gray-600);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .admin-tab:hover { color: var(--fk-navy); }
+  .admin-tab.active { color: var(--fk-blue); border-bottom-color: var(--fk-blue); }
+
+  .rp-card { background: #fff; border: 1px solid var(--fk-gray-200); border-radius: 20px; padding: 20px 22px; }
+  .rp-kpi-label { font-size: 12px; font-weight: 600; color: var(--fk-gray-600); }
+  .rp-kpi-value { font-size: 28px; font-weight: 800; color: var(--fk-navy); line-height: 1.2; margin-top: 4px; }
+  .rp-kpi-sub { font-size: 11px; color: var(--fk-gray-400); margin-top: 2px; }
+  .rp-title { font-size: 15px; font-weight: 800; color: var(--fk-gray-800); margin-bottom: 14px; }
+  .rp-bar-row { display: flex; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 8px; }
+  .rp-bar-name { width: 96px; flex-shrink: 0; color: var(--fk-gray-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rp-bar-track { flex: 1; height: 10px; background: var(--fk-gray-100); border-radius: 999px; overflow: hidden; }
+  .rp-bar-fill { height: 100%; background: var(--fk-blue); border-radius: 999px; }
+  .rp-bar-num { width: 44px; text-align: right; font-weight: 700; color: var(--fk-gray-800); flex-shrink: 0; }
+  .rp-chart { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+  .rp-chart-col { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+  .rp-chart-bar { width: 100%; background: var(--fk-blue); border-radius: 4px 4px 0 0; min-height: 2px; opacity: .85; }
+  .rp-chart-col:hover .rp-chart-bar { opacity: 1; background: var(--fk-navy); }
+  .rp-chart-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--fk-gray-400); margin-top: 6px; }
+  .rp-empty { font-size: 13px; color: var(--fk-gray-400); }
 </style>
 
 <script src="js/common.js"></script>
@@ -373,5 +429,6 @@
 <script src="js/api.js"></script>
 <script src="js/parser.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/report.js"></script>
 </body>
 </html>

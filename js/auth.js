@@ -18,6 +18,8 @@
   const logoutBtn = document.getElementById('admin-logout-btn');
 
   function showContent() {
+    // 관리자가 사이트를 둘러본 방문이 리포트 숫자에 섞이지 않도록 이 브라우저는 집계에서 제외한다 (js/track.js).
+    try { localStorage.setItem('fkcar_admin', '1'); } catch (e) { /* 무시 */ }
     gate.classList.add('hidden');
     content.classList.remove('hidden');
   }
