@@ -55,6 +55,37 @@
     return map[status] || map['판매중'];
   }
 
+  // 차량 컬러 배지. 값이 한글/영어로 섞여 있어서(흰색, 회색, Carbon Black ...) 키워드로 색 점을 고르고,
+  // 한국어가 아닌 화면에서는 흔한 한글 색상명만 영어로 바꿔 보여준다. "인기색상"은 KB가 색을 알려주지 않을 때
+  // 쓰는 문구라 색상 정보가 아니므로 표시하지 않는다.
+  const COLOR_NO_INFO = new Set(['', '-', '정보없음', '인기색상']);
+  const COLOR_EN = {
+    '흰색': 'White', '검정색': 'Black', '검정': 'Black', '은색': 'Silver', '회색': 'Gray', '쥐색': 'Gray',
+    '은회색': 'Silver gray', '파랑색': 'Blue', '파랑': 'Blue', '청색': 'Blue', '하늘색': 'Sky blue',
+    '빨강색': 'Red', '빨강': 'Red', '노랑색': 'Yellow', '갈색': 'Brown', '주황색': 'Orange',
+    '초록색': 'Green', '녹색': 'Green', '보라색': 'Purple', '베이지': 'Beige', '금색': 'Gold', '진주색': 'Pearl'
+  };
+  const COLOR_SWATCHES = [
+    [/하늘|sky/i, '#38bdf8'], [/흰|white|진주|pearl/i, '#ffffff'], [/검|black|블랙/i, '#111827'],
+    [/은|silver/i, '#c0c4cc'], [/회|쥐|gr[ae]y|그레이/i, '#8b9099'], [/파랑|파란|청|blue|블루/i, '#2563eb'],
+    [/빨|red|레드|버건디/i, '#dc2626'], [/노랑|yellow|금|gold/i, '#eab308'], [/초록|녹|green/i, '#16a34a'],
+    [/갈|brown|베이지|beige/i, '#92683c'], [/주황|orange/i, '#f97316'], [/보라|purple/i, '#7c3aed']
+  ];
+  function oneColorBadge(rawValue, prefix) {
+    const raw = String(rawValue || '').trim();
+    if (COLOR_NO_INFO.has(raw)) return '';
+    const swatch = (COLOR_SWATCHES.find(([re]) => re.test(raw)) || [])[1];
+    const label = KCarI18n.getLang() === 'ko' ? raw : (COLOR_EN[raw] || raw);
+    const dot = swatch ? `<i class="inline-block w-2.5 h-2.5 rounded-full border border-black/20 flex-shrink-0" style="background:${swatch}"></i>` : '';
+    return `<span class="badge badge-gray"><span class="opacity-60 font-semibold">${prefix}</span>${dot}${KCarUtil.escapeHtml(label)}</span>`;
+  }
+
+  // 외장(차량색상) / 내장(시트색상) 둘 다 보여준다. 값이 없는 쪽은 생략한다.
+  function colorBadgeHtml(car) {
+    const t = KCarI18n.t;
+    return oneColorBadge(car.color, t('color_ext_short')) + oneColorBadge(car.seat_color, t('color_int_short'));
+  }
+
   // 완전무사고 배지는 관리자가 직접 체크한 값을 우선하고, 값이 아예 없는(과거) 매물은
   // 기존 방식대로 사고이력 텍스트에서 자동 판단한다.
   function effectiveNoAccident(car) {
@@ -83,6 +114,7 @@
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+          ${colorBadgeHtml(car)}
         </div>
         <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
@@ -147,6 +179,7 @@
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
           ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+          ${colorBadgeHtml(car)}
         </div>
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-1">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h3>
         <p class="text-base font-extrabold text-[var(--fk-navy)]">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
@@ -419,6 +452,7 @@
         ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
         <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
         ${car.car_number ? `<span class="badge badge-gray">${KCarUtil.escapeHtml(car.car_number)}</span>` : ''}
+        ${colorBadgeHtml(car)}
         ${statusBadge(car.status)}
       </div>
       <div class="flex items-start justify-between gap-3 mb-2">
