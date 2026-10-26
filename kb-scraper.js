@@ -319,7 +319,7 @@ function parseKbHtml(html, originalUrl) {
   };
 }
 
-function fetchKbHtml(url, redirectsLeft = 3) {
+function fetchKbPage(url, redirectsLeft = 3) {
   return new Promise((resolve, reject) => {
     let parsed;
     try {
@@ -342,7 +342,7 @@ function fetchKbHtml(url, redirectsLeft = 3) {
     }, (res) => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirectsLeft > 0) {
         res.resume();
-        return resolve(fetchKbHtml(new URL(res.headers.location, parsed).toString(), redirectsLeft - 1));
+        return resolve(fetchKbPage(new URL(res.headers.location, parsed).toString(), redirectsLeft - 1));
       }
       if (res.statusCode !== 200) {
         res.resume();
@@ -364,12 +364,26 @@ function fetchKbHtml(url, redirectsLeft = 3) {
         }
         chunks.push(c);
       });
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+      stream.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf-8'), finalUrl: parsed.toString() }));
       stream.on('error', reject);
     });
     req.on('timeout', () => req.destroy(new Error('KB차차차 응답 시간이 초과되었습니다.')));
     req.on('error', reject);
   });
+}
+
+async function fetchKbHtml(url) {
+  return (await fetchKbPage(url)).html;
+}
+
+// 매물 대신 엉뚱한 페이지가 왔을 때 원인을 알 수 있도록 응답의 제목/앞부분 글자를 요약한다.
+function describePage(html, finalUrl) {
+  const t = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = t ? decodeEntities(t[1]).replace(/\s+/g, ' ').trim().slice(0, 60) : '(제목 없음)';
+  const excerpt = toLines(html).join(' / ').slice(0, 200);
+  let host = '';
+  try { host = new URL(finalUrl).host; } catch (e) { /* ignore */ }
+  return { title, excerpt, host, length: html.length };
 }
 
 // KB차차차는 짧은 시간에 요청이 몰리면 상세페이지 대신 "로봇여부 확인(reCAPTCHA)" 화면을 내려준다.
@@ -379,7 +393,7 @@ function isRobotCheckPage(html) {
 }
 
 async function scrapeKbListing(url) {
-  const html = await fetchKbHtml(url);
+  const { html, finalUrl } = await fetchKbPage(url);
   if (isRobotCheckPage(html)) {
     const err = new Error('KB차차차가 짧은 시간에 요청이 많다고 판단해 "로봇 확인" 화면을 보여주고 있습니다. 5~10분 정도 뒤에 다시 시도해주세요.');
     err.code = 'KB_RATE_LIMITED';
@@ -387,9 +401,11 @@ async function scrapeKbListing(url) {
   }
   const data = parseKbHtml(html, url);
   if (!data.title && !data.price) {
-    throw new Error('차량 정보를 추출하지 못했습니다. 존재하지 않는 매물이거나 페이지 구조가 달라졌을 수 있습니다.');
+    const d = describePage(html, finalUrl);
+    console.error(`[kb-scraper] no listing data. title="${d.title}" len=${d.length} host=${d.host} excerpt="${d.excerpt}"`);
+    throw new Error(`차량 정보를 추출하지 못했습니다. KB차차차가 매물 대신 "${d.title}" 페이지(${d.length.toLocaleString('en-US')}자, ${d.host})를 돌려줬습니다.`);
   }
   return data;
 }
 
-module.exports = { scrapeKbListing, fetchKbHtml, parseKbHtml, isRobotCheckPage };
+module.exports = { scrapeKbListing, fetchKbHtml, fetchKbPage, parseKbHtml, isRobotCheckPage, describePage };
