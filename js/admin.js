@@ -224,8 +224,9 @@
     const thumbs = document.getElementById('preview-thumbs');
     thumbs.innerHTML = currentExtractedImages.map((img, i) => `
       <div class="relative flex-shrink-0" data-idx="${i}">
-        <img src="${img}" class="w-14 h-14 rounded-lg object-cover cursor-pointer border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
+        <img src="${img}" title="클릭하면 대표 사진으로 지정" class="w-16 h-16 rounded-lg object-cover cursor-pointer border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
              onerror="this.style.display='none'">
+        ${img === mainImg ? '<span class="absolute left-0.5 bottom-0.5 rounded bg-[var(--fk-blue)] text-white text-[10px] font-bold px-1 leading-4 pointer-events-none">대표</span>' : ''}
         <button type="button" data-action="remove-image" class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center hover:bg-red-600">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -421,8 +422,11 @@
     tbody.innerHTML = sorted.map((car, i) => `
       <tr class="border-b border-[var(--fk-gray-100)]">
         <td class="py-3 pr-3">
-          <img src="${car.main_image || (car.images && car.images[0]) || 'https://via.placeholder.com/80x60?text=No+Img'}"
-               class="w-16 h-12 object-cover rounded-lg" onerror="this.src='https://via.placeholder.com/80x60?text=No+Img'">
+          <button type="button" data-action="pick-thumb" data-id="${car.id}" title="대표(썸네일) 사진 변경" class="relative block rounded-lg overflow-hidden group">
+            <img src="${car.main_image || (car.images && car.images[0]) || 'https://via.placeholder.com/80x60?text=No+Img'}"
+                 class="w-16 h-12 object-cover" onerror="this.src='https://via.placeholder.com/80x60?text=No+Img'">
+            <span class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] font-bold leading-4 text-center group-hover:bg-[var(--fk-blue)]"><i class="fa-solid fa-image mr-0.5"></i>변경</span>
+          </button>
         </td>
         <td class="py-3 pr-3 max-w-[220px]">
           <p class="font-semibold text-[var(--fk-gray-800)] line-clamp-2">${KCarUtil.escapeHtml(car.title || '-')}</p>
@@ -444,6 +448,78 @@
       </tr>
     `).join('');
   }
+
+  /* ---------------- 대표(썸네일) 사진 선택 ---------------- */
+  // 첫 번째 사진이 실내 사진이라 카드 썸네일이 어색할 때, 목록에서 바로 대표 사진을 골라 저장한다.
+  const thumbPicker = document.getElementById('thumb-picker');
+  const thumbPickerGrid = document.getElementById('thumb-picker-grid');
+  let thumbPickerCarId = null;
+
+  function closeThumbPicker() {
+    thumbPicker.classList.add('hidden');
+    thumbPicker.classList.remove('flex');
+    thumbPickerCarId = null;
+  }
+
+  function openThumbPicker(car) {
+    const images = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
+    if (!images.length) {
+      KCarUtil.toast('등록된 사진이 없습니다.', 'error');
+      return;
+    }
+    thumbPickerCarId = car.id;
+    document.getElementById('thumb-picker-title').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
+    const current = car.main_image || images[0];
+    thumbPickerGrid.innerHTML = images.map((url, i) => `
+      <button type="button" data-idx="${i}" class="relative aspect-[4/3] rounded-xl overflow-hidden bg-[var(--fk-gray-100)] border-[3px] ${url === current ? 'border-[var(--fk-blue)]' : 'border-transparent hover:border-[var(--fk-gray-400)]'}">
+        <img src="${KCarUtil.escapeHtml(url)}" loading="lazy" class="w-full h-full object-cover" onerror="this.style.display='none'">
+        <span class="absolute left-1 top-1 rounded bg-black/60 text-white text-[10px] font-bold px-1.5 leading-4">${i + 1}</span>
+        ${url === current ? '<span class="absolute right-1 bottom-1 rounded bg-[var(--fk-blue)] text-white text-[10px] font-bold px-1.5 leading-4">현재 대표</span>' : ''}
+      </button>
+    `).join('');
+    thumbPicker.classList.remove('hidden');
+    thumbPicker.classList.add('flex');
+  }
+
+  thumbPickerGrid.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-idx]');
+    const car = adminCars.find(c => c.id === thumbPickerCarId);
+    if (!btn || !car) return;
+    const images = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);
+    const url = images[Number(btn.dataset.idx)];
+    if (!url) return;
+    if (url === (car.main_image || images[0])) {
+      closeThumbPicker();
+      return;
+    }
+    thumbPickerGrid.style.opacity = '.5';
+    thumbPickerGrid.style.pointerEvents = 'none';
+    try {
+      await KCarAPI.updateCar(car.id, { main_image: url });
+      car.main_image = url;
+      // 같은 매물을 수정 폼에서 열어 두었다면 폼의 대표 사진도 맞춰, 저장할 때 예전 값으로 되돌아가지 않게 한다.
+      if (editingId === car.id) {
+        document.getElementById('f-main-image').value = url;
+        renderPreviewImages();
+      }
+      renderAdminTable();
+      closeThumbPicker();
+      KCarUtil.toast('대표 사진을 변경했습니다.', 'success');
+    } catch (err) {
+      KCarUtil.toast('대표 사진 변경에 실패했습니다.', 'error');
+    } finally {
+      thumbPickerGrid.style.opacity = '';
+      thumbPickerGrid.style.pointerEvents = '';
+    }
+  });
+
+  document.getElementById('thumb-picker-close').addEventListener('click', closeThumbPicker);
+  thumbPicker.addEventListener('click', (e) => {
+    if (e.target === thumbPicker) closeThumbPicker();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !thumbPicker.classList.contains('hidden')) closeThumbPicker();
+  });
 
   document.getElementById('admin-table-body').addEventListener('change', async (e) => {
     const select = e.target.closest('[data-action="quick-status"]');
@@ -472,6 +548,12 @@
     const refetchBtn = e.target.closest('[data-action="refetch"]');
     const upBtn = e.target.closest('[data-action="move-up"]');
     const downBtn = e.target.closest('[data-action="move-down"]');
+    const pickBtn = e.target.closest('[data-action="pick-thumb"]');
+    if (pickBtn) {
+      const car = adminCars.find(c => c.id === pickBtn.dataset.id);
+      if (car) openThumbPicker(car);
+      return;
+    }
     if (upBtn || downBtn) {
       const moveBtn = upBtn || downBtn;
       const sorted = [...adminCars].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
