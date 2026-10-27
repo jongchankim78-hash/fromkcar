@@ -42,7 +42,7 @@
   }
 
   function currentCarId() {
-    const m = location.pathname.match(/^\/car\/([^/]+)/);
+    const m = location.pathname.match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
 

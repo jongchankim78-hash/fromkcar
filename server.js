@@ -404,12 +404,99 @@ function escapeAttr(value) {
 }
 
 function replaceMeta(html, pattern, replacement) {
-  return pattern.test(html) ? html.replace(pattern, replacement) : html;
+  return pattern.test(html) ? html.replace(pattern, () => replacement) : html;
 }
 
-// /car/:id — 매물별 실제 og:title/description/image가 박힌 상세페이지를 서버에서 렌더링한다.
+// 언어별 주소: 한국어는 기존 그대로("/", "/car/:id"), 나머지는 "/ru", "/mn", "/en" 접두사를 붙인다.
+// 번역은 브라우저에서만 일어나서 검색엔진에는 한국어 페이지 하나로만 보이므로,
+// 언어마다 따로 주소와 제목/설명(<head>)을 서버가 만들어 내려준다.
+const SITE_LANGS = ['ko', 'ru', 'mn', 'en'];
+const LANG_HEAD = {
+  ko: {
+    locale: 'ko_KR',
+    homeTitle: 'FROM K CAR — Korean Used Cars Export (BMW · Benz · Volvo) | 한국 중고차 수출',
+    homeDescription: '한국 중고차 수출 전문 FROM K CAR. BMW, Mercedes-Benz, Volvo 등 검증된 무사고·무도색 매물을 러시아·몽골·우즈베키스탄으로 수출합니다. Korean used cars for export to Russia, Mongolia & Uzbekistan.',
+    carSuffix: 'FROM K CAR',
+    carTagline: '한국 중고차 수출 FROM K CAR'
+  },
+  ru: {
+    locale: 'ru_RU',
+    homeTitle: 'FROM K CAR — Автомобили из Кореи на экспорт | BMW, Mercedes-Benz, Volvo',
+    homeDescription: 'Экспорт подержанных автомобилей из Южной Кореи в Россию, Монголию и Узбекистан. BMW, Mercedes-Benz, Volvo — проверенные автомобили без ДТП и окраса, помощь с оформлением и доставкой.',
+    carSuffix: 'Авто из Кореи | FROM K CAR',
+    carTagline: 'Экспорт автомобилей из Кореи FROM K CAR'
+  },
+  mn: {
+    locale: 'mn_MN',
+    homeTitle: 'FROM K CAR — Солонгосоос машин экспортлох | BMW, Mercedes-Benz, Volvo',
+    homeDescription: 'Өмнөд Солонгосоос Орос, Монгол, Узбекистан руу хэрэглэгдсэн машин экспортлоно. BMW, Mercedes-Benz, Volvo — ослын түүхгүй, будаггүй, шалгагдсан машинууд.',
+    carSuffix: 'Солонгос машин | FROM K CAR',
+    carTagline: 'Солонгосоос машин экспортлох FROM K CAR'
+  },
+  en: {
+    locale: 'en_US',
+    homeTitle: 'FROM K CAR — Korean Used Cars Export | BMW, Mercedes-Benz, Volvo',
+    homeDescription: 'Export of used cars from South Korea to Russia, Mongolia and Uzbekistan. Inspected BMW, Mercedes-Benz and Volvo with no accident and no paint history.',
+    carSuffix: 'Korean used car export | FROM K CAR',
+    carTagline: 'Korean used car export FROM K CAR'
+  }
+};
+
+function langPath(lang, pagePath) {
+  if (lang === 'ko') return pagePath;
+  return pagePath === '/' ? `/${lang}` : `/${lang}${pagePath}`;
+}
+
+// index.html의 <head>를 해당 언어/페이지에 맞게 바꾼다 (제목, 설명, 대표 이미지, canonical, hreflang, og:locale).
+function renderLocalizedPage(indexHtml, lang, pagePath, { title, description, image }) {
+  const canonicalUrl = SITE_ORIGIN + langPath(lang, pagePath);
+  const alternates = SITE_LANGS
+    .map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE_ORIGIN}${langPath(l, pagePath)}">`)
+    .concat(`<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${langPath('ko', pagePath)}">`)
+    .join('\n');
+  const localeAlternates = SITE_LANGS.filter((l) => l !== lang)
+    .map((l) => `<meta property="og:locale:alternate" content="${LANG_HEAD[l].locale}">`).join('\n');
+
+  let html = indexHtml;
+  html = html.replace(/<link rel="alternate" hreflang=".*?">\s*/g, '');
+  html = html.replace(/<meta property="og:locale:alternate" content=".*?">\s*/g, '');
+  html = replaceMeta(html, /<html lang=".*?">/, `<html lang="${lang}">`);
+  html = replaceMeta(html, /<title>.*?<\/title>/s, `<title>${escapeAttr(title)}</title>`);
+  html = replaceMeta(html, /<meta name="description" content=".*?">/s, `<meta name="description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<link rel="canonical" href=".*?">/s, `<link rel="canonical" href="${canonicalUrl}">\n${alternates}`);
+  html = replaceMeta(html, /<meta property="og:title" content=".*?">/s, `<meta property="og:title" content="${escapeAttr(title)}">`);
+  html = replaceMeta(html, /<meta property="og:description" content=".*?">/s, `<meta property="og:description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<meta property="og:image" content=".*?">/s, `<meta property="og:image" content="${escapeAttr(image)}">`);
+  html = replaceMeta(html, /<meta property="og:url" content=".*?">/s, `<meta property="og:url" content="${canonicalUrl}">`);
+  html = replaceMeta(html, /<meta property="og:locale" content=".*?">/s, `<meta property="og:locale" content="${LANG_HEAD[lang].locale}">\n${localeAlternates}`);
+  html = replaceMeta(html, /<meta name="twitter:title" content=".*?">/s, `<meta name="twitter:title" content="${escapeAttr(title)}">`);
+  html = replaceMeta(html, /<meta name="twitter:description" content=".*?">/s, `<meta name="twitter:description" content="${escapeAttr(description)}">`);
+  html = replaceMeta(html, /<meta name="twitter:image" content=".*?">/s, `<meta name="twitter:image" content="${escapeAttr(image)}">`);
+  return html;
+}
+
+// /ru, /mn, /en — 언어별 홈페이지
+function handleLangHomePage(req, res, lang) {
+  let indexHtml;
+  try {
+    indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
+  } catch (e) {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Server error');
+  }
+  const head = LANG_HEAD[lang];
+  const html = renderLocalizedPage(indexHtml, lang, '/', {
+    title: head.homeTitle,
+    description: head.homeDescription,
+    image: `${SITE_ORIGIN}/images/og-image.png`
+  });
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
+}
+
+// /car/:id (및 /ru|/mn|/en/car/:id) — 매물별 실제 og:title/description/image가 박힌 상세페이지를 서버에서 렌더링한다.
 // (SPA 모달만으로는 크롤러/링크 미리보기가 특정 매물을 인식할 수 없어서 추가한 라우트)
-function handleCarDetailPage(req, res, carId) {
+function handleCarDetailPage(req, res, carId, lang = 'ko') {
   let indexHtml;
   try {
     indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
@@ -424,23 +511,17 @@ function handleCarDetailPage(req, res, carId) {
     return res.end(indexHtml);
   }
 
-  const priceText = car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '');
-  const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ' — FROM K CAR';
-  const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · 한국 중고차 수출 FROM K CAR`.replace(/\s+/g, ' ').trim();
+  // 한국어가 아닌 페이지는 "8,590만원" 대신 원화 금액(₩85,900,000)으로 보여준다.
+  const krw = car.price ? `₩${Number(car.price).toLocaleString('en-US')}` : '';
+  const priceText = lang === 'ko'
+    ? (car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : ''))
+    : (krw || car.price_display || '');
+  const head = LANG_HEAD[lang];
+  const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ` — ${head.carSuffix}`;
+  const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · ${head.carTagline}`.replace(/\s+/g, ' ').trim();
   const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || 'https://www.fromkcar.kr/images/og-image.png';
-  const canonicalUrl = `https://www.fromkcar.kr/car/${car.id}`;
 
-  let html = indexHtml;
-  html = replaceMeta(html, /<title>.*?<\/title>/s, `<title>${escapeAttr(title)}</title>`);
-  html = replaceMeta(html, /<meta name="description" content=".*?">/s, `<meta name="description" content="${escapeAttr(description)}">`);
-  html = replaceMeta(html, /<link rel="canonical" href=".*?">/s, `<link rel="canonical" href="${canonicalUrl}">`);
-  html = replaceMeta(html, /<meta property="og:title" content=".*?">/s, `<meta property="og:title" content="${escapeAttr(title)}">`);
-  html = replaceMeta(html, /<meta property="og:description" content=".*?">/s, `<meta property="og:description" content="${escapeAttr(description)}">`);
-  html = replaceMeta(html, /<meta property="og:image" content=".*?">/s, `<meta property="og:image" content="${escapeAttr(image)}">`);
-  html = replaceMeta(html, /<meta property="og:url" content=".*?">/s, `<meta property="og:url" content="${canonicalUrl}">`);
-  html = replaceMeta(html, /<meta name="twitter:title" content=".*?">/s, `<meta name="twitter:title" content="${escapeAttr(title)}">`);
-  html = replaceMeta(html, /<meta name="twitter:description" content=".*?">/s, `<meta name="twitter:description" content="${escapeAttr(description)}">`);
-  html = replaceMeta(html, /<meta name="twitter:image" content=".*?">/s, `<meta name="twitter:image" content="${escapeAttr(image)}">`);
+  const html = renderLocalizedPage(indexHtml, lang, `/car/${car.id}`, { title, description, image });
 
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
@@ -713,19 +794,29 @@ async function handleImagesZip(req, res, carId) {
 
 function handleSitemap(req, res) {
   const cars = readListings().filter((c) => !c.deleted);
-  const urls = [
-    { loc: 'https://www.fromkcar.kr/', changefreq: 'daily', priority: '1.0' },
+  // 페이지마다 4개 언어 주소를 모두 넣고, 서로를 hreflang으로 연결해 검색엔진이 언어별 페이지를 알아보게 한다.
+  const pages = [
+    { pagePath: '/', changefreq: 'daily', priority: '1.0' },
     ...cars.map((c) => ({
-      loc: `https://www.fromkcar.kr/car/${c.id}`,
+      pagePath: `/car/${c.id}`,
       changefreq: 'weekly',
       priority: '0.8',
       lastmod: new Date(c.updated_at || c.created_at || Date.now()).toISOString().slice(0, 10)
     }))
   ];
+  const urls = [];
+  pages.forEach((p) => {
+    const links = SITE_LANGS
+      .map((l) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${SITE_ORIGIN}${langPath(l, p.pagePath)}"/>`)
+      .concat(`    <xhtml:link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${langPath('ko', p.pagePath)}"/>`)
+      .join('\n');
+    SITE_LANGS.forEach((l) => urls.push({ ...p, loc: `${SITE_ORIGIN}${langPath(l, p.pagePath)}`, links }));
+  });
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls.map((u) => `  <url>
     <loc>${u.loc}</loc>
+${u.links}
     ${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>\n    ` : ''}<changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`).join('\n')}
@@ -904,9 +995,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  const carDetailMatch = urlObj.pathname.match(/^\/car\/([^/]+)\/?$/);
+  const langHomeMatch = urlObj.pathname.match(/^\/(ru|mn|en)\/?$/);
+  if (langHomeMatch && (req.method === 'GET' || req.method === 'HEAD')) {
+    return handleLangHomePage(req, res, langHomeMatch[1]);
+  }
+
+  const carDetailMatch = urlObj.pathname.match(/^(?:\/(ru|mn|en))?\/car\/([^/]+)\/?$/);
   if (carDetailMatch && (req.method === 'GET' || req.method === 'HEAD')) {
-    return handleCarDetailPage(req, res, decodeURIComponent(carDetailMatch[1]));
+    return handleCarDetailPage(req, res, decodeURIComponent(carDetailMatch[2]), carDetailMatch[1] || 'ko');
   }
 
   if (urlObj.pathname === '/sitemap.xml' && (req.method === 'GET' || req.method === 'HEAD')) {

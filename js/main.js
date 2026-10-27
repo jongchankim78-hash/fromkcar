@@ -9,7 +9,7 @@
   let currentModalCar = null;
 
   function getCarIdFromUrl() {
-    const m = window.location.pathname.match(/^\/car\/([^/]+)\/?$/);
+    const m = window.location.pathname.match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)\/?$/);
     return m ? decodeURIComponent(m[1]) : null;
   }
 
@@ -127,7 +127,7 @@
           <span class="spec-chip"><i class="fa-solid fa-location-dot mr-1"></i>${KCarUtil.escapeHtml(car.region || '-')}</span>
         </div>
         <div class="mt-auto flex gap-2">
-          <a href="/car/${car.id}" class="btn-secondary flex-1 !py-2 text-sm text-center" data-action="open-detail" data-id="${car.id}">
+          <a href="${KCarI18n.path('/car/' + car.id)}" class="btn-secondary flex-1 !py-2 text-sm text-center" data-action="open-detail" data-id="${car.id}">
             <i class="fa-solid fa-circle-info mr-1.5"></i>${t('detail_btn')}
           </a>
           ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-secondary !py-2 !px-3 text-sm" title="${t('original_listing_title')}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
@@ -153,7 +153,7 @@
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
         <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
-        <a href="/car/${car.id}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
+        <a href="${KCarI18n.path('/car/' + car.id)}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
           <i class="fa-solid fa-circle-info mr-1"></i>${t('detail_btn')}
         </a>
       </div>
@@ -494,7 +494,7 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         ${list.map((c) => {
           const img = c.main_image || (Array.isArray(c.images) && c.images[0]) || 'https://via.placeholder.com/480x360?text=No+Image';
-          return `<a href="/car/${encodeURIComponent(c.id)}" data-similar-id="${esc(c.id)}" class="block rounded-xl border border-[var(--fk-gray-200)] overflow-hidden bg-white hover:shadow-md transition-shadow">
+          return `<a href="${KCarI18n.path('/car/' + encodeURIComponent(c.id))}" data-similar-id="${esc(c.id)}" class="block rounded-xl border border-[var(--fk-gray-200)] overflow-hidden bg-white hover:shadow-md transition-shadow">
             <img src="${esc(img)}" alt="${esc(c.title)}" loading="lazy" class="w-full aspect-[4/3] object-cover" onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
             <div class="p-2.5">
               <p class="text-xs font-bold text-[var(--fk-gray-800)] truncate">${esc(c.title)}</p>
@@ -691,7 +691,7 @@
   function openDetailModal(car, { pushState = true } = {}) {
     const t = KCarI18n.t;
     if (pushState) {
-      history.pushState({ carId: car.id }, '', `/car/${car.id}`);
+      history.pushState({ carId: car.id }, '', KCarI18n.path(`/car/${car.id}`));
     }
     document.title = `${car.title || 'FROM K CAR'} — FROM K CAR`;
     currentModalCar = car;
@@ -753,7 +753,7 @@
     document.body.style.overflow = '';
     document.title = HOME_TITLE;
     if (pushState && getCarIdFromUrl()) {
-      history.pushState({}, '', '/');
+      history.pushState({}, '', KCarI18n.path('/'));
     }
   }
 
@@ -815,7 +815,7 @@
       e.stopPropagation();
       const car = currentModalCar;
       if (!car) return;
-      const shareUrl = `${window.location.origin}/car/${car.id}`;
+      const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
       const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${car.price_display || ''}`.trim();
       if (navigator.share) {
         navigator.share({ title: shareText, url: shareUrl }).catch(() => {});
@@ -838,7 +838,7 @@
       if (!window.Kakao || !Kakao.Share) {
         KCarUtil.toast('카카오 공유를 불러오지 못했습니다.', 'error');
       } else {
-        const shareUrl = `${window.location.origin}/car/${car.id}`;
+        const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
         const images = Array.isArray(car.images) && car.images.length ? car.images : [];
         const imageUrl = absUrl(car.main_image || images[0]) || `${window.location.origin}/images/og-image.png`;
         Kakao.Share.sendDefault({
@@ -863,7 +863,7 @@
       e.preventDefault();
       const car = currentModalCar;
       if (!car) return;
-      const shareUrl = `${window.location.origin}/car/${car.id}`;
+      const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
       const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${car.price_display || ''}`.trim();
       if (whatsappBtn) {
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank', 'noopener');

@@ -299,9 +299,58 @@
 
   const SUPPORTED_LANGS = ['ko', 'ru', 'mn', 'en'];
 
+  // 언어별 주소: 한국어는 "/", "/car/:id" 그대로, 나머지는 "/ru", "/mn", "/en" 접두사 (server.js의 라우트와 짝).
+  const PREFIX_RE = /^\/(ru|mn|en)(?=\/|$)/;
+  const BOT_RE = /bot|crawl|spider|slurp|yandex|bing|google|facebookexternalhit|telegram|preview/i;
+
+  function langFromPath() {
+    const m = window.location.pathname.match(PREFIX_RE);
+    return m ? m[1] : null;
+  }
+
+  function storedLang() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return SUPPORTED_LANGS.includes(stored) ? stored : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 처음 방문한 사람에게는 브라우저 언어에 맞춰 보여준다. 러시아어권(우즈벡·카자흐 등)은 러시아어,
+  // 몽골어는 몽골어, 한국어는 한국어, 그 밖에는 영어. 검색엔진 봇은 항상 한국어(기본 페이지)로 둔다.
+  function detectBrowserLang() {
+    if (BOT_RE.test(navigator.userAgent || '')) return 'ko';
+    const RU = ['ru', 'uz', 'kk', 'ky', 'tg', 'be', 'uk', 'hy', 'az', 'tk'];
+    const list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+    for (const l of list) {
+      const code = String(l).toLowerCase().slice(0, 2);
+      if (code === 'ko') return 'ko';
+      if (code === 'mn') return 'mn';
+      if (RU.includes(code)) return 'ru';
+    }
+    return 'en';
+  }
+
   function getLang() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return SUPPORTED_LANGS.includes(stored) ? stored : 'ko';
+    return langFromPath() || storedLang() || detectBrowserLang();
+  }
+
+  // 현재 언어에 맞는 주소로 바꿔 준다: path('/car/abc') → 한국어 "/car/abc", 러시아어 "/ru/car/abc", 홈은 "/ru".
+  function localizedPath(pagePath, lang) {
+    const base = pagePath.replace(PREFIX_RE, '') || '/';
+    const l = lang || getLang();
+    if (l === 'ko') return base;
+    return base === '/' ? '/' + l : '/' + l + base;
+  }
+
+  // 홈("/")과 매물 상세("/car/:id")에서만 주소창을 현재 언어의 주소로 맞춘다 (관리자 등 다른 페이지는 건드리지 않음).
+  function syncUrl() {
+    const { pathname, search, hash } = window.location;
+    const base = pathname.replace(PREFIX_RE, '') || '/';
+    if (!/^\/(car\/[^/]+\/?)?$/.test(base)) return;
+    const target = localizedPath(base) + search + hash;
+    if (target !== pathname + search + hash) history.replaceState(history.state, '', target);
   }
 
   function t(key) {
@@ -322,17 +371,25 @@
   }
 
   function setLang(lang) {
-    localStorage.setItem(STORAGE_KEY, SUPPORTED_LANGS.includes(lang) ? lang : 'ko');
+    const next = SUPPORTED_LANGS.includes(lang) ? lang : 'ko';
+    try { localStorage.setItem(STORAGE_KEY, next); } catch (e) { /* 저장 못 해도 현재 화면은 바꾼다 */ }
+    // 주소에 언어 접두사가 있으면 그것이 우선이므로, 새 언어의 주소로 먼저 바꾼 뒤 화면을 갱신한다.
+    const { pathname, search, hash } = window.location;
+    const base = pathname.replace(PREFIX_RE, '') || '/';
+    if (/^\/(car\/[^/]+\/?)?$/.test(base)) {
+      history.replaceState(history.state, '', localizedPath(base, next) + search + hash);
+    }
     document.documentElement.lang = getLang();
     applyStaticI18n();
     document.dispatchEvent(new CustomEvent('langchange', { detail: { lang: getLang() } }));
   }
 
   document.documentElement.lang = getLang();
+  syncUrl();
   applyStaticI18n();
   document.querySelectorAll('.lang-flag-btn').forEach((btn) => {
     btn.addEventListener('click', () => setLang(btn.dataset.lang));
   });
 
-  global.KCarI18n = { t, getLang, setLang, applyStaticI18n };
+  global.KCarI18n = { t, getLang, setLang, applyStaticI18n, path: localizedPath };
 })(window);
