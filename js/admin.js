@@ -217,16 +217,31 @@
     document.getElementById('f-images').value = JSON.stringify(currentExtractedImages);
   }
 
+  // from 위치의 사진을 to 위치로 옮긴다 (사이 사진들은 한 칸씩 밀림). 대표 사진 지정은 그대로 유지된다.
+  function moveImage(from, to) {
+    if (from === to || from < 0 || to < 0 || from >= currentExtractedImages.length || to >= currentExtractedImages.length) return;
+    const [item] = currentExtractedImages.splice(from, 1);
+    currentExtractedImages.splice(to, 0, item);
+    syncImagesField();
+    renderPreviewImages();
+  }
+
   function renderPreviewImages() {
     const mainImg = document.getElementById('f-main-image').value;
     document.getElementById('preview-main-img').src = mainImg || 'https://via.placeholder.com/480x360?text=No+Image';
     document.getElementById('preview-image-count').textContent = `이미지 ${currentExtractedImages.length}장 확보`;
     const thumbs = document.getElementById('preview-thumbs');
+    const arrowCls = 'w-[14px] h-4 flex items-center justify-center text-white text-[9px] hover:bg-[var(--fk-blue)] disabled:opacity-30 disabled:hover:bg-transparent';
     thumbs.innerHTML = currentExtractedImages.map((img, i) => `
-      <div class="relative flex-shrink-0" data-idx="${i}">
-        <img src="${img}" title="클릭하면 대표 사진으로 지정" class="w-16 h-16 rounded-lg object-cover cursor-pointer border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
+      <div class="relative flex-shrink-0 cursor-grab" data-idx="${i}" draggable="true">
+        <img src="${img}" draggable="false" title="클릭하면 대표 사진으로 지정 · 끌어서 순서 변경" class="w-16 h-16 rounded-lg object-cover cursor-pointer border-2 ${img === mainImg ? 'border-[var(--fk-blue)]' : 'border-transparent'}"
              onerror="this.style.display='none'">
-        ${img === mainImg ? '<span class="absolute left-0.5 bottom-0.5 rounded bg-[var(--fk-blue)] text-white text-[10px] font-bold px-1 leading-4 pointer-events-none">대표</span>' : ''}
+        <span class="absolute left-1 top-1 rounded bg-black/60 text-white text-[10px] font-bold px-1 leading-4 pointer-events-none">${i + 1}</span>
+        ${img === mainImg ? '<span class="absolute left-1 bottom-1 rounded bg-[var(--fk-blue)] text-white text-[10px] font-bold px-1 leading-4 pointer-events-none">대표</span>' : ''}
+        <span class="absolute right-1 bottom-1 flex rounded bg-black/60 overflow-hidden">
+          <button type="button" data-action="move-left" title="앞으로" class="${arrowCls}" ${i === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
+          <button type="button" data-action="move-right" title="뒤로" class="${arrowCls}" ${i === currentExtractedImages.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
+        </span>
         <button type="button" data-action="remove-image" class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center hover:bg-red-600">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -236,6 +251,36 @@
       img.addEventListener('click', () => {
         document.getElementById('f-main-image').value = currentExtractedImages[i];
         renderPreviewImages();
+      });
+    });
+    thumbs.querySelectorAll('[data-action="move-left"], [data-action="move-right"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.closest('[data-idx]').dataset.idx);
+        moveImage(idx, btn.dataset.action === 'move-left' ? idx - 1 : idx + 1);
+      });
+    });
+    // 끌어서 순서 변경 (PC). 휴대폰에서는 위의 ‹ › 버튼을 쓴다.
+    let dragFrom = null;
+    thumbs.querySelectorAll('[data-idx]').forEach((el) => {
+      el.addEventListener('dragstart', (e) => {
+        dragFrom = Number(el.dataset.idx);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(dragFrom));
+        el.style.opacity = '.4';
+      });
+      el.addEventListener('dragend', () => { el.style.opacity = ''; });
+      el.addEventListener('dragover', (e) => {
+        if (dragFrom === null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragFrom === null) return;
+        const to = Number(el.dataset.idx);
+        const from = dragFrom;
+        dragFrom = null;
+        moveImage(from, to);
       });
     });
     thumbs.querySelectorAll('[data-action="remove-image"]').forEach((btn) => {
