@@ -80,7 +80,8 @@
       listing_no: car.listing_no,
       display_order: car.display_order,
       badge_no_accident: car.badge_no_accident,
-      badge_no_paint: car.badge_no_paint
+      badge_no_paint: car.badge_no_paint,
+      is_new_car: car.is_new_car
     };
     editingId = car.id;
     fillFormFromData(merged);
@@ -201,6 +202,7 @@
       ? !!data.badge_no_accident
       : !!(data.accident_info && data.accident_info.startsWith('무사고'));
     document.getElementById('f-badge-no-paint').checked = !!data.badge_no_paint;
+    document.getElementById('f-is-new-car').checked = !!data.is_new_car;
 
     document.getElementById('f-listing-no').value = data.listing_no || '';
     document.getElementById('f-listing-no-wrap').classList.toggle('hidden', !data.id);
@@ -391,6 +393,7 @@
       status: document.getElementById('f-status').value,
       badge_no_accident: document.getElementById('f-badge-no-accident').checked,
       badge_no_paint: document.getElementById('f-badge-no-paint').checked,
+      is_new_car: document.getElementById('f-is-new-car').checked,
       listing_no: document.getElementById('f-listing-no').value ? Number(document.getElementById('f-listing-no').value) : undefined,
       main_image: document.getElementById('f-main-image').value || (images[0] || ''),
       images: images,

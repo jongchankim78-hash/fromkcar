@@ -46,6 +46,11 @@
     if (fuels.includes(prevFuel)) fuelFilter.value = prevFuel;
   }
 
+  // 관리자가 "완전신차"로 체크한 매물에 붙는 반짝이는 금색 뱃지 (애니메이션은 css/style.css의 .badge-newcar).
+  function newCarBadgeHtml(car, t) {
+    return car.is_new_car ? `<span class="badge badge-newcar"><i class="fa-solid fa-star"></i>${t('badge_new_car')}</span>` : '';
+  }
+
   function statusBadge(status) {
     const t = KCarI18n.t;
     const map = {
@@ -109,7 +114,8 @@
       </div>
       <div class="p-4 flex flex-col flex-1">
         <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
-          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${newCarBadgeHtml(car, t)}
+        ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
           ${car.badge_no_paint ? `<span class="badge badge-solid-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
@@ -174,7 +180,8 @@
       </div>
       <div class="car-card-list-body cursor-pointer" data-action="open-detail" data-id="${car.id}">
         <div class="flex flex-wrap items-center gap-1.5">
-          ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
+          ${newCarBadgeHtml(car, t)}
+        ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
           ${car.badge_no_paint ? `<span class="badge badge-solid-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
           ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
           <span class="badge badge-blue">${KCarUtil.escapeHtml(effectiveBrand(car) || t('brand_fallback'))}</span>
@@ -354,6 +361,7 @@
           brand: effectiveBrand(car),
           image: absUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : undefined)),
           vehicleModelDate: car.year_info,
+          itemCondition: car.is_new_car ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
           mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'KMT' } : undefined,
           offers: {
             '@type': 'Offer',
@@ -511,6 +519,7 @@
     const showTranslateBtn = KCarI18n.getLang() !== 'ko' && !car._translated;
     return `
       <div class="flex flex-wrap items-center gap-2 mt-5 mb-2">
+        ${newCarBadgeHtml(car, t)}
         ${effectiveNoAccident(car) ? `<span class="badge badge-nosplit"><i class="fa-solid fa-shield-heart"></i>${t('badge_no_accident')}</span>` : ''}
         ${car.badge_no_paint ? `<span class="badge badge-solid-blue"><i class="fa-solid fa-paint-roller"></i>NO PAINT</span>` : ''}
         ${car.listing_no ? `<span class="badge badge-gray">No.${car.listing_no}</span>` : ''}
