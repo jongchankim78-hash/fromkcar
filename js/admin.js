@@ -462,9 +462,23 @@
     </select>`;
   }
 
+  // 블로그 글을 올렸는지 한눈에 보이는 작은 표시. 누르면 작성 완료 ↔ 미작성으로 바뀐다.
+  // 판매완료 매물은 아직 안 올렸어도 독촉하지 않는다.
+  function blogChipHtml(car) {
+    if (car.blog_posted) {
+      return `<button type="button" data-action="toggle-blog-posted" data-id="${car.id}" title="눌러서 미작성으로 되돌리기" class="mt-1 text-[10px] font-bold rounded-full px-2 py-0.5 bg-green-100 text-green-800"><i class="fa-solid fa-check mr-0.5"></i>블로그 작성 완료</button>`;
+    }
+    if (car.status === '판매완료') return '';
+    return `<button type="button" data-action="toggle-blog-posted" data-id="${car.id}" title="블로그에 올렸다면 눌러서 완료로 표시" class="mt-1 text-[10px] font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-800"><i class="fa-regular fa-clock mr-0.5"></i>블로그 미작성</button>`;
+  }
+
   function renderAdminTable() {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-total-count').textContent = adminCars.length;
+    const unposted = adminCars.filter(c => !c.blog_posted && c.status !== '판매완료').length;
+    const unpostedEl = document.getElementById('blog-unposted-count');
+    unpostedEl.textContent = `블로그 미작성 ${unposted}건`;
+    unpostedEl.classList.toggle('hidden', unposted === 0);
     if (adminCars.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-[var(--fk-gray-600)]">등록된 매물이 없습니다.</td></tr>`;
       return;
@@ -482,6 +496,7 @@
         <td class="py-3 pr-3 max-w-[220px]">
           <p class="font-semibold text-[var(--fk-gray-800)] line-clamp-2">${KCarUtil.escapeHtml(car.title || '-')}</p>
           <p class="text-xs text-[var(--fk-gray-600)]">${car.listing_no ? `No.${car.listing_no} · ` : ''}${KCarUtil.escapeHtml(car.car_number || '')}</p>
+          ${blogChipHtml(car)}
         </td>
         <td class="py-3 pr-3 font-bold text-[var(--fk-navy)] whitespace-nowrap">${car.price_display || KCarUtil.formatPrice(car.price)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">
@@ -501,43 +516,132 @@
     `).join('');
   }
 
-  /* ---------------- 네이버 블로그 글 ---------------- */
-  // 글 생성 규칙은 js/blog.js. 여기서는 모달 표시와 복사 버튼만 다룬다.
+  /* ---------------- 홍보글 만들기 (네이버 블로그 · 인스타그램 · 당근 · 카카오) ---------------- */
+  // 글 생성 규칙은 js/blog.js. 여기서는 모달 표시, 복사 버튼, "블로그 작성 완료" 표시만 다룬다.
   const blogModal = document.getElementById('blog-modal');
   const blogTitle = document.getElementById('blog-title');
   const blogPreview = document.getElementById('blog-preview');
   const blogTags = document.getElementById('blog-tags');
   const blogPhotos = document.getElementById('blog-photos');
+  const blogTopicSelect = document.getElementById('blog-topic');
+  const shortText = document.getElementById('short-text');
+  const blogCover = document.getElementById('blog-cover');
+  const markPostedBtn = document.getElementById('blog-mark-posted');
+  let blogMode = 'car'; // 'car'(매물 글) | 'topic'(정보성 글)
+  let blogChannel = 'blog';
   let blogCar = null;
   let blogSeed = 0;
 
-  function renderBlog() {
+  KCarBlog.TOPICS.forEach((t) => {
+    blogTopicSelect.insertAdjacentHTML('beforeend', `<option value="${t.id}">${KCarUtil.escapeHtml(t.label)}</option>`);
+  });
+
+  function onSaleCars() {
+    return adminCars.filter(c => c.status !== '판매완료');
+  }
+
+  // 현재 모드/채널에 맞는 요소만 보이게 한다.
+  function applyBlogLayout() {
+    const isCar = blogMode === 'car';
+    blogModal.querySelectorAll('.car-only').forEach((el) => el.classList.toggle('hidden', !isCar));
+    blogModal.querySelectorAll('.topic-only').forEach((el) => el.classList.toggle('hidden', isCar));
+    const isBlog = blogChannel === 'blog';
+    document.getElementById('blog-pane-blog').classList.toggle('hidden', !isBlog);
+    document.getElementById('blog-pane-short').classList.toggle('hidden', isBlog);
+    blogModal.querySelectorAll('[data-show]').forEach((el) => {
+      el.classList.toggle('hidden', el.dataset.show !== (isBlog ? 'blog' : 'short'));
+    });
+    blogModal.querySelectorAll('#blog-channel-tabs .blog-pane-tab').forEach((b) => {
+      b.classList.toggle('active', b.dataset.channel === blogChannel);
+    });
+  }
+
+  function updateMarkPostedButton() {
     if (!blogCar) return;
-    const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked });
-    blogTitle.value = post.title;
-    blogPreview.innerHTML = post.html;
-    blogTags.value = post.tags;
+    const posted = !!blogCar.blog_posted;
+    markPostedBtn.querySelector('span').textContent = posted ? '블로그 작성 완료 (눌러서 취소)' : '블로그 작성 완료로 표시';
+    markPostedBtn.querySelector('i').className = posted ? 'fa-solid fa-square-check mr-1.5 text-[var(--fk-green)]' : 'fa-regular fa-square-check mr-1.5';
+  }
+
+  async function renderCoverImage() {
+    const note = document.getElementById('blog-cover-note');
+    try {
+      await KCarBlog.renderCover(blogCar, blogCover);
+      note.textContent = '대표 사진 위에 뱃지·차량명·가격을 얹은 정사각형 이미지예요. 블로그 첫 사진이나 썸네일로 쓰세요.';
+      blogCover.dataset.ready = '1';
+    } catch (e) {
+      delete blogCover.dataset.ready;
+      blogCover.getContext('2d').clearRect(0, 0, blogCover.width, blogCover.height);
+      note.textContent = `${e.message} 사진이 우리 서버에 저장되는 중일 수 있어요. 잠시 후 다시 열어 주세요.`;
+    }
+  }
+
+  function renderBlog() {
+    if (blogMode === 'topic') {
+      const post = KCarBlog.generateTopic(blogTopicSelect.value, { seed: blogSeed, cars: onSaleCars() });
+      blogTitle.value = post.title;
+      blogPreview.innerHTML = post.html;
+      blogTags.value = post.tags;
+    } else if (blogChannel === 'blog') {
+      if (!blogCar) return;
+      const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked, cars: adminCars });
+      blogTitle.value = post.title;
+      blogPreview.innerHTML = post.html;
+      blogTags.value = post.tags;
+    } else {
+      if (!blogCar) return;
+      const short = KCarBlog.generateShort(blogCar, blogChannel);
+      shortText.value = short.text;
+      document.getElementById('short-note').textContent = short.note;
+      return;
+    }
     document.getElementById('blog-length').textContent = `· 약 ${blogPreview.innerText.replace(/\s+/g, '').length.toLocaleString('ko-KR')}자`;
   }
 
-  async function openBlogModal(car) {
-    blogCar = car;
-    blogSeed = 0;
-    blogPhotos.checked = false;
-    document.getElementById('blog-modal-sub').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
-    document.getElementById('blog-zip').href = `/car/${car.id}/images.zip`;
-    renderBlog();
+  function showBlogModal() {
     blogModal.classList.remove('hidden');
     blogModal.classList.add('flex');
     blogPreview.scrollTop = 0;
+  }
+
+  async function openBlogModal(car) {
+    blogMode = 'car';
+    blogChannel = 'blog';
+    blogCar = car;
+    blogSeed = 0;
+    blogPhotos.checked = false;
+    delete blogPreview.dataset.edited;
+    document.getElementById('blog-modal-heading').textContent = '홍보글 만들기';
+    document.getElementById('blog-modal-sub').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
+    document.getElementById('blog-zip').href = `/car/${car.id}/images.zip`;
+    applyBlogLayout();
+    updateMarkPostedButton();
+    renderBlog();
+    showBlogModal();
+    renderCoverImage();
     // 방금 등록한 매물은 사진이 서버에 저장되는 중일 수 있으니, 최신 정보로 한 번 더 만든다.
     try {
       const fresh = await KCarAPI.getCar(car.id);
-      if (blogCar && blogCar.id === fresh.id) {
-        blogCar = fresh;
+      if (blogMode === 'car' && blogCar && blogCar.id === fresh.id) {
+        blogCar = { ...blogCar, ...fresh };
         if (!blogPreview.dataset.edited) renderBlog();
+        updateMarkPostedButton();
+        renderCoverImage();
       }
     } catch (e) { /* 처음 받은 정보로 계속 */ }
+  }
+
+  function openTopicModal() {
+    blogMode = 'topic';
+    blogChannel = 'blog';
+    blogCar = null;
+    blogSeed = 0;
+    delete blogPreview.dataset.edited;
+    document.getElementById('blog-modal-heading').textContent = '정보성 블로그 글';
+    document.getElementById('blog-modal-sub').textContent = '매물과 상관없이 올리는 글이에요. 글 아래에 판매중인 매물 링크가 자동으로 들어갑니다.';
+    applyBlogLayout();
+    renderBlog();
+    showBlogModal();
   }
 
   function closeBlogModal() {
@@ -589,27 +693,88 @@
     }
   }
 
+  function confirmDiscardEdits() {
+    return !blogPreview.dataset.edited || confirm('직접 고친 내용이 사라집니다. 다시 만들까요?');
+  }
+
   document.getElementById('blog-close').addEventListener('click', closeBlogModal);
   blogModal.addEventListener('click', (e) => { if (e.target === blogModal) closeBlogModal(); });
   document.getElementById('blog-copy-title').addEventListener('click', () => copyPlain(blogTitle.value, '제목을 복사했습니다.'));
   document.getElementById('blog-copy-tags').addEventListener('click', () => copyPlain(blogTags.value, '태그를 복사했습니다.'));
   document.getElementById('blog-copy-text').addEventListener('click', () => copyPlain(blogPreview.innerText, '텍스트를 복사했습니다.'));
   document.getElementById('blog-copy-body').addEventListener('click', copyRichBody);
+  document.getElementById('short-copy').addEventListener('click', () => copyPlain(shortText.value, '복사했습니다. 붙여넣기(Ctrl+V) 하세요.'));
   document.getElementById('blog-regenerate').addEventListener('click', () => {
-    if (blogPreview.dataset.edited && !confirm('직접 고친 내용이 사라집니다. 다시 만들까요?')) return;
+    if (!confirmDiscardEdits()) return;
     delete blogPreview.dataset.edited;
     blogSeed += 1;
     renderBlog();
   });
   blogPhotos.addEventListener('change', () => {
-    if (blogPreview.dataset.edited && !confirm('직접 고친 내용이 사라집니다. 다시 만들까요?')) {
+    if (!confirmDiscardEdits()) {
       blogPhotos.checked = !blogPhotos.checked;
       return;
     }
     delete blogPreview.dataset.edited;
     renderBlog();
   });
+  blogTopicSelect.addEventListener('change', () => {
+    if (!confirmDiscardEdits()) return;
+    delete blogPreview.dataset.edited;
+    blogSeed = 0;
+    renderBlog();
+  });
   blogPreview.addEventListener('input', () => { blogPreview.dataset.edited = '1'; });
+
+  blogModal.querySelector('#blog-channel-tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-channel]');
+    if (!tab || !blogCar) return;
+    blogChannel = tab.dataset.channel;
+    applyBlogLayout();
+    renderBlog();
+  });
+
+  document.getElementById('blog-cover-save').addEventListener('click', () => {
+    if (!blogCover.dataset.ready) {
+      KCarUtil.toast('대표 이미지를 만들지 못했어요. 사진이 저장된 뒤 다시 시도해 주세요.', 'error');
+      return;
+    }
+    blogCover.toBlob((blob) => {
+      if (!blob) { KCarUtil.toast('이미지를 저장하지 못했습니다.', 'error'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `fromkcar_${blogCar && blogCar.listing_no ? 'no' + blogCar.listing_no : 'cover'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  });
+
+  // 블로그 작성 여부는 매물 데이터에 저장해, 목록에서 아직 안 올린 매물을 한눈에 보게 한다.
+  async function setBlogPosted(car, posted) {
+    await KCarAPI.updateCar(car.id, { blog_posted: posted, blog_posted_at: posted ? Date.now() : null });
+    car.blog_posted = posted;
+    car.blog_posted_at = posted ? Date.now() : null;
+    if (blogCar && blogCar.id === car.id) {
+      blogCar.blog_posted = posted;
+      updateMarkPostedButton();
+    }
+    renderAdminTable();
+  }
+
+  markPostedBtn.addEventListener('click', async () => {
+    if (!blogCar) return;
+    const car = adminCars.find(c => c.id === blogCar.id) || blogCar;
+    try {
+      await setBlogPosted(car, !car.blog_posted);
+      KCarUtil.toast(car.blog_posted ? '블로그 작성 완료로 표시했습니다.' : '작성 완료 표시를 취소했습니다.', 'success');
+    } catch (e) {
+      KCarUtil.toast('저장하지 못했습니다.', 'error');
+    }
+  });
+
+  document.getElementById('topic-blog-btn').addEventListener('click', openTopicModal);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !blogModal.classList.contains('hidden')) closeBlogModal();
   });
@@ -715,6 +880,18 @@
     const downBtn = e.target.closest('[data-action="move-down"]');
     const pickBtn = e.target.closest('[data-action="pick-thumb"]');
     const blogBtn = e.target.closest('[data-action="blog"]');
+    const blogChip = e.target.closest('[data-action="toggle-blog-posted"]');
+    if (blogChip) {
+      const car = adminCars.find(c => c.id === blogChip.dataset.id);
+      if (car) {
+        try {
+          await setBlogPosted(car, !car.blog_posted);
+        } catch (err) {
+          KCarUtil.toast('저장하지 못했습니다.', 'error');
+        }
+      }
+      return;
+    }
     if (blogBtn) {
       const car = adminCars.find(c => c.id === blogBtn.dataset.id);
       if (car) openBlogModal(car);

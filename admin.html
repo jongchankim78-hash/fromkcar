@@ -339,7 +339,11 @@
         <div class="step-num">3</div>
         <h2 class="text-lg font-bold text-[var(--fk-gray-800)]">등록된 매물 관리 (<span id="admin-total-count">0</span>건)</h2>
       </div>
-      <button id="manual-add-btn" class="btn-secondary text-sm"><i class="fa-solid fa-pen mr-2"></i>직접 입력으로 추가</button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="blog-unposted-count" class="hidden text-xs font-bold rounded-full px-3 py-1.5 bg-amber-100 text-amber-800"></span>
+        <button id="topic-blog-btn" class="btn-secondary text-sm"><i class="fa-solid fa-pen-nib mr-2" style="color:#03c75a"></i>정보성 블로그 글</button>
+        <button id="manual-add-btn" class="btn-secondary text-sm"><i class="fa-solid fa-pen mr-2"></i>직접 입력으로 추가</button>
+      </div>
     </div>
 
     <div class="overflow-x-auto">
@@ -388,51 +392,90 @@
   <div class="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
     <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--fk-gray-200)]">
       <div class="min-w-0">
-        <h3 class="font-extrabold text-[var(--fk-gray-800)]"><i class="fa-solid fa-pen-nib mr-1.5 text-[#03c75a]"></i>네이버 블로그 글</h3>
+        <h3 class="font-extrabold text-[var(--fk-gray-800)]"><i class="fa-solid fa-pen-nib mr-1.5 text-[#03c75a]"></i><span id="blog-modal-heading">홍보글 만들기</span></h3>
         <p id="blog-modal-sub" class="text-xs text-[var(--fk-gray-600)] mt-0.5 truncate"></p>
       </div>
       <button type="button" id="blog-close" class="w-9 h-9 flex-shrink-0 rounded-full hover:bg-[var(--fk-gray-100)] text-[var(--fk-gray-600)]" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
+    <!-- 매물 글: 채널 선택 -->
+    <div class="car-only px-6 pt-3 flex gap-1.5 flex-wrap" id="blog-channel-tabs">
+      <button type="button" class="blog-pane-tab active" data-channel="blog"><i class="fa-solid fa-pen-nib mr-1"></i>네이버 블로그</button>
+      <button type="button" class="blog-pane-tab" data-channel="instagram"><i class="fa-brands fa-instagram mr-1"></i>인스타그램</button>
+      <button type="button" class="blog-pane-tab" data-channel="daangn"><i class="fa-solid fa-carrot mr-1"></i>당근마켓</button>
+      <button type="button" class="blog-pane-tab" data-channel="kakao"><i class="fa-solid fa-comment mr-1"></i>카카오톡·문자</button>
+    </div>
+    <!-- 정보성 글: 주제 선택 -->
+    <div class="topic-only hidden px-6 pt-3">
+      <label class="text-sm font-semibold text-[var(--fk-gray-800)] block mb-1">글 주제</label>
+      <select id="blog-topic" class="fk-input"></select>
+    </div>
+
     <div class="p-6 overflow-y-auto space-y-4">
-      <div class="rounded-2xl bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] px-4 py-3 text-xs text-[var(--fk-gray-600)] leading-relaxed">
-        <b class="text-[var(--fk-gray-800)]">사용 순서</b> ① 제목 복사 → 블로그 글쓰기 제목칸에 붙여넣기 ② 본문 복사 → 본문에 붙여넣기 ③ 사진은 'ZIP 받기'로 내려받아 본문에 올리기 ④ 태그 복사 → 태그칸에 붙여넣기.
-        본문은 아래 미리보기에서 직접 고쳐도 됩니다.
-      </div>
-
-      <div>
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-semibold text-[var(--fk-gray-800)]">제목</span>
-          <button type="button" id="blog-copy-title" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>제목 복사</button>
+      <!-- 블로그 패널 -->
+      <div id="blog-pane-blog" class="space-y-4">
+        <div class="rounded-2xl bg-[var(--fk-gray-50)] border border-[var(--fk-gray-200)] px-4 py-3 text-xs text-[var(--fk-gray-600)] leading-relaxed">
+          <b class="text-[var(--fk-gray-800)]">사용 순서</b> ① 제목 복사 → 블로그 글쓰기 제목칸에 붙여넣기 ② 본문 복사 → 본문에 붙여넣기 <span class="car-only">③ 사진은 'ZIP 받기'로 내려받아 본문에 올리기 (대표 이미지는 아래에서 저장) </span>④ 태그 복사 → 태그칸에 붙여넣기.
+          본문은 아래 미리보기에서 직접 고쳐도 됩니다.
         </div>
-        <input id="blog-title" type="text" class="fk-input">
-      </div>
 
-      <div>
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <span class="text-sm font-semibold text-[var(--fk-gray-800)]">본문 미리보기 <span id="blog-length" class="text-xs font-normal text-[var(--fk-gray-600)]"></span></span>
-          <div class="flex items-center gap-3">
-            <label class="inline-flex items-center gap-1.5 text-xs cursor-pointer text-[var(--fk-gray-600)]"><input type="checkbox" id="blog-photos" class="w-3.5 h-3.5" title="붙여넣을 때 네이버가 사진을 가져오지 못할 수 있어요. 안 되면 ZIP으로 직접 올려 주세요.">사진 포함 (시험적)</label>
-            <button type="button" id="blog-regenerate" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-solid fa-shuffle mr-1"></i>다른 문장으로 다시 만들기</button>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm font-semibold text-[var(--fk-gray-800)]">제목</span>
+            <button type="button" id="blog-copy-title" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>제목 복사</button>
+          </div>
+          <input id="blog-title" type="text" class="fk-input">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+            <span class="text-sm font-semibold text-[var(--fk-gray-800)]">본문 미리보기 <span id="blog-length" class="text-xs font-normal text-[var(--fk-gray-600)]"></span></span>
+            <div class="flex items-center gap-3">
+              <label class="car-only inline-flex items-center gap-1.5 text-xs cursor-pointer text-[var(--fk-gray-600)]"><input type="checkbox" id="blog-photos" class="w-3.5 h-3.5" title="붙여넣을 때 네이버가 사진을 가져오지 못할 수 있어요. 안 되면 ZIP으로 직접 올려 주세요.">사진 포함 (시험적)</label>
+              <button type="button" id="blog-regenerate" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-solid fa-shuffle mr-1"></i>다른 문장으로 다시 만들기</button>
+            </div>
+          </div>
+          <div id="blog-preview" contenteditable="true" class="border border-[var(--fk-gray-200)] rounded-xl p-4 max-h-[40vh] overflow-y-auto bg-white" style="outline:none;"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm font-semibold text-[var(--fk-gray-800)]">태그</span>
+            <button type="button" id="blog-copy-tags" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>태그 복사</button>
+          </div>
+          <textarea id="blog-tags" rows="2" class="fk-input resize-none"></textarea>
+        </div>
+
+        <div class="car-only">
+          <span class="text-sm font-semibold text-[var(--fk-gray-800)] block mb-1">블로그 대표 이미지</span>
+          <div class="flex items-center gap-4">
+            <canvas id="blog-cover" class="w-36 h-36 rounded-xl border border-[var(--fk-gray-200)] bg-[var(--fk-gray-100)] flex-shrink-0"></canvas>
+            <div class="min-w-0">
+              <p id="blog-cover-note" class="text-xs text-[var(--fk-gray-600)] mb-2 leading-relaxed">대표 사진 위에 뱃지·차량명·가격을 얹은 정사각형 이미지예요. 블로그 첫 사진이나 썸네일로 쓰세요.</p>
+              <button type="button" id="blog-cover-save" class="btn-secondary !py-2 !px-3 text-xs"><i class="fa-solid fa-download mr-1"></i>이미지 저장 (PNG)</button>
+            </div>
           </div>
         </div>
-        <div id="blog-preview" contenteditable="true" class="border border-[var(--fk-gray-200)] rounded-xl p-4 max-h-[42vh] overflow-y-auto bg-white" style="outline:none;"></div>
       </div>
 
-      <div>
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-semibold text-[var(--fk-gray-800)]">태그</span>
-          <button type="button" id="blog-copy-tags" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>태그 복사</button>
-        </div>
-        <textarea id="blog-tags" rows="2" class="fk-input resize-none"></textarea>
+      <!-- 인스타그램 · 당근 · 카카오 패널 -->
+      <div id="blog-pane-short" class="hidden space-y-3">
+        <p id="short-note" class="text-xs text-[var(--fk-gray-600)] leading-relaxed"></p>
+        <textarea id="short-text" rows="16" class="fk-input" style="resize:vertical;"></textarea>
       </div>
     </div>
 
     <div class="px-6 py-4 border-t border-[var(--fk-gray-200)] flex flex-wrap gap-2 justify-end">
-      <a id="blog-zip" href="#" class="btn-secondary text-sm !py-2.5"><i class="fa-solid fa-file-zipper mr-1.5"></i>사진 ZIP 받기</a>
-      <button type="button" id="blog-copy-text" class="btn-secondary text-sm !py-2.5"><i class="fa-regular fa-file-lines mr-1.5"></i>텍스트만 복사</button>
-      <button type="button" id="blog-copy-body" class="btn-primary text-sm !py-2.5"><i class="fa-regular fa-copy mr-1.5"></i>본문 복사 (서식 유지)</button>
-      <a href="https://blog.naver.com" target="_blank" rel="noopener" class="btn-secondary text-sm !py-2.5"><i class="fa-solid fa-arrow-up-right-from-square mr-1.5"></i>네이버 블로그 열기</a>
+      <button type="button" id="blog-mark-posted" class="car-only btn-secondary text-sm !py-2.5 mr-auto"><i class="fa-regular fa-square-check mr-1.5"></i><span>블로그 작성 완료로 표시</span></button>
+      <div data-show="blog" class="contents">
+        <a id="blog-zip" href="#" class="car-only btn-secondary text-sm !py-2.5"><i class="fa-solid fa-file-zipper mr-1.5"></i>사진 ZIP 받기</a>
+        <button type="button" id="blog-copy-text" class="btn-secondary text-sm !py-2.5"><i class="fa-regular fa-file-lines mr-1.5"></i>텍스트만 복사</button>
+        <button type="button" id="blog-copy-body" class="btn-primary text-sm !py-2.5"><i class="fa-regular fa-copy mr-1.5"></i>본문 복사 (서식 유지)</button>
+        <a href="https://blog.naver.com" target="_blank" rel="noopener" class="btn-secondary text-sm !py-2.5"><i class="fa-solid fa-arrow-up-right-from-square mr-1.5"></i>네이버 블로그 열기</a>
+      </div>
+      <div data-show="short" class="hidden contents">
+        <button type="button" id="short-copy" class="btn-primary text-sm !py-2.5"><i class="fa-regular fa-copy mr-1.5"></i>복사하기</button>
+      </div>
     </div>
   </div>
 </div>
@@ -480,6 +523,19 @@
   }
   .admin-tab:hover { color: var(--fk-navy); }
   .admin-tab.active { color: var(--fk-blue); border-bottom-color: var(--fk-blue); }
+
+  .blog-pane-tab {
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid var(--fk-gray-200);
+    color: var(--fk-gray-600);
+    background: #fff;
+    transition: all .15s ease;
+  }
+  .blog-pane-tab:hover { border-color: var(--fk-blue); color: var(--fk-blue); }
+  .blog-pane-tab.active { background: var(--fk-blue); border-color: var(--fk-blue); color: #fff; }
 
   .rp-card { background: #fff; border: 1px solid var(--fk-gray-200); border-radius: 20px; padding: 20px 22px; }
   .rp-kpi-label { font-size: 12px; font-weight: 600; color: var(--fk-gray-600); }
