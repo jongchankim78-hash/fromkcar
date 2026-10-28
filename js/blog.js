@@ -89,8 +89,29 @@
   }
 
   function brandKo(car) {
+    if (global.KCarKo) return global.KCarKo.koBrand(car);
     const b = String(car.brand || '').trim();
     return BRAND_KO[b.toLowerCase()] || b;
+  }
+
+  // 한글 차명 (js/korean-name.js): 영문 차명 "KIA THE NEW SORENTO ..." → "기아 쏘렌토". 관리자가 입력한 title_ko가 있으면 그것을 쓴다.
+  function koName(car) {
+    return global.KCarKo ? global.KCarKo.koName(car) : String(car.title || '');
+  }
+
+  // 목록/비교 글에서 쓰는 이름: 한글 차명을 앞세우고 원래 차명을 괄호로 덧붙인다.
+  function carLabel(c) {
+    const ko = koName(c);
+    return ko && ko !== c.title ? `${ko} (${c.title})` : String(c.title || '');
+  }
+
+  function fuelWord(car) {
+    const f = String(car.fuel_type || '');
+    if (/전기|EV/i.test(f)) return '전기';
+    if (/하이브리드|HEV/i.test(f)) return '하이브리드';
+    if (/디젤/.test(f)) return '디젤';
+    if (/가솔린|휘발유/.test(f)) return '가솔린';
+    return '';
   }
 
   // src 꼬리표는 사이트 리포트의 "유입 경로"에서 어느 글/채널을 타고 왔는지 구분하는 데 쓴다.
@@ -119,7 +140,27 @@
       .map((x) => x.c);
   }
 
-  function contactBlocks(carLink) {
+  // 고객이 실제로 묻는 질문 + 이 매물 데이터로 답할 수 있는 답변만 쓴다 (없는 사실을 지어내지 않는다)
+  function buildFaq(car, ko, short) {
+    const price = priceText(car) || '문의';
+    const sold = car.status === '판매완료';
+    let accident;
+    if (effectiveNoAccident(car)) {
+      accident = '완전무사고 차량입니다. 성능점검기록부와 보험 이력으로 확인하실 수 있고, 방문하시면 서류를 함께 보여드립니다.';
+    } else if (!noInfo(car.accident_info)) {
+      accident = `사고 이력은 "${car.accident_info}"로 확인됩니다. 자세한 내용은 성능점검기록부를 함께 보며 설명드립니다.`;
+    } else {
+      accident = '사고 이력은 성능점검기록부 기준으로 확인해 상세히 설명드립니다. 문의 주세요.';
+    }
+    return [
+      { q: `${short} 중고차 사고 이력은 어떤가요?`, a: accident },
+      { q: `${ko} 중고차 가격은 얼마인가요?`, a: `${sold ? '판매 당시' : '판매'} 가격은 ${price}입니다. 가격과 판매 상태는 변동될 수 있으니 문의하실 때 최신 정보를 확인해 주세요.` },
+      { q: `${short} 실차는 어디서 볼 수 있나요?`, a: `수원 SKV1모터스(${DEALER.address})에서 직접 확인하실 수 있습니다. 방문 전에 ${DEALER.phone}로 연락 주시면 차량을 준비해 두겠습니다.` },
+      { q: `${short} 구매 절차는 어떻게 되나요?`, a: '전화나 카카오톡으로 상담한 뒤 차량을 확인하고 계약, 이전 등록 순서로 진행됩니다. 필요한 서류와 비용은 상담할 때 안내해 드립니다.' }
+    ];
+  }
+
+  function contactBlocks(carLink, heading) {
     const items = [
       ['담당', `${DEALER.team} ${DEALER.name}`],
       ['휴대폰', DEALER.phone],
@@ -129,7 +170,7 @@
     ];
     if (carLink) items.push(['이 차량 자세히 보기', carLink]);
     items.push(['전체 매물 보기', `${SITE}/?src=naver_blog`]);
-    return [{ type: 'h', text: '상담 · 방문 안내' }, { type: 'kv', items }];
+    return [{ type: 'h', text: heading || '상담 · 방문 안내' }, { type: 'kv', items }];
   }
 
   // 매물 데이터에서 "근거가 있는" 장점만 뽑는다.
@@ -200,6 +241,8 @@
   };
 
   function modelKeyword(car) {
+    const kom = global.KCarKo ? global.KCarKo.koModel(car) : '';
+    if (kom) return kom.replace(/\s+/g, '');
     const title = String(car.title || '');
     const ko = title.match(/[가-힣]{2,}/);
     if (ko) return ko[0];
@@ -210,34 +253,55 @@
     return m ? m[1].toUpperCase() : '';
   }
 
+  // 네이버 블로그 태그: 검색어로 실제 쓰이는 한글 키워드를 우선해 10개 이내로 (태그를 너무 많이 달면 오히려 스팸처럼 보인다)
   function buildTags(car) {
     const bk = brandKo(car).replace(/\s+/g, '');
     const model = modelKeyword(car);
-    const tags = ['중고차', '수원중고차', '경기중고차', '중고차매물', '프롬케이카', '무사고중고차'];
-    if (car.is_new_car) tags.push('신차급중고차', '신차');
-    if (bk) tags.push(`${bk}중고차`);
-    if (model) tags.push(`${model}중고차`, model);
-    if (/전기|EV/i.test(car.fuel_type || '')) tags.push('전기차중고');
-    if (/하이브리드/.test(car.fuel_type || '')) tags.push('하이브리드중고차');
+    const fuel = fuelWord(car);
     const yrs = parseYears(car.year_info);
+    const tags = ['수원중고차'];
+    if (model) tags.push(`${model}중고차`);
+    if (model && fuel) tags.push(`${model}${fuel}`);
+    if (bk) tags.push(`${bk}중고차`);
+    if (car.is_new_car) tags.push('신차급중고차');
+    if (effectiveNoAccident(car)) tags.push('무사고중고차');
+    if (global.KCarKo && global.KCarKo.isImport(car)) tags.push('수입중고차');
     if (yrs.model) tags.push(`${yrs.model}년식`);
-    return [...new Set(tags)].slice(0, 15).map((t) => `#${t}`).join(' ');
+    tags.push('프롬케이카', '경기중고차');
+    return [...new Set(tags)].slice(0, 10).map((t) => `#${t}`).join(' ');
+  }
+
+  // 제목에서 중요도가 낮은 조각부터 빼서 길이(max자) 안에 맞춘다. 네이버 검색 결과에서는 30~35자 안팎에서 잘리므로
+  // 핵심 키워드("수원 + 한글 모델 + 중고차")를 항상 맨 앞에 두고, 가격·연식·상태는 뒤에 붙인다.
+  function fitTitle(parts, max) {
+    let list = parts.filter((p) => p.t);
+    const join = () => list.map((p) => p.t).join(' ').replace(/\s+\|\s+/g, ' | ').replace(/\s+/g, ' ').trim();
+    while (join().length > max && list.length > 1) {
+      const low = list.reduce((m, p) => (p.p < m.p ? p : m), list[0]);
+      if (low.p >= 10) break;
+      list = list.filter((p) => p !== low);
+    }
+    return join();
   }
 
   function buildTitle(car, seed) {
     const yrs = parseYears(car.year_info);
-    const year = yrs.model ? `${yrs.model}년형` : '';
-    const mark = car.is_new_car ? '완전신차' : (effectiveNoAccident(car) ? '무사고' : '');
-    const km = !car.is_new_car && Number(car.mileage) > 0 ? kmText(car.mileage) : '';
+    const ko = koName(car);
+    const year = yrs.model ? `${yrs.model}년식` : '';
+    const fuel = fuelWord(car);
+    const mark = car.is_new_car ? '신차급' : (effectiveNoAccident(car) ? '무사고' : '');
+    const marks = [car.is_new_car ? '신차급' : '', effectiveNoAccident(car) ? '무사고' : ''].filter(Boolean).join(' ');
+    const km = !car.is_new_car && Number(car.mileage) > 0 ? `주행 ${kmText(car.mileage)}` : (car.is_new_car && (car.mileage || car.mileage === 0) ? `주행 ${kmText(car.mileage)}` : '');
+    const price = priceText(car);
     const variants = [
-      [`[수원중고차]`, year, car.title, mark, priceText(car)],
-      [`[수원중고차]`, car.title, year, km, mark],
-      [`[${brandKo(car) || '수원'}중고차]`, year, car.title, priceText(car), mark],
-      [`수원중고차`, year, car.title, mark, km, priceText(car)]
+      [{ t: `수원 ${ko} 중고차`, p: 10 }, { t: year, p: 5 }, { t: mark, p: 7 }, { t: price, p: 6 }],
+      [{ t: `${ko}${fuel ? ' ' + fuel : ''} 중고 가격`, p: 10 }, { t: marks ? `| 수원 ${marks} 매물` : '| 수원 중고차 매물', p: 7 }],
+      [{ t: `${ko} 중고차,`, p: 10 }, { t: km, p: 5 }, { t: mark, p: 7 }, { t: price, p: 8 }, { t: '(수원 프롬케이카)', p: 4 }],
+      [{ t: `수원 ${ko} 중고차`, p: 10 }, { t: year, p: 6 }, { t: fuel, p: 5 }, { t: mark, p: 7 }, { t: '- 프롬케이카', p: 3 }]
     ];
     const pick = variants[(hash(String(car.id)) + seed) % variants.length];
     const prefix = car.status === '판매완료' ? '[판매완료] ' : '';
-    return prefix + pick.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() + ' - 프롬케이카';
+    return prefix + fitTitle(pick, 46);
   }
 
   function buildBlocks(car, opts) {
@@ -258,19 +322,28 @@
     const sold = car.status === '판매완료';
     const similar = sold ? similarOnSale(car, opts.cars, 3) : [];
 
+    // 검색 키워드: 한글 차명("기아 쏘렌토")을 첫 문장과 소제목에 자연스럽게 넣는다 (첫 150자 안에 핵심 키워드가 있어야 유리)
+    const ko = koName(car);
+    const short = (global.KCarKo && global.KCarKo.koModel(car)) || ko; // 소제목·질문에 섞어 써서 같은 키워드가 너무 반복되지 않게 한다
+    const yearWord = yrs.model ? `${yrs.model}년식` : '';
+    const kmWord = car.mileage || car.mileage === 0 ? `주행거리 ${kmText(car.mileage)}` : '';
+    const markWords = [car.is_new_car ? '완전신차' : '', effectiveNoAccident(car) ? '완전무사고' : '', car.badge_no_paint ? '무도색' : ''].filter(Boolean).join(' ');
+    const specLine = [yearWord, kmWord, fuelWord(car), markWords].filter(Boolean).join(', ');
+    const spec = specLine ? `${specLine}의 ` : '';
+
     if (sold) {
-      blocks.push({ type: 'p', text: '【판매완료 안내】 이 차량은 현재 판매가 완료되었습니다. 비슷한 조건의 판매중인 차량은 아래 링크에서 확인해 주세요.' });
+      blocks.push({ type: 'p', text: `【판매완료 안내】 이 ${ko} 중고차는 현재 판매가 완료되었습니다. 비슷한 조건의 판매중인 차량은 아래 링크에서 확인해 주세요.` });
       blocks.push({ type: 'p', text: v([
-        `안녕하세요, 수원 SKV1모터스 프롬케이카 ${DEALER.name}입니다. 많은 관심을 받았던 ${dn}${withAdv}의 판매가 완료되어 소개글을 남깁니다.`,
-        `프롬케이카 ${DEALER.name}입니다. ${dn}${withAdv} 차량은 좋은 주인을 만나 판매가 완료되었습니다. 이런 차량을 찾으신다면 아래 내용을 참고해 주세요.`
+        `안녕하세요, 수원 SKV1모터스 프롬케이카 ${DEALER.name}입니다. 많은 관심을 받았던 ${spec}${ko} 매물의 판매가 완료되어 소개글을 남깁니다.`,
+        `프롬케이카 ${DEALER.name}입니다. ${spec}${ko} 차량은 좋은 주인을 만나 판매가 완료되었습니다. 수원에서 ${ko} 중고차를 찾으신다면 아래 내용을 참고해 주세요.`
       ], 1) });
       blocks.push({ type: 'p', text: `판매 당시 가격은 ${priceText(car) || '문의'}였습니다. 같은 조건의 차량을 찾으신다면 비슷한 매물을 안내해 드릴 수 있으니 편하게 문의 주세요.` });
     } else {
       blocks.push({ type: 'p', text: v([
-        `안녕하세요, 수원 SKV1모터스에서 중고차를 소개해 드리는 프롬케이카 ${DEALER.name}입니다. 오늘 소개해 드릴 차량은 ${dn}${withAdv}입니다.`,
-        `${bk ? bk + ' ' : ''}중고차를 찾고 계신가요? 프롬케이카 ${DEALER.name}입니다. 이번에 입고된 차량은 ${dn}${withAdv}입니다. 자세히 살펴보시죠.`,
-        `수원에서 믿고 맡길 수 있는 중고차를 찾는 분들께 소개합니다. ${dn}${topWords ? ' — ' + topWords : ''} 매물이 입고되었습니다.`,
-        `중고차는 좋은 차를 먼저 만나는 게 가장 중요하다고 생각합니다. 오늘 프롬케이카에 입고된 차량은 ${dn}${withAdv}입니다.`
+        `수원에서 ${ko} 중고차를 찾고 계신가요? 프롬케이카 ${DEALER.name}입니다. ${spec}${ko} 매물이 입고되었습니다.`,
+        `안녕하세요, 수원 SKV1모터스에서 중고차를 소개해 드리는 프롬케이카 ${DEALER.name}입니다. 오늘은 ${spec}${ko} 중고차를 소개합니다.`,
+        `${ko} 중고차 가격이 궁금하신가요? 프롬케이카에 입고된 차량은 ${ko}(${specLine || car.title})입니다. 가격은 ${priceText(car) || '문의'}입니다.`,
+        `수원 ${ko} 중고차를 알아보는 분들께 소개합니다. ${spec}${ko} 매물이 프롬케이카에 입고되었습니다.`
       ], 1) });
 
       blocks.push({ type: 'p', text: v([
@@ -281,8 +354,13 @@
     }
 
     if (adv.length) {
-      blocks.push({ type: 'h', text: v(['이 차량의 장점', '이 차량을 추천하는 이유', '핵심 포인트 정리'], 3) });
+      blocks.push({ type: 'h', text: v([`${ko} 중고차 장점`, `${ko} 중고차, 이런 점이 좋습니다`, `${ko} 핵심 포인트 정리`], 3) });
       blocks.push({ type: 'items', items: adv });
+    }
+
+    if (!sold) {
+      blocks.push({ type: 'h', text: `${short} 중고차, 이런 분께 추천합니다` });
+      blocks.push({ type: 'items', items: whoFits(car).map((t, i) => ({ b: `추천 ${i + 1}`, t })) });
     }
 
     if (car.description_ko && car.description_ko.trim()) {
@@ -291,7 +369,7 @@
     }
 
     const kv = [];
-    kv.push(['차량명', car.title]);
+    kv.push(['차량명', ko !== car.title ? `${ko} (${car.title})` : car.title]);
     if (car.year_info) kv.push(['연식', car.year_info]);
     if (car.mileage || car.mileage === 0) kv.push(['주행거리', kmText(car.mileage)]);
     if (car.fuel_type) kv.push(['연료', car.fuel_type]);
@@ -300,12 +378,12 @@
     if (!noInfo(car.color)) kv.push(['외장 색상', car.color]);
     if (!noInfo(car.seat_color)) kv.push(['내장 색상', car.seat_color]);
     kv.push(['판매 가격', priceText(car) || '문의']);
-    blocks.push({ type: 'h', text: '차량 기본 정보' });
+    blocks.push({ type: 'h', text: `${ko} 중고차 가격과 기본 정보` });
     blocks.push({ type: 'kv', items: kv });
 
     const options = Array.isArray(car.options) ? car.options.filter(Boolean) : [];
     if (options.length) {
-      blocks.push({ type: 'h', text: '주요 옵션' });
+      blocks.push({ type: 'h', text: `${short} 옵션 정리` });
       blocks.push({ type: 'p', text: options.slice(0, 30).join(' · ') });
     }
 
@@ -313,12 +391,16 @@
     if (!noInfo(car.accident_info)) state.push(`사고 이력: ${car.accident_info}`);
     if (!noInfo(car.diagnosis_summary)) state.push(car.diagnosis_summary);
     if (state.length) {
-      blocks.push({ type: 'h', text: '사고 이력 · 차량 상태' });
+      blocks.push({ type: 'h', text: `${short} 사고 이력·차량 상태` });
       state.forEach((s) => blocks.push({ type: 'p', text: s }));
     }
 
+    // 질문 형태의 문장은 네이버 검색과 구글 요약 결과에 잘 잡힌다 (고객이 실제로 묻는 말로 구성)
+    blocks.push({ type: 'h', text: `${short} 중고차 자주 묻는 질문` });
+    blocks.push({ type: 'faq', items: buildFaq(car, ko, short) });
+
     if (opts.photos && Array.isArray(car.images) && car.images.length) {
-      blocks.push({ type: 'h', text: '차량 사진' });
+      blocks.push({ type: 'h', text: `${ko} 차량 사진` });
       car.images.slice(0, 15).forEach((src) => {
         blocks.push({ type: 'img', url: /^https?:/.test(src) ? src : SITE + src });
       });
@@ -329,16 +411,21 @@
       '중고차는 사진과 글만으로 판단하기보다 직접 보고 확인하시는 것이 가장 정확합니다. 방문 전에 미리 연락 주시면 차량을 준비해 두고 상세하게 설명드리겠습니다. 성능점검기록부와 사고 이력도 함께 확인하실 수 있습니다.',
       '실제 차량 상태는 직접 확인하시는 게 가장 좋습니다. 방문 상담을 원하시면 전화나 카카오톡으로 먼저 연락 주세요. 성능점검과 사고 이력 확인 방법도 친절하게 안내해 드립니다.'
     ], 5) });
+    blocks.push({ type: 'items', items: [
+      { b: '성능·상태점검기록부', t: '사고·교환·수리 이력과 주행거리를 기록으로 확인하세요.' },
+      { b: '보험 이력 조회', t: '보험 처리 이력을 따로 조회해 판매자 설명과 같은지 비교해 보세요.' },
+      { b: '시운전', t: '가속, 변속, 브레이크, 소음을 직접 타 보며 확인하는 것이 가장 정확합니다.' }
+    ] });
     blocks.push({ type: 'p', text: '※ 판매 상태와 가격은 변동될 수 있으니 문의하실 때 최신 정보를 꼭 확인해 주세요.' });
 
     if (similar.length) {
       blocks.push({ type: 'h', text: '비슷한 판매중 차량' });
-      blocks.push({ type: 'kv', items: similar.map((c) => [`${c.title}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
+      blocks.push({ type: 'kv', items: similar.map((c) => [`${carLabel(c)}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
     }
 
-    blocks.push(...contactBlocks(url));
+    blocks.push(...contactBlocks(url, `수원 ${ko} 중고차 방문·상담 안내`));
     blocks.push({ type: 'p', text: v([
-      `${name}에 대해 궁금한 점은 언제든 편하게 문의 주세요. 감사합니다.`,
+      `${short}에 대해 궁금한 점은 언제든 편하게 문의 주세요. 감사합니다.`,
       `마음에 드는 차량이 있다면 부담 없이 연락 주세요. 정성껏 상담해 드리겠습니다.`,
       `${DEALER.name}이 차량 상태부터 구매 절차까지 친절하게 안내해 드리겠습니다. 감사합니다.`
     ], 6) });
@@ -360,6 +447,7 @@
         const isUrl = /^https?:\/\//.test(val);
         return `<p style="${S.li}">• <b>${esc(k)}</b> : ${isUrl ? `<a href="${esc(val)}">${esc(val)}</a>` : esc(val)}</p>`;
       }).join('');
+      if (b.type === 'faq') return b.items.map((i) => `<p style="${S.li}"><b>Q. ${esc(i.q)}</b><br>A. ${esc(i.a)}</p>`).join('');
       if (b.type === 'img') return `<p style="text-align:center;margin:0 0 12px;"><img src="${esc(b.url)}" style="max-width:100%;"></p>`;
       return '';
     }).join('\n');
@@ -371,6 +459,7 @@
       if (b.type === 'p') return b.text;
       if (b.type === 'items') return b.items.map((i) => `✔ ${i.b} — ${i.t}`).join('\n');
       if (b.type === 'kv') return b.items.map(([k, val]) => `• ${k} : ${val}`).join('\n');
+      if (b.type === 'faq') return b.items.map((i) => `Q. ${i.q}\nA. ${i.a}`).join('\n');
       return '';
     }).filter((s) => s !== '').join('\n');
   }
@@ -794,7 +883,7 @@
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).slice(0, 3);
       if (onSale.length) {
         blocks.push({ type: 'h', text: '프롬케이카 추천 매물' });
-        blocks.push({ type: 'kv', items: onSale.map((c) => [`${c.title}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
+        blocks.push({ type: 'kv', items: onSale.map((c) => [`${carLabel(c)}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
       }
     }
     blocks.push(...contactBlocks(null));
@@ -842,9 +931,9 @@
     const newest = shown.map((c) => ({ c, y: parseYears(c.year_info).model || 0 })).filter((x) => x.y).sort((a, b) => b.y - a.y)[0];
     const lowKm = shown.filter((c) => Number(c.mileage) >= 0 && c.mileage !== null && c.mileage !== undefined).sort((a, b) => a.mileage - b.mileage)[0];
     const cmp = [];
-    if (shown.length >= 2 && cheapest) cmp.push(['가장 합리적인 가격', `${cheapest.title} (${priceText(cheapest)})`]);
-    if (shown.length >= 2 && newest) cmp.push(['가장 최신 연식', `${newest.c.title} (${newest.y}년형)`]);
-    if (shown.length >= 2 && lowKm) cmp.push(['가장 낮은 주행거리', `${lowKm.title} (${kmText(lowKm.mileage)})`]);
+    if (shown.length >= 2 && cheapest) cmp.push(['가장 합리적인 가격', `${koName(cheapest)} (${priceText(cheapest)})`]);
+    if (shown.length >= 2 && newest) cmp.push(['가장 최신 연식', `${koName(newest.c)} (${newest.y}년형)`]);
+    if (shown.length >= 2 && lowKm) cmp.push(['가장 낮은 주행거리', `${koName(lowKm)} (${kmText(lowKm.mileage)})`]);
     if (cmp.length) {
       blocks.push({ type: 'h', text: '한눈에 비교' });
       blocks.push({ type: 'kv', items: cmp });
@@ -853,7 +942,7 @@
     blocks.push({ type: 'h', text: heading });
     shown.forEach((c, i) => {
       const info = [parseYears(c.year_info).model ? parseYears(c.year_info).model + '년형' : '', c.mileage || c.mileage === 0 ? kmText(c.mileage) : '', c.fuel_type || '', priceText(c)].filter(Boolean).join(' · ');
-      blocks.push({ type: 'p', text: `${i + 1}. ${c.title}` });
+      blocks.push({ type: 'p', text: `${i + 1}. ${carLabel(c)}` });
       blocks.push({ type: 'p', text: info });
       const adv = buildAdvantages(c).slice(0, 3);
       if (adv.length) blocks.push({ type: 'items', items: adv });
@@ -1065,7 +1154,7 @@
 
   function carDisplayName(c) {
     const yrs = parseYears(c.year_info);
-    return `${yrs.model ? yrs.model + '년형 ' : ''}${c.title}`.trim();
+    return `${yrs.model ? yrs.model + '년형 ' : ''}${koName(c)}`.trim();
   }
 
   function whoFits(c) {
@@ -1101,8 +1190,8 @@
     list.forEach((c) => {
       add({
         id: `data:model:${carKey(c)}`,
-        label: `${c.title} 구매 가이드 (장점과 확인할 점)`,
-        title: `${carDisplayName(c)} 구매 가이드 — 장점과 확인할 점`,
+        label: `${koName(c)} 구매 가이드 (장점과 확인할 점)`,
+        title: `${carDisplayName(c)} 중고차 구매 가이드 — 장점과 확인할 점`,
         tags: [`${brandKo(c)}중고차`, modelKeyword(c) ? `${modelKeyword(c)}중고차` : '중고차추천', '중고차구매가이드'].filter(Boolean),
         carKey: carKey(c),
         render: (o, v) => {
@@ -1145,12 +1234,12 @@
         compared.add(key);
         add({
           id: `data:cmp:${key}`,
-          label: `${a.title} vs ${b.title} 비교`,
-          title: `${a.title} vs ${b.title}, 어떤 차가 나에게 맞을까?`,
+          label: `${koName(a)} vs ${koName(b)} 비교`,
+          title: `${koName(a)} vs ${koName(b)}, 어떤 차가 나에게 맞을까?`,
           tags: ['중고차비교', `${brandKo(a)}중고차`, `${brandKo(b)}중고차`].filter(Boolean),
           render: (o, v) => {
             const blocks = [];
-            const row = (label, fa, fb) => [label, `${a.title.split(' ').slice(0, 3).join(' ')}: ${fa} / ${b.title.split(' ').slice(0, 3).join(' ')}: ${fb}`];
+            const row = (label, fa, fb) => [label, `${koName(a)}: ${fa} / ${koName(b)}: ${fb}`];
             blocks.push({ type: 'p', text: v([
               `비슷한 가격대에서 ${carDisplayName(a)}와(과) ${carDisplayName(b)} 중 무엇을 고를지 고민하시는 분들을 위해 두 차량을 비교해 보았습니다.`,
               `예산은 비슷한데 어떤 차가 더 나을까요? 프롬케이카에서 판매중인 두 차량을 항목별로 비교해 드립니다.`
@@ -1163,20 +1252,20 @@
               row('연료', a.fuel_type || '-', b.fuel_type || '-')
             ] });
             [a, b].forEach((c) => {
-              blocks.push({ type: 'h', text: c.title });
+              blocks.push({ type: 'h', text: carLabel(c) });
               const adv = buildAdvantages(c).slice(0, 4);
               if (adv.length) blocks.push({ type: 'items', items: adv });
               blocks.push({ type: 'kv', items: [['상세·사진 보기', carUrl(c)]] });
             });
             const picks = [];
             const cheaper = a.price < b.price ? a : b;
-            picks.push({ b: '가격을 아끼고 싶다면', t: `${cheaper.title} (${priceText(cheaper)})가 더 합리적입니다.` });
+            picks.push({ b: '가격을 아끼고 싶다면', t: `${koName(cheaper)} (${priceText(cheaper)})가 더 합리적입니다.` });
             const ya = parseYears(a.year_info).model || 0;
             const yb = parseYears(b.year_info).model || 0;
-            if (ya !== yb) picks.push({ b: '더 최신 연식을 원한다면', t: `${(ya > yb ? a : b).title} (${Math.max(ya, yb)}년형)를 보세요.` });
+            if (ya !== yb) picks.push({ b: '더 최신 연식을 원한다면', t: `${koName(ya > yb ? a : b)} (${Math.max(ya, yb)}년형)를 보세요.` });
             const ka = Number(a.mileage);
             const kb = Number(b.mileage);
-            if (Number.isFinite(ka) && Number.isFinite(kb) && ka !== kb) picks.push({ b: '주행거리가 짧은 차를 원한다면', t: `${(ka < kb ? a : b).title} (${kmText(Math.min(ka, kb))})가 유리합니다.` });
+            if (Number.isFinite(ka) && Number.isFinite(kb) && ka !== kb) picks.push({ b: '주행거리가 짧은 차를 원한다면', t: `${koName(ka < kb ? a : b)} (${kmText(Math.min(ka, kb))})가 유리합니다.` });
             blocks.push({ type: 'h', text: '이런 분께는 이 차량' });
             blocks.push({ type: 'items', items: picks });
             blocks.push({ type: 'p', text: '두 차량 모두 실제 상태는 방문하셔서 직접 확인하실 수 있습니다. 방문 전에 연락 주세요.' });
@@ -1334,7 +1423,8 @@
       const extra = ['카스타그램', '차스타그램', '수입중고차', '중고차추천', '중고차딜러', '수원', '자동차', '중고차구매'];
       const tags = [...new Set([...buildTags(car).split(' ').map((t) => t.replace('#', '')), ...extra])].slice(0, 25).map((t) => `#${t}`).join(' ');
       const lines = [
-        `🚗 ${sold}${car.title}`,
+        `🚗 ${sold}${koName(car)} 중고차`,
+        koName(car) !== car.title ? `(${car.title})` : '',
         words.length ? words.map((w) => `✅ ${w}`).join('  ') : '',
         '',
         `💰 ${price}`,
@@ -1354,7 +1444,8 @@
     if (channel === 'daangn') {
       const mark = words[0] || '중고차';
       const lines = [
-        `[${mark}] ${parseYears(car.year_info).model ? parseYears(car.year_info).model + '년형 ' : ''}${car.title}`,
+        `[${mark}] ${parseYears(car.year_info).model ? parseYears(car.year_info).model + '년형 ' : ''}${koName(car)} 중고차`,
+        koName(car) !== car.title ? `차량명: ${car.title}` : '',
         '',
         `가격: ${price}`,
         ...info.map(([k, val]) => `${k}: ${val}`),
@@ -1373,7 +1464,7 @@
 
     // 카카오톡·문자: 고객에게 바로 보낼 수 있는 짧은 안내
     const lines = [
-      `[프롬케이카] ${sold}${car.title}`,
+      `[프롬케이카] ${sold}${carLabel(car)}`,
       info.map(([, val]) => val).join(' · '),
       `💰 ${price}`,
       adv.length ? `✔ ${adv.slice(0, 3).map((a) => a.b).join(' / ')}` : '',
@@ -1488,11 +1579,20 @@
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#ffffff';
     ctx.font = `800 54px ${FONT}`;
-    const titleLines = wrapLines(ctx, car.title || '', W - 80, 2);
+    // 큰 글씨는 검색에서 쓰는 한글 차명, 그 아래에 원래(영문) 차명을 작게 덧붙인다
+    const ko = koName(car);
+    const titleLines = wrapLines(ctx, ko || car.title || '', W - 80, 2);
     titleLines.forEach((line, i) => ctx.fillText(line, 40, 760 + i * 66));
+    const sub = ko && ko !== car.title ? car.title : '';
+    if (sub) {
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.font = `600 28px ${FONT}`;
+      ctx.fillText(wrapLines(ctx, sub, W - 80, 1)[0], 40, 760 + (titleLines.length - 1) * 66 + 44);
+      ctx.fillStyle = '#ffffff';
+    }
 
     // 가격
-    const priceY = 760 + (titleLines.length - 1) * 66 + 130;
+    const priceY = 760 + (titleLines.length - 1) * 66 + (sub ? 150 : 130);
     ctx.fillStyle = GOLD;
     ctx.font = `800 110px ${FONT}`;
     ctx.fillText(priceText(car) || '가격 문의', 40, priceY);
@@ -1514,5 +1614,80 @@
     ctx.textAlign = 'left';
   }
 
-  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, TOPICS, SHORT_CHANNELS, DEALER };
+  /* ---------------- SEO 점검 ---------------- */
+  /**
+   * 네이버·구글 검색 기준으로 글을 점검한다 (일반적으로 알려진 기준이며 순위를 보장하지는 않는다).
+   * @param {{mode: 'car'|'topic', car?: object, title: string, bodyText: string, tags: string, photoCount?: number}} o
+   * @returns {Array<{level: 'ok'|'warn'|'bad', label: string, detail: string}>}
+   */
+  function seoCheck(o) {
+    const out = [];
+    const add = (level, label, detail) => out.push({ level, label, detail });
+    const title = String(o.title || '').trim();
+    const body = String(o.bodyText || '');
+    const flat = body.replace(/\s+/g, '');
+    const isCar = o.mode === 'car' && o.car;
+    const ko = isCar ? koName(o.car) : '';
+    const key = isCar ? ko : '중고차';
+    const count = (text, k) => (k ? text.split(k).length - 1 : 0);
+
+    // 1. 제목 길이
+    if (title.length >= 20 && title.length <= 46) add('ok', '제목 길이', `${title.length}자 — 검색 결과에서 잘리지 않는 길이예요.`);
+    else if (title.length < 20) add('warn', '제목 길이', `${title.length}자 — 조금 짧아요. 연식·상태·가격 중 하나를 더 넣어 보세요.`);
+    else add('warn', '제목 길이', `${title.length}자 — 길어서 검색 결과에서 뒤가 잘려요. 핵심 키워드는 앞쪽에 있는지 확인하세요.`);
+
+    // 2. 제목 앞부분에 핵심 키워드 + "중고"
+    const head = title.replace(/^\[.*?\]\s*/, '').slice(0, 26);
+    if (isCar) {
+      const mk = global.KCarKo ? (global.KCarKo.koModel(o.car) || ko) : ko;
+      if (head.includes(mk) && /중고/.test(head)) add('ok', '제목 앞 키워드', `앞 26자 안에 "${mk}"와 "중고"가 있어요.`);
+      else add('bad', '제목 앞 키워드', `앞 26자 안에 "${mk}"와 "중고"가 모두 있어야 검색에 유리해요.`);
+    } else if (/중고/.test(head)) {
+      add('ok', '제목 앞 키워드', '앞부분에 "중고"가 있어요.');
+    } else {
+      add('warn', '제목 앞 키워드', '제목 앞쪽에 "중고차"처럼 검색어가 들어가면 더 좋아요.');
+    }
+
+    // 3. 지역 키워드
+    if (/수원/.test(title) || /수원/.test(body.slice(0, 200))) add('ok', '지역 키워드', '"수원"이 제목 또는 첫 문단에 있어요.');
+    else add('warn', '지역 키워드', '제목이나 첫 문단에 "수원"을 넣으면 지역 검색에 유리해요.');
+
+    // 4. 첫 150자에 핵심 키워드
+    if (body.slice(0, 160).includes(key)) add('ok', '첫 문단 키워드', `첫 문단에 "${key}"가 들어 있어요.`);
+    else add('bad', '첫 문단 키워드', `본문 첫 150자 안에 "${key}"를 넣어 주세요.`);
+
+    // 5. 본문 분량
+    if (flat.length >= 1500) add('ok', '본문 분량', `약 ${flat.length.toLocaleString('ko-KR')}자 — 충분해요.`);
+    else if (flat.length >= 1000) add('warn', '본문 분량', `약 ${flat.length.toLocaleString('ko-KR')}자 — 1,500자 이상이면 더 좋아요. 직접 보신 느낌을 한두 단락 덧붙여 보세요.`);
+    else add('bad', '본문 분량', `약 ${flat.length.toLocaleString('ko-KR')}자 — 짧은 편이에요. 직접 겪은 사례나 한마디를 덧붙여 주세요.`);
+
+    // 6. 핵심 키워드 횟수 (너무 적어도, 너무 많아도 좋지 않다)
+    const n = count(body, key);
+    if (n >= 3 && n <= 9) add('ok', '키워드 횟수', `"${key}" ${n}번 — 자연스러운 범위예요.`);
+    else if (n < 3) add('warn', '키워드 횟수', `"${key}" ${n}번 — 3번 이상 자연스럽게 넣어 보세요.`);
+    else add('warn', '키워드 횟수', `"${key}" ${n}번 — 너무 많으면 스팸으로 보일 수 있어요. 일부를 다른 표현으로 바꿔 보세요.`);
+
+    // 7. 사이트 링크 (블로그 → 사이트 유입)
+    if (/fromkcar\.kr/.test(body)) add('ok', '사이트 링크', '프롬케이카 사이트 링크가 들어 있어요.');
+    else add('bad', '사이트 링크', '본문에 사이트 링크(fromkcar.kr)가 없어요. 손님이 넘어올 길이 필요해요.');
+
+    // 8. 연락처
+    if (/010-7449-8282/.test(body)) add('ok', '연락처', '휴대폰 번호가 들어 있어요.');
+    else add('bad', '연락처', '본문에 연락처가 없어요.');
+
+    // 9. 태그
+    const tagCount = (String(o.tags || '').match(/#/g) || []).length;
+    if (tagCount >= 5 && tagCount <= 10) add('ok', '태그', `${tagCount}개 — 적당해요.`);
+    else add('warn', '태그', `${tagCount}개 — 5~10개가 적당해요.`);
+
+    // 10. 사진 (매물 글만)
+    if (isCar) {
+      const p = Number(o.photoCount) || 0;
+      if (p >= 10) add('ok', '사진', `${p}장 — 10장 이상이에요. 직접 찍은 사진이면 더 좋아요.`);
+      else add('warn', '사진', `${p}장 — 10장 이상을 권해요. 가능하면 직접 찍은 사진을 쓰세요.`);
+    }
+    return out;
+  }
+
+  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, seoCheck, TOPICS, SHORT_CHANNELS, DEALER };
 })(window);

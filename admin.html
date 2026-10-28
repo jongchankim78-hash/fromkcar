@@ -195,6 +195,12 @@
           <input id="f-title" required type="text" class="fk-input">
         </label>
 
+        <label class="sm:col-span-2 text-sm">
+          <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">한글 차명 (검색용) <span class="font-normal text-xs text-[var(--fk-gray-600)]">— 네이버·구글에서 고객이 치는 이름이에요. 예: 기아 쏘렌토, 제네시스 GV80</span></span>
+          <input id="f-title-ko" type="text" placeholder="자동으로 채워집니다. 틀리면 직접 고쳐 주세요." class="fk-input">
+          <span id="f-title-ko-hint" class="block text-xs text-[var(--fk-gray-600)] mt-1"></span>
+        </label>
+
         <label class="text-sm">
           <span class="block font-semibold text-[var(--fk-gray-800)] mb-1">브랜드</span>
           <input id="f-brand" type="text" class="fk-input">
@@ -442,6 +448,12 @@
           <div id="blog-preview" contenteditable="true" class="border border-[var(--fk-gray-200)] rounded-xl p-4 max-h-[40vh] overflow-y-auto bg-white" style="outline:none;"></div>
         </div>
 
+        <details id="seo-panel" class="rounded-2xl border border-[var(--fk-gray-200)] bg-white" open>
+          <summary class="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-[var(--fk-gray-800)]"><i class="fa-solid fa-magnifying-glass-chart mr-1.5 text-[#03c75a]"></i>검색 노출(SEO) 점검 <span id="seo-summary" class="text-xs font-bold ml-1"></span></summary>
+          <ul id="seo-list" class="px-4 pb-3 space-y-1.5 text-xs"></ul>
+          <p class="px-4 pb-3 text-[11px] text-[var(--fk-gray-400)] leading-relaxed">일반적으로 알려진 기준으로 점검한 것이며, 순위를 보장하지는 않아요. 글을 고치면 바로 다시 점검합니다.</p>
+        </details>
+
         <div>
           <div class="flex items-center justify-between mb-1">
             <span class="text-sm font-semibold text-[var(--fk-gray-800)]">태그</span>
@@ -582,6 +594,7 @@
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/parser.js"></script>
+<script src="js/korean-name.js"></script>
 <script src="js/blog.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/report.js"></script>

@@ -81,7 +81,8 @@
       display_order: car.display_order,
       badge_no_accident: car.badge_no_accident,
       badge_no_paint: car.badge_no_paint,
-      is_new_car: car.is_new_car
+      is_new_car: car.is_new_car,
+      title_ko: car.title_ko
     };
     editingId = car.id;
     fillFormFromData(merged);
@@ -178,6 +179,12 @@
     document.getElementById('f-car-seq').value = data.car_seq || '';
     document.getElementById('f-title').value = data.title || '';
     document.getElementById('f-brand').value = data.brand || '';
+    // 한글 차명: 저장된 값이 있으면 그것을, 없으면 영문 차명에서 자동으로 추정해 채운다 (직접 고치면 더 이상 덮어쓰지 않음)
+    const titleKoEl = document.getElementById('f-title-ko');
+    titleKoEl.value = data.title_ko || '';
+    delete titleKoEl.dataset.manual;
+    if (data.title_ko) titleKoEl.dataset.manual = '1';
+    syncTitleKo();
     document.getElementById('f-car-number').value = data.car_number || '';
     document.getElementById('f-price').value = data.price ?? '';
     document.getElementById('f-price-display').value = data.price_display || '';
@@ -214,6 +221,30 @@
 
     renderPreviewImages();
   }
+
+  // 차량명/브랜드를 고칠 때마다 한글 차명을 다시 추정해 채운다. 관리자가 직접 입력한 경우는 건드리지 않는다.
+  function syncTitleKo() {
+    const el = document.getElementById('f-title-ko');
+    const hint = document.getElementById('f-title-ko-hint');
+    const guessed = KCarKo.guess({
+      title: document.getElementById('f-title').value,
+      brand: document.getElementById('f-brand').value
+    });
+    if (!el.dataset.manual) el.value = guessed.known ? guessed.full : '';
+    if (!el.value && document.getElementById('f-title').value) {
+      hint.textContent = '한글 모델명을 찾지 못했어요. 직접 입력하면 블로그 글과 사이트 검색에 쓰입니다. (예: 기아 쏘렌토)';
+      hint.style.color = '#b45309';
+    } else {
+      hint.textContent = el.dataset.manual ? '직접 입력한 이름을 사용합니다.' : (el.value ? '영문 차명에서 자동으로 찾았어요. 틀리면 고쳐 주세요.' : '');
+      hint.style.color = '';
+    }
+  }
+  ['f-title', 'f-brand'].forEach((id) => document.getElementById(id).addEventListener('input', syncTitleKo));
+  document.getElementById('f-title-ko').addEventListener('input', (e) => {
+    if (e.target.value.trim()) e.target.dataset.manual = '1';
+    else delete e.target.dataset.manual;
+    syncTitleKo();
+  });
 
   function syncImagesField() {
     document.getElementById('f-images').value = JSON.stringify(currentExtractedImages);
@@ -371,6 +402,7 @@
       source_url: document.getElementById('f-source-url').value || '',
       car_seq: document.getElementById('f-car-seq').value || '',
       title: document.getElementById('f-title').value.trim(),
+      title_ko: document.getElementById('f-title-ko').value.trim(),
       brand: document.getElementById('f-brand').value.trim(),
       car_number: document.getElementById('f-car-number').value.trim(),
       price: document.getElementById('f-price').value ? Number(document.getElementById('f-price').value) : null,
@@ -636,6 +668,28 @@
     }
   }
 
+  // 글을 만들거나 고칠 때마다 검색 노출 기준(제목·키워드·분량·링크 등)을 점검해 보여준다.
+  function renderSeoPanel() {
+    if (blogChannel !== 'blog') return;
+    const checks = KCarBlog.seoCheck({
+      mode: blogMode,
+      car: blogCar,
+      title: blogTitle.value,
+      bodyText: blogPreview.innerText,
+      tags: blogTags.value,
+      photoCount: blogCar && Array.isArray(blogCar.images) ? blogCar.images.length : 0
+    });
+    const icon = { ok: ['fa-circle-check', '#16a34a'], warn: ['fa-triangle-exclamation', '#d97706'], bad: ['fa-circle-xmark', '#dc2626'] };
+    document.getElementById('seo-list').innerHTML = checks.map((c) => `
+      <li class="flex gap-2 items-start"><i class="fa-solid ${icon[c.level][0]} mt-0.5" style="color:${icon[c.level][1]}"></i>
+        <span><b class="text-[var(--fk-gray-800)]">${KCarUtil.escapeHtml(c.label)}</b> <span class="text-[var(--fk-gray-600)]">${KCarUtil.escapeHtml(c.detail)}</span></span></li>`).join('');
+    const ok = checks.filter(c => c.level === 'ok').length;
+    const sum = document.getElementById('seo-summary');
+    sum.textContent = `${ok}/${checks.length} 통과`;
+    sum.style.color = ok === checks.length ? '#16a34a' : (checks.some(c => c.level === 'bad') ? '#dc2626' : '#d97706');
+  }
+  const seoDebounced = KCarUtil.debounce(renderSeoPanel, 300);
+
   function renderBlog() {
     if (blogMode === 'topic') {
       const post = KCarBlog.generateTopic(topicId, { seed: blogSeed, cars: onSaleCars() });
@@ -656,7 +710,8 @@
       return;
     }
     const chars = blogPreview.innerText.replace(/\s+/g, '').length;
-    document.getElementById('blog-length').textContent = `· 약 ${chars.toLocaleString('ko-KR')}자${chars < 1000 ? ' (짧은 편이에요. 직접 겪은 사례나 한마디를 한두 단락 덧붙이면 좋아요)' : ''}`;
+    document.getElementById('blog-length').textContent = `· 약 ${chars.toLocaleString('ko-KR')}자`;
+    renderSeoPanel();
   }
 
   function showBlogModal() {
@@ -842,7 +897,9 @@
       KCarUtil.toast('저장하지 못했습니다.', 'error');
     }
   });
-  blogPreview.addEventListener('input', () => { blogPreview.dataset.edited = '1'; });
+  blogPreview.addEventListener('input', () => { blogPreview.dataset.edited = '1'; seoDebounced(); });
+  blogTitle.addEventListener('input', seoDebounced);
+  blogTags.addEventListener('input', seoDebounced);
 
   blogModal.querySelector('#blog-channel-tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('[data-channel]');

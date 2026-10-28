@@ -224,7 +224,8 @@
       if (brand && effectiveBrand(car) !== brand) return false;
       if (fuel && car.fuel_type !== fuel) return false;
       if (q) {
-        const hay = [car.title, car.region, car.car_number, car.brand].filter(Boolean).join(' ').toLowerCase();
+        // 한글로 "쏘렌토"를 쳐도 영문 차명(SORENTO) 매물이 찾아지도록 한글 차명도 함께 검색한다.
+        const hay = [car.title, window.KCarKo ? KCarKo.koName(car) : '', car.region, car.car_number, car.brand].filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -702,7 +703,9 @@
     if (pushState) {
       history.pushState({ carId: car.id }, '', KCarI18n.path(`/car/${car.id}`));
     }
-    document.title = `${car.title || 'FROM K CAR'} — FROM K CAR`;
+    document.title = KCarI18n.getLang() === 'ko' && window.KCarKo
+      ? KCarKo.seoTitle(car)
+      : `${car.title || 'FROM K CAR'} — FROM K CAR`;
     currentModalCar = car;
     if (window.KCarTrack) KCarTrack.view(car.id);
     currentModalImages = Array.isArray(car.images) && car.images.length ? car.images : [car.main_image].filter(Boolean);

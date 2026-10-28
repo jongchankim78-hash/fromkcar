@@ -12,6 +12,7 @@ const zlib = require('zlib');
 const { URL } = require('url');
 const { scrapeKbListing, parsePastedKbHtml } = require('./kb-scraper');
 const { createStats } = require('./stats');
+const KCarKo = require('./js/korean-name.js');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -337,7 +338,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     let list = readListings().filter((c) => !c.deleted);
     if (search) {
       list = list.filter((c) => {
-        const hay = [c.title, c.region, c.car_number, c.brand].filter(Boolean).join(' ').toLowerCase();
+        const hay = [c.title, c.title_ko, KCarKo.koName(c), c.region, c.car_number, c.brand].filter(Boolean).join(' ').toLowerCase();
         return hay.includes(search);
       });
     }
@@ -532,8 +533,13 @@ function handleCarDetailPage(req, res, carId, lang = 'ko') {
     ? (car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : ''))
     : (krw || car.price_display || '');
   const head = LANG_HEAD[lang];
-  const title = `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ` — ${head.carSuffix}`;
-  const description = `${car.title || ''} ${car.year_info || ''} ${priceText} · ${head.carTagline}`.replace(/\s+/g, ' ').trim();
+  // 한국어 페이지는 네이버·구글 한국어 검색에 맞춰 "한글 모델명 + 중고차"를 앞세운 제목/설명을 쓴다.
+  const title = lang === 'ko'
+    ? KCarKo.seoTitle(car)
+    : `${car.title || 'FROM K CAR'} ${priceText}`.trim() + ` — ${head.carSuffix}`;
+  const description = lang === 'ko'
+    ? KCarKo.seoDescription(car)
+    : `${car.title || ''} ${car.year_info || ''} ${priceText} · ${head.carTagline}`.replace(/\s+/g, ' ').trim();
   const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || 'https://www.fromkcar.kr/images/og-image.png';
 
   const html = renderLocalizedPage(indexHtml, lang, `/car/${car.id}`, { title, description, image });
