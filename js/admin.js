@@ -409,16 +409,19 @@
       KCarUtil.toast('차량명을 입력해주세요.', 'error');
       return;
     }
+    let created = null;
     try {
       if (editingId) {
         await KCarAPI.updateCar(editingId, data);
         KCarUtil.toast('매물 정보를 수정했습니다.', 'success');
       } else {
-        await KCarAPI.createCar(data);
+        created = await KCarAPI.createCar(data);
         KCarUtil.toast('새 매물을 등록했습니다.', 'success');
       }
       resetForm();
       loadAdminList();
+      // 새로 등록했다면 네이버 블로그 소개글을 바로 만들어 보여준다.
+      if (created) openBlogModal(created);
     } catch (err) {
       KCarUtil.toast(err.message || '저장 중 오류가 발생했습니다.', 'error');
     }
@@ -490,12 +493,126 @@
           <button class="btn-secondary !py-1.5 !px-2 text-xs" data-action="move-up" data-id="${car.id}" title="위로" ${i === 0 ? 'disabled style="opacity:.35;cursor:default;"' : ''}><i class="fa-solid fa-arrow-up"></i></button>
           <button class="btn-secondary !py-1.5 !px-2 text-xs mr-1.5" data-action="move-down" data-id="${car.id}" title="아래로" ${i === sorted.length - 1 ? 'disabled style="opacity:.35;cursor:default;"' : ''}><i class="fa-solid fa-arrow-down"></i></button>
           ${car.source_url ? `<button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="refetch" data-id="${car.id}" title="원본에서 다시 불러오기"><i class="fa-solid fa-rotate"></i></button>` : ''}
+          <button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="blog" data-id="${car.id}" title="네이버 블로그 글 만들기"><i class="fa-solid fa-pen-nib" style="color:#03c75a"></i></button>
           <button class="btn-secondary !py-1.5 !px-3 text-xs mr-1.5" data-action="edit" data-id="${car.id}"><i class="fa-solid fa-pen"></i></button>
           <button class="btn-danger !py-1.5 !px-3 text-xs" data-action="delete" data-id="${car.id}"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
   }
+
+  /* ---------------- 네이버 블로그 글 ---------------- */
+  // 글 생성 규칙은 js/blog.js. 여기서는 모달 표시와 복사 버튼만 다룬다.
+  const blogModal = document.getElementById('blog-modal');
+  const blogTitle = document.getElementById('blog-title');
+  const blogPreview = document.getElementById('blog-preview');
+  const blogTags = document.getElementById('blog-tags');
+  const blogPhotos = document.getElementById('blog-photos');
+  let blogCar = null;
+  let blogSeed = 0;
+
+  function renderBlog() {
+    if (!blogCar) return;
+    const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked });
+    blogTitle.value = post.title;
+    blogPreview.innerHTML = post.html;
+    blogTags.value = post.tags;
+    document.getElementById('blog-length').textContent = `· 약 ${blogPreview.innerText.replace(/\s+/g, '').length.toLocaleString('ko-KR')}자`;
+  }
+
+  async function openBlogModal(car) {
+    blogCar = car;
+    blogSeed = 0;
+    blogPhotos.checked = false;
+    document.getElementById('blog-modal-sub').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
+    document.getElementById('blog-zip').href = `/car/${car.id}/images.zip`;
+    renderBlog();
+    blogModal.classList.remove('hidden');
+    blogModal.classList.add('flex');
+    blogPreview.scrollTop = 0;
+    // 방금 등록한 매물은 사진이 서버에 저장되는 중일 수 있으니, 최신 정보로 한 번 더 만든다.
+    try {
+      const fresh = await KCarAPI.getCar(car.id);
+      if (blogCar && blogCar.id === fresh.id) {
+        blogCar = fresh;
+        if (!blogPreview.dataset.edited) renderBlog();
+      }
+    } catch (e) { /* 처음 받은 정보로 계속 */ }
+  }
+
+  function closeBlogModal() {
+    blogModal.classList.add('hidden');
+    blogModal.classList.remove('flex');
+    blogCar = null;
+    delete blogPreview.dataset.edited;
+  }
+
+  async function copyPlain(text, okMessage) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) { KCarUtil.toast('복사하지 못했습니다. 직접 선택해서 복사해 주세요.', 'error'); return; }
+    }
+    KCarUtil.toast(okMessage, 'success');
+  }
+
+  // 서식(굵은 글씨, 제목 크기, 링크)을 그대로 가져가도록 HTML 형태로 클립보드에 넣는다.
+  async function copyRichBody() {
+    const html = blogPreview.innerHTML;
+    const text = blogPreview.innerText;
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' })
+        })]);
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(blogPreview);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        if (!document.execCommand('copy')) throw new Error('copy failed');
+        sel.removeAllRanges();
+      }
+      KCarUtil.toast('본문을 복사했습니다. 네이버 블로그 본문에 붙여넣기(Ctrl+V) 하세요.', 'success', 4000);
+    } catch (e) {
+      KCarUtil.toast('복사하지 못했습니다. 본문을 직접 선택해서 복사해 주세요.', 'error');
+    }
+  }
+
+  document.getElementById('blog-close').addEventListener('click', closeBlogModal);
+  blogModal.addEventListener('click', (e) => { if (e.target === blogModal) closeBlogModal(); });
+  document.getElementById('blog-copy-title').addEventListener('click', () => copyPlain(blogTitle.value, '제목을 복사했습니다.'));
+  document.getElementById('blog-copy-tags').addEventListener('click', () => copyPlain(blogTags.value, '태그를 복사했습니다.'));
+  document.getElementById('blog-copy-text').addEventListener('click', () => copyPlain(blogPreview.innerText, '텍스트를 복사했습니다.'));
+  document.getElementById('blog-copy-body').addEventListener('click', copyRichBody);
+  document.getElementById('blog-regenerate').addEventListener('click', () => {
+    if (blogPreview.dataset.edited && !confirm('직접 고친 내용이 사라집니다. 다시 만들까요?')) return;
+    delete blogPreview.dataset.edited;
+    blogSeed += 1;
+    renderBlog();
+  });
+  blogPhotos.addEventListener('change', () => {
+    if (blogPreview.dataset.edited && !confirm('직접 고친 내용이 사라집니다. 다시 만들까요?')) {
+      blogPhotos.checked = !blogPhotos.checked;
+      return;
+    }
+    delete blogPreview.dataset.edited;
+    renderBlog();
+  });
+  blogPreview.addEventListener('input', () => { blogPreview.dataset.edited = '1'; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !blogModal.classList.contains('hidden')) closeBlogModal();
+  });
 
   /* ---------------- 대표(썸네일) 사진 선택 ---------------- */
   // 첫 번째 사진이 실내 사진이라 카드 썸네일이 어색할 때, 목록에서 바로 대표 사진을 골라 저장한다.
@@ -597,6 +714,12 @@
     const upBtn = e.target.closest('[data-action="move-up"]');
     const downBtn = e.target.closest('[data-action="move-down"]');
     const pickBtn = e.target.closest('[data-action="pick-thumb"]');
+    const blogBtn = e.target.closest('[data-action="blog"]');
+    if (blogBtn) {
+      const car = adminCars.find(c => c.id === blogBtn.dataset.id);
+      if (car) openBlogModal(car);
+      return;
+    }
     if (pickBtn) {
       const car = adminCars.find(c => c.id === pickBtn.dataset.id);
       if (car) openThumbPicker(car);

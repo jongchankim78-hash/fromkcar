@@ -13,6 +13,14 @@
     instagram: '인스타그램', kakao: '카카오톡', phone: '전화', email: '이메일'
   };
 
+  // 링크에 붙인 ?src=꼬리표(예: 블로그 글)는 알아보기 쉬운 이름으로 보여준다.
+  const SRC_LABEL = { naver_blog: '네이버 블로그 링크' };
+  function refLabel(name) {
+    if (name === 'direct') return '직접 / 알 수 없음';
+    if (name.startsWith('src:')) return SRC_LABEL[name.slice(4)] || `링크 꼬리표: ${name.slice(4)}`;
+    return name;
+  }
+
   const tabButtons = document.querySelectorAll('.admin-tab');
   const listingsTab = document.getElementById('tab-listings');
   const reportTab = document.getElementById('tab-report');
@@ -115,7 +123,7 @@
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
         <div class="rp-card"><div class="rp-title">언어별 방문</div>${bars(T.langs, (n) => LANG_LABEL[n] || n)}</div>
-        <div class="rp-card"><div class="rp-title">유입 경로</div>${bars(T.refs, (n) => (n === 'direct' ? '직접 / 알 수 없음' : n))}</div>
+        <div class="rp-card"><div class="rp-title">유입 경로</div>${bars(T.refs, refLabel)}</div>
         <div class="rp-card"><div class="rp-title">기기</div>${bars(T.devices, (n) => DEVICE_LABEL[n] || n)}</div>
       </div>
 

@@ -107,7 +107,7 @@ function createStats(dataDir) {
 
     if (evt.t === 'visit') {
       const lang = LANGS.has(evt.lang) ? evt.lang : 'ko';
-      const ref = clean(evt.ref, 60).toLowerCase().replace(/^www\./, '').replace(/[^a-z0-9.\-]/g, '') || 'direct';
+      const ref = clean(evt.ref, 60).toLowerCase().replace(/^www\./, '').replace(/[^a-z0-9.\-_:]/g, '') || 'direct';
       day.visits += 1;
       day.visitors.add(vid);
       bump(day.langs, lang);

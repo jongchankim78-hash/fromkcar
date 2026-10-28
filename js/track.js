@@ -50,10 +50,16 @@
   if (!ssGet(VISIT_KEY)) {
     ssSet(VISIT_KEY, '1');
     let ref = '';
-    try {
-      const host = new URL(document.referrer).host;
-      if (host && host !== location.host) ref = host;
-    } catch (e) { /* referrer 없음 */ }
+    // 블로그 글 등에 넣은 링크의 ?src=naver_blog 같은 꼬리표가 있으면 그것을 유입 경로로 쓴다.
+    const src = new URLSearchParams(location.search).get('src');
+    if (src && /^[a-z0-9_-]{1,30}$/i.test(src)) {
+      ref = 'src:' + src.toLowerCase();
+    } else {
+      try {
+        const host = new URL(document.referrer).host;
+        if (host && host !== location.host) ref = host;
+      } catch (e) { /* referrer 없음 */ }
+    }
     send({ t: 'visit', ref });
   }
 
