@@ -550,7 +550,18 @@
     } catch (e) { /* 기록을 못 읽어도 주제 목록은 보여준다 */ }
   }
 
+  // "새 주제 제안받기"로 받은 주제(이번에 연 동안 목록 맨 위에 둔다)와, 이미 제안한 주제 기록(브라우저에 저장)
+  let proposedTopics = [];
+  const SEEN_KEY = 'fkcar_topic_seen';
+  function loadSeenTopics() {
+    try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function saveSeenTopics(ids) {
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(ids.slice(-200))); } catch (e) { /* 저장 못 해도 동작에는 문제없음 */ }
+  }
+
   const TOPIC_BADGES = {
+    new: ['새 제안', 'bg-purple-100 text-purple-800'],
     season: ['이번 계절', 'bg-orange-100 text-orange-800'],
     recent: ['신규 입고', 'bg-red-100 text-red-700'],
     data: ['재고 기반', 'bg-blue-100 text-blue-800'],
@@ -558,7 +569,13 @@
   };
 
   function renderTopicList() {
-    topicSuggestions = KCarBlog.listTopics(adminCars, topicDone);
+    const now = Date.now();
+    const proposed = proposedTopics.map((t) => {
+      const at = topicDone[t.id] || 0;
+      return { ...t, doneAt: at || null, daysAgo: at ? Math.floor((now - at) / 86400000) : null };
+    });
+    const proposedIds = new Set(proposed.map(t => t.id));
+    topicSuggestions = [...proposed, ...KCarBlog.listTopics(adminCars, topicDone).filter(t => !proposedIds.has(t.id))];
     if (!topicSuggestions.find(t => t.id === topicId)) topicId = topicSuggestions[0] && topicSuggestions[0].id;
     topicListEl.innerHTML = topicSuggestions.map((t, i) => {
       const [badgeText, badgeCls] = TOPIC_BADGES[t.kind] || TOPIC_BADGES.evergreen;
@@ -780,6 +797,32 @@
     blogSeed = 0;
     renderTopicList();
     renderBlog();
+  });
+
+  document.getElementById('topic-suggest-new').addEventListener('click', () => {
+    if (!confirmDiscardEdits()) return;
+    let seen = loadSeenTopics();
+    const result = KCarBlog.suggestNew(adminCars, { seen, done: topicDone, count: 3 });
+    if (!result.topics.length) {
+      KCarUtil.toast('지금은 제안할 새 주제가 없어요. 매물이 늘어나면 새로운 제안이 생깁니다.', 'error', 4000);
+      return;
+    }
+    if (result.cycled) {
+      seen = [];
+      KCarUtil.toast('준비된 주제를 한 바퀴 다 보여드렸어요. 처음부터 다시 제안합니다.', 'success', 4000);
+    } else {
+      KCarUtil.toast(`새 주제 ${result.topics.length}개를 제안했어요. 목록 맨 위를 확인해 보세요.`, 'success');
+    }
+    const newIds = result.topics.map(t => t.id);
+    saveSeenTopics([...seen, ...newIds]);
+    // 이전에 받은 제안 중 아직 안 쓴 것은 이번 제안 아래에 이어서 보여준다 (최대 9개)
+    proposedTopics = [...result.topics, ...proposedTopics.filter(t => !newIds.includes(t.id) && !topicDone[t.id])].slice(0, 9);
+    delete blogPreview.dataset.edited;
+    topicId = newIds[0];
+    blogSeed = 0;
+    renderTopicList();
+    renderBlog();
+    topicListEl.scrollTop = 0;
   });
 
   topicDoneBtn.addEventListener('click', async () => {

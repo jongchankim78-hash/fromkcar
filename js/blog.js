@@ -983,8 +983,294 @@
     return topics;
   }
 
+  /* ---------------- "새 주제 제안받기"용 아이디어 풀 ---------------- */
+  // 기본 추천 목록(listTopics)에는 나오지 않고, 관리자가 "새 주제 제안받기"를 누를 때마다 몇 개씩 꺼내 보여준다.
+  // 재고가 늘면 차량별 가이드·비교 글이 함께 늘어나서 제안할 거리가 계속 생긴다.
+  const EXTRA_TOPICS = [
+    {
+      id: 'insurance-save',
+      label: '중고차 자동차보험료 아끼는 방법',
+      title: '중고차 자동차보험료 아끼는 방법 — 가입 전 꼭 비교하세요',
+      tags: ['자동차보험료', '자동차보험비교', '중고차보험', '다이렉트보험'],
+      intros: [(n) => `중고차를 사고 나면 바로 챙겨야 하는 것이 자동차보험입니다. 같은 차도 가입 방법에 따라 보험료가 달라지기 때문에 프롬케이카 ${n}이 아끼는 방법을 정리했습니다.`],
+      sections: [{ h: '보험료를 줄이는 방법', items: [
+        ['여러 곳에서 견적 비교', '보험사마다 같은 조건에도 보험료가 다를 수 있으니 2~3곳 이상에서 견적을 받아 비교해 보세요.'],
+        ['다이렉트(온라인) 가입', '설계사 없이 온라인으로 가입하는 상품이 상대적으로 저렴한 경우가 많습니다.'],
+        ['운전자 범위 조정', '운전하는 사람의 범위를 필요한 만큼만 지정하면 보험료가 줄어드는 경우가 많습니다.'],
+        ['특약 점검', '주행거리 특약, 블랙박스 할인 등 해당되는 특약이 있는지 확인하세요.'],
+        ['보장 내용은 줄이지 말기', '보험료만 보고 대인·대물 보장을 지나치게 낮추면 사고 때 부담이 커질 수 있습니다.']
+      ] }],
+      outros: ['차량 계약과 함께 보험도 미리 알아보시면 인도일에 바로 운행하실 수 있습니다. 궁금한 점은 편하게 문의 주세요.']
+    },
+    {
+      id: 'payment-method',
+      label: '중고차 현금·할부·리스, 무엇이 유리할까',
+      title: '중고차 구매 방법 비교 — 현금·할부·리스 어떤 게 유리할까',
+      tags: ['중고차할부', '중고차리스', '중고차현금구매', '중고차구매방법'],
+      intros: [(n) => `중고차를 사는 방법은 현금 구매, 할부, 리스 등 여러 가지입니다. 프롬케이카 ${n}이 각 방식의 특징을 비교해 드립니다.`],
+      sections: [{ h: '구매 방법별 특징', items: [
+        ['현금 구매', '이자 부담이 없고 절차가 단순합니다. 대신 목돈이 한 번에 들어갑니다.'],
+        ['할부', '매달 나눠 내므로 초기 부담이 적지만 이자가 붙습니다. 금리와 기간을 꼼꼼히 비교하세요.'],
+        ['리스', '월 납입금이 상대적으로 낮을 수 있지만 계약 기간과 종료 조건, 중도 해지 조건을 반드시 확인해야 합니다.']
+      ] }, { h: '선택 전에 확인할 것', p: '월 납입금뿐 아니라 총 지출 금액(이자·수수료 포함)을 비교해 보세요. 보유 자금과 월 소득을 기준으로 무리 없는 방식을 고르는 것이 가장 중요합니다.' }],
+      outros: ['구매 방식은 개인 상황에 따라 정답이 다릅니다. 궁금한 점은 편하게 문의해 주세요.']
+    },
+    {
+      id: 'first-month',
+      label: '중고차 구매 후 첫 한 달 해야 할 일',
+      title: '중고차 구매 후 첫 한 달, 꼭 해야 할 일 체크리스트',
+      tags: ['중고차구매후', '중고차관리', '중고차점검', '자동차관리'],
+      intros: [(n) => `중고차를 인도받은 뒤 처음 한 달은 차량 상태를 파악하고 관리 기준을 잡는 중요한 시기입니다. 프롬케이카 ${n}이 구매 후 할 일을 정리했습니다.`],
+      sections: [{ h: '구매 후 체크리스트', items: [
+        ['보험과 이전 등록 확인', '보험이 정상 가입되었는지, 이전 등록이 끝났는지 확인하세요.'],
+        ['소모품 점검', '엔진오일, 브레이크액, 필터류, 타이어 상태를 점검하고 필요하면 교체합니다.'],
+        ['정비 이력 정리', '이전 정비 이력을 확인하고 앞으로의 점검 일정을 정해 둡니다.'],
+        ['블랙박스·편의 용품', '블랙박스를 설치하고 필요한 용품을 준비하세요.'],
+        ['이상 증상 기록', '초기에 느낀 소음이나 이상 증상은 메모해 두었다가 판매자에게 빨리 알리세요. 보증 조건이 있다면 기간 안에 알리는 것이 중요합니다.']
+      ] }],
+      outros: ['첫 한 달만 잘 관리해도 오래 안심하고 탈 수 있습니다. 구매 후 궁금한 점도 편하게 문의 주세요.']
+    },
+    {
+      id: 'dealer-vs-private',
+      label: '중고차 업체 구매 vs 개인 거래',
+      title: '중고차 업체 구매 vs 개인 거래, 장단점 비교',
+      tags: ['중고차업체', '중고차개인거래', '중고차딜러', '중고차거래비교'],
+      intros: [(n) => `중고차를 업체에서 살지, 개인에게서 살지 고민하시는 분들이 많습니다. 프롬케이카 ${n}이 두 방식을 비교해 드립니다.`],
+      sections: [{ h: '장단점 비교', items: [
+        ['업체 구매의 장점', '성능·상태점검기록부 제공, 이전 등록 대행, 보증 등 절차를 갖춘 경우가 많아 초보자에게 비교적 안전합니다.'],
+        ['업체 구매의 단점', '업체 마진이 포함되어 개인 거래보다 가격이 높을 수 있습니다.'],
+        ['개인 거래의 장점', '중간 비용이 없어 가격이 저렴할 수 있고, 이전 소유자에게 차량 이력을 직접 들을 수 있습니다.'],
+        ['개인 거래의 단점', '사후 책임이 불분명하고 서류 확인과 이전 절차를 직접 챙겨야 합니다.']
+      ] }, { h: '선택 기준', p: '가격을 가장 중요하게 보고 확인할 자신이 있다면 개인 거래, 안전과 편의를 우선한다면 업체 구매가 일반적으로 더 잘 맞습니다.' }],
+      outros: ['어느 쪽이든 서류와 차량 상태를 꼼꼼히 확인하는 것이 가장 중요합니다. 궁금한 점은 언제든 문의 주세요.']
+    },
+    {
+      id: 'import-maintenance',
+      label: '수입 중고차 유지비, 현실적으로 얼마나 들까',
+      title: '수입 중고차 유지비, 현실적으로 따져 보기',
+      tags: ['수입차유지비', '수입중고차', '수입차정비', '중고차유지비'],
+      intros: [(n) => `수입 중고차는 구매 가격이 매력적이지만 유지비가 걱정되는 분이 많습니다. 프롬케이카 ${n}이 유지비를 현실적으로 따져 보는 방법을 정리했습니다.`],
+      sections: [{ h: '유지비 항목별 점검', items: [
+        ['소모품 교체비', '엔진오일, 브레이크 패드, 타이어 같은 소모품은 차종과 등급에 따라 비용 차이가 큽니다. 구매 전에 대략적인 교체 비용을 알아 두세요.'],
+        ['정비 접근성', '정비를 맡길 수 있는 공식·전문 정비소가 가까운지, 부품 수급이 쉬운 모델인지 확인하세요.'],
+        ['보증 여부', '남은 보증 기간이 있거나 중고차 보증 상품이 있다면 예상치 못한 수리비 부담을 줄일 수 있습니다.'],
+        ['보험료와 세금', '배기량과 차량 가격에 따라 달라지므로 구매 전에 연간 비용을 계산해 보세요.'],
+        ['예비 비용', '예상치 못한 수리에 대비해 연식에 따라 일정 금액을 따로 마련해 두는 것을 권합니다.']
+      ] }],
+      outros: ['유지비까지 계산해 보면 같은 가격의 차도 훨씬 현명하게 고르실 수 있습니다. 궁금한 차량이 있다면 문의 주세요.']
+    }
+  ];
+
+  const carKey = (c) => (c.listing_no ? `n${c.listing_no}` : String(c.id).slice(0, 8));
+
+  function carDisplayName(c) {
+    const yrs = parseYears(c.year_info);
+    return `${yrs.model ? yrs.model + '년형 ' : ''}${c.title}`.trim();
+  }
+
+  function whoFits(c) {
+    const out = [];
+    const fuel = String(c.fuel_type || '');
+    if (c.is_new_car) out.push('신차 같은 차를 합리적인 가격에 찾는 분');
+    if (effectiveNoAccident(c)) out.push('사고 이력 없는 차량을 우선하는 분');
+    if (/전기|EV/i.test(fuel)) out.push('집이나 직장에서 충전할 수 있어 유지비를 아끼고 싶은 분');
+    else if (/하이브리드/.test(fuel)) out.push('연비를 중요하게 보는 분');
+    else if (/디젤/.test(fuel)) out.push('장거리 운행이 많은 분');
+    if (Number(c.mileage) > 0 && Number(c.mileage) <= 30000 && !c.is_new_car) out.push('주행거리가 짧은 차를 찾는 분');
+    if (!out.length) out.push('상태 좋은 차를 합리적인 가격에 찾는 분');
+    return out.slice(0, 3);
+  }
+
+  function checkpointsFor(c) {
+    const fuel = String(c.fuel_type || '');
+    const items = [];
+    if (/전기|EV/i.test(fuel)) items.push(['배터리 상태', '배터리 상태와 남은 보증, 실제 주행 가능 거리를 확인하세요.'], ['충전 환경', '충전 규격이 내가 이용할 충전 환경과 맞는지 확인하세요.']);
+    else if (/디젤/.test(fuel)) items.push(['배출가스 관련 장치', '배출가스 저감 장치와 관련된 관리 이력을 확인하세요.'], ['엔진 소음', '시동 직후와 가속할 때 엔진 소음과 진동을 확인하세요.']);
+    else if (/하이브리드/.test(fuel)) items.push(['하이브리드 배터리', '구동용 배터리 관련 점검 이력과 보증 조건을 확인하세요.']);
+    else items.push(['엔진·변속기', '시동 소음, 가속, 변속 충격이 매끄러운지 시운전으로 확인하세요.']);
+    items.push(['성능·상태점검기록부', '기록부의 사고·교환·수리 이력을 확인하고 실제 차량 상태와 대조하세요.'], ['보험 이력 조회', '보험 사고 이력을 별도로 조회해 판매자 설명과 같은지 비교하세요.']);
+    return items;
+  }
+
+  function extraTopics(cars) {
+    const list = onSaleOf(cars);
+    const topics = EXTRA_TOPICS.map((t) => ({ kind: 'new', ...t }));
+    const add = (t) => topics.push({ kind: 'new', ...t });
+
+    // 차량 한 대를 깊이 소개하는 가이드
+    list.forEach((c) => {
+      add({
+        id: `data:model:${carKey(c)}`,
+        label: `${c.title} 구매 가이드 (장점과 확인할 점)`,
+        title: `${carDisplayName(c)} 구매 가이드 — 장점과 확인할 점`,
+        tags: [`${brandKo(c)}중고차`, modelKeyword(c) ? `${modelKeyword(c)}중고차` : '중고차추천', '중고차구매가이드'].filter(Boolean),
+        carKey: carKey(c),
+        render: (o, v) => {
+          const blocks = [];
+          const adv = buildAdvantages(c);
+          blocks.push({ type: 'p', text: v([
+            `프롬케이카에서 판매중인 ${carDisplayName(c)}에 관심을 가진 분들이 많아, 이 차량의 장점과 구매 전 확인할 점을 따로 정리했습니다.`,
+            `${carDisplayName(c)}, 어떤 차일까요? 프롬케이카 ${DEALER.name}이 이 차량의 특징과 구매 전 체크 포인트를 자세히 설명드립니다.`
+          ], 1) });
+          if (adv.length) {
+            blocks.push({ type: 'h', text: '이 차량의 장점' });
+            blocks.push({ type: 'items', items: adv });
+          }
+          blocks.push({ type: 'h', text: '이런 분께 추천합니다' });
+          blocks.push({ type: 'items', items: whoFits(c).map((t, i) => ({ b: `추천 ${i + 1}`, t })) });
+          blocks.push({ type: 'h', text: '구매 전 확인할 점' });
+          blocks.push({ type: 'items', items: checkpointsFor(c).map(([b, t]) => ({ b, t })) });
+          blocks.push({ type: 'h', text: '차량 기본 정보' });
+          blocks.push({ type: 'kv', items: [
+            ['차량명', c.title],
+            c.year_info ? ['연식', c.year_info] : null,
+            c.mileage || c.mileage === 0 ? ['주행거리', kmText(c.mileage)] : null,
+            c.fuel_type ? ['연료', c.fuel_type] : null,
+            ['판매 가격', priceText(c) || '문의'],
+            ['상세·사진 보기', carUrl(c)]
+          ].filter(Boolean) });
+          return blocks;
+        }
+      });
+    });
+
+    // 비슷한 가격대의 두 차량 비교 (가격 차이 30% 이내, 서로 다른 차량)
+    const compared = new Set();
+    list.forEach((a) => {
+      list.forEach((b) => {
+        if (a.id >= b.id || !(Number(a.price) > 0) || !(Number(b.price) > 0)) return;
+        if (Math.abs(a.price - b.price) / Math.max(a.price, b.price) > 0.3) return;
+        const key = `${carKey(a)}-${carKey(b)}`;
+        if (compared.has(key)) return;
+        compared.add(key);
+        add({
+          id: `data:cmp:${key}`,
+          label: `${a.title} vs ${b.title} 비교`,
+          title: `${a.title} vs ${b.title}, 어떤 차가 나에게 맞을까?`,
+          tags: ['중고차비교', `${brandKo(a)}중고차`, `${brandKo(b)}중고차`].filter(Boolean),
+          render: (o, v) => {
+            const blocks = [];
+            const row = (label, fa, fb) => [label, `${a.title.split(' ').slice(0, 3).join(' ')}: ${fa} / ${b.title.split(' ').slice(0, 3).join(' ')}: ${fb}`];
+            blocks.push({ type: 'p', text: v([
+              `비슷한 가격대에서 ${carDisplayName(a)}와(과) ${carDisplayName(b)} 중 무엇을 고를지 고민하시는 분들을 위해 두 차량을 비교해 보았습니다.`,
+              `예산은 비슷한데 어떤 차가 더 나을까요? 프롬케이카에서 판매중인 두 차량을 항목별로 비교해 드립니다.`
+            ], 1) });
+            blocks.push({ type: 'h', text: '한눈에 비교' });
+            blocks.push({ type: 'kv', items: [
+              row('가격', priceText(a) || '문의', priceText(b) || '문의'),
+              row('연식', a.year_info || '-', b.year_info || '-'),
+              row('주행거리', a.mileage || a.mileage === 0 ? kmText(a.mileage) : '-', b.mileage || b.mileage === 0 ? kmText(b.mileage) : '-'),
+              row('연료', a.fuel_type || '-', b.fuel_type || '-')
+            ] });
+            [a, b].forEach((c) => {
+              blocks.push({ type: 'h', text: c.title });
+              const adv = buildAdvantages(c).slice(0, 4);
+              if (adv.length) blocks.push({ type: 'items', items: adv });
+              blocks.push({ type: 'kv', items: [['상세·사진 보기', carUrl(c)]] });
+            });
+            const picks = [];
+            const cheaper = a.price < b.price ? a : b;
+            picks.push({ b: '가격을 아끼고 싶다면', t: `${cheaper.title} (${priceText(cheaper)})가 더 합리적입니다.` });
+            const ya = parseYears(a.year_info).model || 0;
+            const yb = parseYears(b.year_info).model || 0;
+            if (ya !== yb) picks.push({ b: '더 최신 연식을 원한다면', t: `${(ya > yb ? a : b).title} (${Math.max(ya, yb)}년형)를 보세요.` });
+            const ka = Number(a.mileage);
+            const kb = Number(b.mileage);
+            if (Number.isFinite(ka) && Number.isFinite(kb) && ka !== kb) picks.push({ b: '주행거리가 짧은 차를 원한다면', t: `${(ka < kb ? a : b).title} (${kmText(Math.min(ka, kb))})가 유리합니다.` });
+            blocks.push({ type: 'h', text: '이런 분께는 이 차량' });
+            blocks.push({ type: 'items', items: picks });
+            blocks.push({ type: 'p', text: '두 차량 모두 실제 상태는 방문하셔서 직접 확인하실 수 있습니다. 방문 전에 연락 주세요.' });
+            return blocks;
+          }
+        });
+      });
+    });
+
+    // TOP 목록
+    const priced = list.filter((c) => Number(c.price) > 0);
+    if (priced.length >= 3) {
+      const top = priced.slice().sort((x, y) => x.price - y.price).slice(0, 3);
+      add({
+        id: 'data:top-price',
+        label: '가성비 좋은 중고차 TOP 3',
+        title: '수원 가성비 중고차 TOP 3 — 합리적인 가격의 차량만 모았습니다',
+        tags: ['가성비중고차', '중고차추천', '중고차TOP3', '저렴한중고차'],
+        render: (o, v) => inventoryBlocks(top, o, v, {
+          heading: '가격이 합리적인 차량 TOP 3',
+          intros: [(shown, total) => `지금 프롬케이카에서 판매중인 차량 중 가격이 가장 합리적인 ${total}대를 골랐습니다.`],
+          tip: '가격이 낮은 차량일수록 상태와 이력을 더 꼼꼼히 확인하는 것이 좋습니다. 사고 이력과 점검기록부를 함께 확인해 보세요.'
+        })
+      });
+    }
+    const lowKm = list.filter((c) => Number(c.mileage) >= 0 && c.mileage !== null && c.mileage !== undefined && !c.is_new_car);
+    if (lowKm.length >= 3) {
+      const top = lowKm.slice().sort((x, y) => x.mileage - y.mileage).slice(0, 3);
+      add({
+        id: 'data:top-km',
+        label: '주행거리 짧은 중고차 TOP 3',
+        title: '주행거리 짧은 중고차 TOP 3 — 거의 새 차 같은 상태',
+        tags: ['저주행중고차', '주행거리짧은차', '중고차추천', '중고차TOP3'],
+        render: (o, v) => inventoryBlocks(top, o, v, {
+          heading: '주행거리가 짧은 차량 TOP 3',
+          intros: [(shown, total) => `주행거리가 짧은 차량만 찾으시는 분들을 위해 지금 판매중인 차량 중 가장 짧게 탄 ${total}대를 소개합니다.`],
+          tip: TIP_GENERIC
+        })
+      });
+    }
+
+    // 연식별 모아보기 (2대 이상)
+    const byYear = {};
+    list.forEach((c) => { const y = parseYears(c.year_info).model; if (y) (byYear[y] = byYear[y] || []).push(c); });
+    Object.keys(byYear).filter((y) => byYear[y].length >= 2).forEach((y) => {
+      add({
+        id: `data:year:${y}`,
+        label: `${y}년형 중고차 ${byYear[y].length}대 모아보기`,
+        title: `${y}년형 중고차 모아보기 — 수원 ${byYear[y].length}대`,
+        tags: [`${y}년식`, `${y}년형중고차`, '중고차추천'],
+        render: (o, v) => inventoryBlocks(byYear[y], o, v, {
+          heading: `${y}년형 판매중 차량`,
+          intros: [(shown, total) => `${y}년형 중고차를 찾는 분들을 위해 프롬케이카에서 판매중인 ${total}대를 정리했습니다.`],
+          tip: TIP_GENERIC
+        })
+      });
+    });
+    return topics;
+  }
+
   function findTopic(id, cars) {
-    return TOPICS.find((t) => t.id === id) || dynamicTopics(cars).find((t) => t.id === id);
+    return TOPICS.find((t) => t.id === id)
+      || dynamicTopics(cars).find((t) => t.id === id)
+      || extraTopics(cars).find((t) => t.id === id);
+  }
+
+  /**
+   * "새 주제 제안받기": 아직 제안하지 않았고 최근에 쓰지도 않은 주제를 무작위로 count개 꺼낸다.
+   * @param {Array} cars 매물 목록
+   * @param {Object} opts { seen: 이미 제안한 id 배열, done: 작성 기록, count: 개수 }
+   * @returns {{topics: Array, cycled: boolean}} cycled가 true면 한 바퀴를 다 돌아 처음부터 다시 제안한 것
+   */
+  function suggestNew(cars, opts) {
+    const o = { seen: [], done: {}, count: 3, ...(opts || {}) };
+    const pool = extraTopics(cars);
+    const recentlyDone = (id) => o.done[id] && (Date.now() - o.done[id]) < 45 * 86400000;
+    const pick = (excluded) => pool.filter((t) => !excluded.has(t.id) && !recentlyDone(t.id));
+    let cycled = false;
+    let candidates = pick(new Set(o.seen));
+    if (candidates.length === 0) {
+      cycled = true;
+      candidates = pick(new Set());
+    }
+    // 재고 기반 제안을 먼저, 그 안에서는 무작위. 일반 주제가 한 번에 모두 섞여 나오지 않게 한다.
+    const shuffle = (arr) => arr.map((t) => ({ t, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.t);
+    const data = shuffle(candidates.filter((t) => t.id.startsWith('data:')));
+    const general = shuffle(candidates.filter((t) => !t.id.startsWith('data:')));
+    const ordered = [];
+    for (let i = 0; i < Math.max(data.length, general.length); i++) {
+      if (data[i]) ordered.push(data[i]);
+      if (general[i]) ordered.push(general[i]);
+    }
+    const topics = ordered.slice(0, o.count).map((t) => ({ id: t.id, label: t.label, kind: 'new' }));
+    return { topics, cycled: cycled && topics.length > 0 };
   }
 
   /**
@@ -1228,5 +1514,5 @@
     ctx.textAlign = 'left';
   }
 
-  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, TOPICS, SHORT_CHANNELS, DEALER };
+  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, TOPICS, SHORT_CHANNELS, DEALER };
 })(window);
