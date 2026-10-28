@@ -533,6 +533,237 @@
         '프롬케이카는 수출 상담뿐 아니라 국내 구매 상담도 함께 진행하고 있습니다. 차량과 조건이 궁금하시면 언제든 문의해 주세요.',
         '수출 절차가 복잡해 보여도 단계별로 나누면 어렵지 않습니다. 궁금한 점은 편하게 문의 주세요.'
       ]
+    },
+    {
+      id: 'price-check',
+      label: '중고차 시세, 이렇게 확인하세요',
+      title: '중고차 시세 확인하는 방법 — 비싼 차와 싼 차를 가려내는 기준',
+      tags: ['중고차시세', '중고차가격', '중고차시세확인', '중고차가격비교'],
+      intros: [(n) => `중고차는 같은 모델이라도 차량마다 가격이 다르다 보니 "이 가격이 적당한가?"가 가장 큰 고민입니다. 프롬케이카 ${n}이 시세를 판단하는 기준을 정리했습니다.`],
+      sections: [
+        { h: '시세를 판단하는 기준', items: [
+          ['같은 조건끼리 비교', '연식, 주행거리, 옵션, 색상이 비슷한 차량끼리 비교해야 의미가 있습니다. 모델명만 같다고 같은 가격대가 아닙니다.'],
+          ['여러 매물 비교', 'KB차차차, 엔카 같은 중고차 사이트에서 같은 조건의 매물을 여러 개 찾아 가격 범위를 먼저 파악해 보세요.'],
+          ['사고·도색 이력 반영', '무사고 차량과 사고·도색 이력이 있는 차량은 가격 차이가 큽니다. 이력까지 함께 비교해야 합니다.'],
+          ['옵션과 트림', '같은 모델이라도 트림과 옵션(선루프, 어라운드뷰 등)에 따라 가격이 달라집니다.'],
+          ['지나치게 싼 가격', '시세보다 이유 없이 크게 저렴하다면 사고 이력이나 문제가 숨어 있을 수 있어 더 꼼꼼히 확인해야 합니다.']
+        ] },
+        { h: '가격 협상 전에 정리할 것', p: '원하는 차량의 시세 범위를 알고 있으면 협상이 훨씬 쉬워집니다. 다만 단순히 싼 차를 찾기보다는 사고 이력, 상태, 부대비용까지 포함한 총비용을 기준으로 판단하시는 것이 결과적으로 이득입니다.' }
+      ],
+      outros: ['시세가 궁금한 차량이 있다면 언제든 문의 주세요. 비슷한 조건의 차량과 비교해 설명드립니다.']
+    },
+    {
+      id: 'test-drive',
+      label: '중고차 시운전 체크 요령',
+      title: '중고차 시운전할 때 꼭 확인해야 할 것들',
+      tags: ['중고차시운전', '중고차시승', '중고차확인', '중고차구매팁'],
+      intros: [(n) => `중고차는 서류와 눈으로 보는 것만큼 직접 타 보는 것이 중요합니다. 프롬케이카 ${n}이 시운전 때 놓치기 쉬운 확인 포인트를 정리했습니다.`],
+      sections: [
+        { h: '시운전 체크 포인트', items: [
+          ['시동과 공회전', '시동이 바로 걸리는지, 공회전 때 진동이나 이상한 소음이 없는지 확인하세요. 계기판에 경고등이 남아 있지 않은지도 봅니다.'],
+          ['가속과 변속', '가속할 때 변속 충격이나 울컥거림이 없는지, 변속이 매끄러운지 확인합니다.'],
+          ['브레이크', '브레이크를 밟을 때 한쪽으로 쏠리거나 떨림, 소음이 없는지 봅니다.'],
+          ['핸들과 서스펜션', '직진할 때 핸들이 한쪽으로 쏠리지 않는지, 요철을 지날 때 하체에서 이상한 소리가 나지 않는지 확인합니다.'],
+          ['에어컨과 히터', '냉방과 난방이 모두 제대로 작동하는지, 이상한 냄새가 나지 않는지 확인하세요.'],
+          ['주차 후 확인', '시운전 후 주차한 자리 바닥에 오일이나 냉각수가 새지 않았는지 확인하면 누유 여부를 알 수 있습니다.']
+        ] }
+      ],
+      outros: ['시운전은 가능한 한 다양한 도로(시내, 고속, 요철)에서 해 보시는 것이 좋습니다. 방문 시운전을 원하시면 미리 연락 주세요.']
+    },
+    {
+      id: 'contract',
+      label: '중고차 계약서 작성 시 주의사항',
+      title: '중고차 계약서 작성할 때 반드시 확인할 사항',
+      tags: ['중고차계약서', '중고차계약', '중고차거래주의', '중고차구매절차'],
+      intros: [(n) => `중고차 거래에서 분쟁이 생기는 경우 대부분은 계약서에 정리되지 않은 약속에서 시작됩니다. 프롬케이카 ${n}이 계약서를 쓸 때 확인할 사항을 정리했습니다.`],
+      sections: [
+        { h: '계약서에서 확인할 것', items: [
+          ['판매자 정보', '계약서의 판매자(업체 또는 개인) 정보가 실제 판매자와 일치하는지, 대금을 받을 계좌 명의가 같은지 확인합니다.'],
+          ['차량 정보', '차량번호, 차대번호, 연식, 주행거리가 실제 차량과 등록증에 적힌 내용과 같은지 대조합니다.'],
+          ['성능·상태점검기록부', '점검기록부를 받았는지, 계약서에 첨부되거나 기록되어 있는지 확인하세요.'],
+          ['보증 범위', '차량 인도 후 문제가 생겼을 때 어디까지 책임지는지, 기간과 조건을 구체적으로 적어 두세요.'],
+          ['특약 사항', '수리 약속, 소모품 교체, 사은품 등 말로 한 약속은 반드시 특약으로 문서에 남깁니다.'],
+          ['대금과 일정', '계약금, 잔금, 인도일, 이전등록 일정을 명확히 정합니다.']
+        ] }
+      ],
+      outros: ['계약서는 서두르지 말고 한 줄씩 읽어 본 뒤 서명하세요. 궁금한 조항이 있다면 편하게 문의해 주세요.']
+    },
+    {
+      id: 'transfer',
+      label: '중고차 이전 등록 절차와 서류',
+      title: '중고차 이전 등록 절차와 준비 서류 정리',
+      tags: ['중고차이전등록', '중고차명의이전', '중고차서류', '중고차구매절차'],
+      intros: [(n) => `중고차 계약을 끝내면 명의 이전(이전 등록)을 해야 합니다. 처음이라면 어렵게 느껴질 수 있어 프롬케이카 ${n}이 흐름을 간단히 정리했습니다.`],
+      sections: [
+        { h: '이전 등록 흐름', items: [
+          ['1. 계약과 대금 지급', '계약서를 쓰고 약속한 방식으로 대금을 지급합니다. 영수증이나 입금 내역을 보관하세요.'],
+          ['2. 서류 준비', '일반적으로 자동차등록증, 양도 관련 서류, 신분증, 보험 가입 서류 등이 필요합니다. 필요한 서류는 상황에 따라 달라질 수 있으니 계약 전에 판매자에게 확인하세요.'],
+          ['3. 보험 가입', '이전 등록과 운행을 위해 자동차보험에 먼저 가입해야 합니다.'],
+          ['4. 이전 등록 신청', '정해진 기간 안에 관할 기관에서 이전 등록을 마쳐야 하며, 기간을 넘기면 과태료가 부과될 수 있습니다.']
+        ] },
+        { h: '업체를 통한 대행', p: '매매업체에서 구매하시는 경우 이전 등록을 대행해 주는 경우가 많습니다. 대행 여부와 비용, 소요 기간을 계약 전에 확인해 두세요.' }
+      ],
+      outros: ['이전 등록은 순서만 알면 어렵지 않습니다. 구매 절차가 궁금하시면 언제든 문의 주세요.']
+    },
+    {
+      id: 'ev-used',
+      label: '전기차 중고 구매 시 확인할 것',
+      title: '전기차 중고 구매 전 꼭 확인해야 할 포인트',
+      tags: ['전기차중고', '중고전기차', '전기차배터리', '전기차구매'],
+      intros: [(n) => `전기차 중고에 관심 있는 분들이 늘고 있습니다. 내연기관차와 확인할 항목이 다르기 때문에 프롬케이카 ${n}이 핵심만 정리했습니다.`],
+      sections: [
+        { h: '전기차만의 체크 포인트', items: [
+          ['배터리 상태', '전기차에서 가장 중요한 부분입니다. 배터리 상태(SOH)와 충전 이력, 완충 시 표시되는 주행 가능 거리를 확인하세요.'],
+          ['배터리 보증', '제조사 배터리 보증이 얼마나 남았는지, 중고차로 승계되는지 확인합니다.'],
+          ['충전 방식과 충전구', '급속·완속 충전 규격이 내가 이용할 충전 환경과 맞는지 확인하세요.'],
+          ['주행 가능 거리', '계절과 주행 환경에 따라 달라지므로, 특히 겨울철 주행 가능 거리가 줄어드는 점을 감안해 판단하세요.'],
+          ['충전 환경', '집이나 직장에서 충전할 수 있는지 먼저 확인하면 전기차의 장점을 훨씬 잘 누릴 수 있습니다.']
+        ] }
+      ],
+      outros: ['전기차는 배터리 확인만 제대로 해도 만족도가 크게 달라집니다. 관심 있는 전기차가 있다면 편하게 문의 주세요.']
+    },
+    {
+      id: 'fuel-choice',
+      label: '디젤·가솔린·하이브리드·전기 선택법',
+      title: '디젤·가솔린·하이브리드·전기차, 나에게 맞는 연료는?',
+      tags: ['디젤중고차', '가솔린중고차', '하이브리드중고차', '전기차중고'],
+      intros: [(n) => `중고차를 고를 때 연료를 무엇으로 할지가 의외로 큰 고민입니다. 프롬케이카 ${n}이 운행 습관에 따라 어떤 연료가 맞는지 정리했습니다.`],
+      sections: [
+        { h: '운행 습관별 추천', items: [
+          ['장거리 운행이 많다면', '디젤이나 하이브리드가 연료비 면에서 유리한 경우가 많습니다. 고속도로 주행 비중이 높다면 디젤을 고려해 보세요.'],
+          ['도심 단거리 위주라면', '가솔린이나 하이브리드, 전기차가 잘 맞습니다. 짧은 거리를 자주 타면 디젤은 관리에 신경 써야 할 부분이 늘 수 있습니다.'],
+          ['충전 환경이 갖춰져 있다면', '집이나 직장에서 충전할 수 있다면 전기차가 유지비 면에서 매력적입니다.'],
+          ['연료비보다 초기 비용이 중요하다면', '가솔린 차량이 구매 가격이 상대적으로 저렴한 편이라 초기 부담을 줄일 수 있습니다.']
+        ] },
+        { h: '선택 전에 계산해 볼 것', p: '월 주행거리와 연료 가격, 세금과 보험료를 함께 계산해 보시면 어떤 연료가 나에게 유리한지 훨씬 분명하게 보입니다.' }
+      ],
+      outros: ['어떤 연료가 맞는지 고민이시라면 운행 패턴을 말씀해 주세요. 상황에 맞는 차량을 추천해 드립니다.']
+    },
+    {
+      id: 'suv-guide',
+      label: '중고 SUV 고르는 법',
+      title: '중고 SUV 고르는 법 — 용도별 선택 기준',
+      tags: ['중고SUV', 'SUV중고차', '중고SUV추천', '패밀리카'],
+      intros: [(n) => `SUV는 인기가 많은 만큼 선택지도 다양해서 무엇을 기준으로 골라야 할지 고민이 됩니다. 프롬케이카 ${n}이 용도별 기준을 정리했습니다.`],
+      sections: [
+        { h: 'SUV 선택 기준', items: [
+          ['사용 목적', '가족 이동, 캠핑, 출퇴근 등 주된 용도에 따라 필요한 크기와 좌석 구성이 달라집니다.'],
+          ['차체 크기', '넉넉한 실내가 좋지만 주차 환경과 도심 운행을 고려해 크기를 정하세요.'],
+          ['구동 방식', '눈길이나 비포장도로를 자주 간다면 4륜(AWD)이 유리하고, 도심 위주라면 2륜도 충분한 경우가 많습니다.'],
+          ['연료', '주행거리가 많다면 디젤이나 하이브리드, 도심 위주라면 가솔린이나 전기를 고려해 보세요.'],
+          ['하체 점검', 'SUV는 험한 길을 다닌 경우가 있어 하체 긁힘이나 손상, 4륜 구동 계통의 작동 상태를 꼭 확인하세요.']
+        ] }
+      ],
+      outros: ['SUV는 용도와 예산을 정하면 선택이 훨씬 쉬워집니다. 찾으시는 조건을 말씀해 주시면 맞는 차량을 추천해 드립니다.']
+    },
+    {
+      id: 'first-car',
+      label: '첫 차로 중고차 고르는 기준',
+      title: '첫 차로 중고차를 고를 때 꼭 정해야 할 기준',
+      tags: ['첫차추천', '첫차중고차', '사회초년생중고차', '중고차구매팁'],
+      intros: [(n) => `첫 차는 설레는 만큼 실수하기도 쉽습니다. 프롬케이카 ${n}이 첫 차로 중고차를 고를 때 기준이 되는 내용을 정리했습니다.`],
+      sections: [
+        { h: '첫 차 선택 기준', items: [
+          ['총 예산 정하기', '차량 가격뿐 아니라 보험료, 세금, 유류비, 정비비까지 포함한 한 달 유지비를 먼저 계산해 보세요.'],
+          ['연식과 주행거리', '너무 오래된 차량은 수리비가 늘 수 있고, 지나치게 짧은 주행거리는 이력을 확인해 볼 필요가 있습니다.'],
+          ['보험료', '운전 경력이 짧으면 보험료가 높을 수 있으니 차종별 보험료를 미리 확인하세요.'],
+          ['인기 모델 선택', '수요가 꾸준한 모델은 나중에 되팔 때도 유리한 편입니다.'],
+          ['사고 이력', '첫 차일수록 사고 이력이 없는 차량이 이후 관리 부담이 적습니다.']
+        ] }
+      ],
+      outros: ['첫 차는 무리하지 않는 선에서 상태가 좋은 차를 고르는 것이 가장 중요합니다. 예산을 말씀해 주시면 함께 찾아드립니다.']
+    },
+    {
+      id: 'new-like',
+      label: '신차급 중고차가 인기인 이유',
+      title: '신차급 중고차, 왜 인기일까? 장점과 확인할 점',
+      tags: ['신차급중고차', '신차급', '준신차', '중고차장점'],
+      intros: [(n) => `주행거리가 아주 짧은 신차급 중고차를 찾는 분들이 늘고 있습니다. 프롬케이카 ${n}이 신차급 중고차의 장점과 확인할 점을 정리했습니다.`],
+      sections: [
+        { h: '신차급 중고차의 장점', items: [
+          ['신차 대비 합리적인 가격', '출고 직후 가격이 내려가는 구간을 지난 차량이라 같은 차를 신차보다 낮은 가격에 살 수 있는 경우가 많습니다.'],
+          ['기다림 없는 인도', '신차는 출고 대기가 있을 수 있지만, 신차급 중고차는 바로 확인하고 인도받을 수 있습니다.'],
+          ['최신 연식과 옵션', '연식이 최근이라 최신 디자인과 편의·안전 사양을 누릴 수 있습니다.']
+        ] },
+        { h: '구매 전에 확인할 점', items: [
+          ['주행거리가 짧은 이유', '왜 짧게 탔는지(시승, 단기 사용 등) 이력을 확인해 보세요.'],
+          ['제조사 보증 승계', '신차 보증이 남아 있다면 중고차 구매 시 승계가 되는지 조건을 확인하세요.'],
+          ['무사고·무도색 여부', '신차급이라도 사고나 도색 이력이 없는지 기록으로 확인하는 것이 좋습니다.']
+        ] }
+      ],
+      outros: ['신차급 중고차는 조건이 좋은 만큼 빨리 판매되는 편입니다. 관심 있는 차량이 있다면 먼저 문의해 주세요.']
+    },
+    {
+      id: 'season-winter',
+      season: [12, 1, 2],
+      label: '겨울철 중고차 점검·구매 포인트',
+      title: '겨울철 중고차 점검과 구매 시 체크할 포인트',
+      tags: ['겨울철차량관리', '겨울철중고차', '중고차겨울', '자동차겨울점검'],
+      intros: [(n) => `추운 날씨에는 차량 문제가 더 잘 드러납니다. 프롬케이카 ${n}이 겨울철 중고차를 점검하고 구매할 때 확인할 포인트를 정리했습니다.`],
+      sections: [
+        { h: '겨울철 체크 포인트', items: [
+          ['배터리', '추위에 배터리 성능이 떨어지므로 시동이 잘 걸리는지, 배터리 상태가 괜찮은지 확인하세요.'],
+          ['부동액·워셔액', '얼지 않도록 농도가 적절한지, 겨울용 워셔액을 쓰고 있는지 확인합니다.'],
+          ['타이어', '타이어 마모와 공기압을 점검하고, 눈길이 잦다면 스노우 타이어도 고려하세요.'],
+          ['히터와 열선', '히터, 시트 열선, 핸들 열선이 정상 작동하는지 직접 켜 보세요.'],
+          ['하체 점검', '눈이 오면 제설제(염화칼슘)가 뿌려지므로 하체 부식 여부를 확인하는 것이 좋습니다.']
+        ] }
+      ],
+      outros: ['추운 날씨에도 시동과 난방이 잘 작동하는 차량인지 직접 확인해 보시길 권합니다. 방문 전에 연락 주세요.']
+    },
+    {
+      id: 'season-spring',
+      season: [3, 4, 5],
+      label: '봄철 중고차 점검 포인트',
+      title: '봄철 중고차 점검 포인트 — 황사·꽃가루 시즌 체크',
+      tags: ['봄철차량관리', '봄철중고차', '자동차봄점검', '중고차점검'],
+      intros: [(n) => `봄이 되면 나들이가 늘어 차량 사용도 많아집니다. 프롬케이카 ${n}이 봄철에 확인하면 좋은 점검 포인트를 정리했습니다.`],
+      sections: [
+        { h: '봄철 체크 포인트', items: [
+          ['에어컨 필터', '황사와 꽃가루가 많은 시기라 에어컨 필터 상태와 실내 냄새를 확인하세요.'],
+          ['하체 세척과 부식', '겨울 동안 쌓인 제설제 때문에 하체가 부식되었는지 확인하고 세척합니다.'],
+          ['타이어 공기압', '기온이 올라 공기압이 변하므로 공기압과 마모 상태를 점검합니다.'],
+          ['와이퍼', '겨울을 지나 고무가 굳었다면 교체하세요. 봄비가 오기 전에 확인하면 좋습니다.'],
+          ['냉방 성능', '여름 전에 에어컨 냉방이 잘 되는지 미리 확인해 두세요.']
+        ] }
+      ],
+      outros: ['나들이 계절에 맞춰 좋은 차를 미리 준비해 두세요. 궁금한 점은 언제든 문의 주세요.']
+    },
+    {
+      id: 'season-rainy',
+      season: [6, 7, 8],
+      label: '장마철 침수차 구별법',
+      title: '장마철 침수차 구별하는 방법과 중고차 구매 주의점',
+      tags: ['침수차구별', '침수차', '장마철중고차', '중고차침수'],
+      intros: [(n) => `장마와 태풍이 지나면 침수차가 중고 시장에 섞여 나올 수 있다는 걱정이 커집니다. 프롬케이카 ${n}이 침수차를 구별하는 방법을 정리했습니다.`],
+      sections: [
+        { h: '침수 흔적 확인 포인트', items: [
+          ['실내 냄새와 습기', '곰팡이나 퀴퀴한 냄새가 나는지, 시트 아래와 카펫이 눅눅하지 않은지 확인합니다.'],
+          ['부품의 녹과 오염', '시트 레일, 안전벨트 끝부분, 페달 주변 볼트에 녹이나 흙탕물 자국이 있는지 봅니다.'],
+          ['램프 내부', '헤드램프나 테일램프 안쪽에 습기나 물방울 자국이 남아 있는지 확인하세요.'],
+          ['전장품 오작동', '창문, 오디오, 경고등 등 전기 장치가 가끔 오작동하지 않는지 점검합니다.'],
+          ['이력 조회', '보험 이력 조회로 침수 이력이 있는지 함께 확인하세요.']
+        ] }
+      ],
+      outros: ['침수 의심 징후가 하나라도 있으면 구매를 서두르지 말고 충분히 확인하세요. 궁금한 점은 편하게 문의 주세요.']
+    },
+    {
+      id: 'season-autumn',
+      season: [9, 10, 11],
+      label: '장거리 운행 전 차량 점검 (추석·단풍철)',
+      title: '명절·단풍철 장거리 운행 전 차량 점검 체크리스트',
+      tags: ['장거리운행점검', '추석차량점검', '자동차점검', '가을중고차'],
+      intros: [(n) => `명절과 단풍 시즌에는 장거리 운행이 늘어납니다. 프롬케이카 ${n}이 출발 전에 확인하면 좋은 점검 항목을 정리했습니다.`],
+      sections: [
+        { h: '출발 전 점검 항목', items: [
+          ['엔진오일과 냉각수', '양과 상태를 확인하고 교체 시기가 지났다면 미리 교환하세요.'],
+          ['타이어', '마모 상태와 공기압을 확인하세요. 장거리에서는 타이어 상태가 안전과 직결됩니다.'],
+          ['브레이크', '브레이크 패드 마모와 제동 시 소음이나 떨림이 없는지 점검합니다.'],
+          ['와이퍼와 워셔액', '갑작스러운 비에 대비해 와이퍼와 워셔액을 확인하세요.'],
+          ['에어컨·히터 필터', '환절기에는 필터 상태가 실내 공기에 영향을 줍니다. 교체 시기를 확인하세요.']
+        ] }
+      ],
+      outros: ['출발 전 점검만 해도 장거리 운행의 불안이 크게 줄어듭니다. 안전한 운행 되세요.']
     }
   ];
 
@@ -542,23 +773,29 @@
    */
   function generateTopic(topicId, opts) {
     const o = { seed: 0, cars: [], ...(opts || {}) };
-    const topic = TOPICS.find((t) => t.id === topicId) || TOPICS[0];
+    const topic = findTopic(topicId, o.cars) || TOPICS[0];
     const v = (arr, salt) => arr[(hash(topic.id) + o.seed + (salt || 0)) % arr.length];
     const blocks = [];
 
-    blocks.push({ type: 'p', text: v(topic.intros, 1)(DEALER.name) });
-    topic.sections.forEach((s) => {
-      blocks.push({ type: 'h', text: s.h });
-      if (s.p) blocks.push({ type: 'p', text: s.p });
-      if (s.items) blocks.push({ type: 'items', items: s.items.map(([b, t]) => ({ b, t })) });
-    });
-    blocks.push({ type: 'p', text: v(topic.outros, 2) });
+    // 재고를 보고 만드는 글은 매물 목록 자체가 본문이고, 그 밖의 글은 끝에 추천 매물 3대를 붙인다.
+    if (topic.render) {
+      blocks.push(...topic.render(o, v));
+    } else {
+      const intros = topic.intros.concat(GENERIC_INTROS(topic.title));
+      blocks.push({ type: 'p', text: v(intros, 1)(DEALER.name) });
+      topic.sections.forEach((s) => {
+        blocks.push({ type: 'h', text: s.h });
+        if (s.p) blocks.push({ type: 'p', text: s.p });
+        if (s.items) blocks.push({ type: 'items', items: s.items.map(([b, t]) => ({ b, t })) });
+      });
+      blocks.push({ type: 'p', text: v((topic.outros || []).concat(GENERIC_OUTROS), 2) });
 
-    const onSale = (o.cars || []).filter((c) => c.status !== '판매완료' && !c.deleted)
-      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).slice(0, 3);
-    if (onSale.length) {
-      blocks.push({ type: 'h', text: '프롬케이카 추천 매물' });
-      blocks.push({ type: 'kv', items: onSale.map((c) => [`${c.title}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
+      const onSale = (o.cars || []).filter((c) => c.status !== '판매완료' && !c.deleted)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).slice(0, 3);
+      if (onSale.length) {
+        blocks.push({ type: 'h', text: '프롬케이카 추천 매물' });
+        blocks.push({ type: 'kv', items: onSale.map((c) => [`${c.title}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
+      }
     }
     blocks.push(...contactBlocks(null));
 
@@ -569,6 +806,212 @@
       text: renderText(blocks),
       tags: [...new Set(tags)].map((t) => `#${t}`).join(' ')
     };
+  }
+
+  // 글이 하나뿐인 주제도 "다른 문장으로 다시 만들기"가 달라 보이도록 공통 문장을 섞는다.
+  const GENERIC_INTROS = (title) => [
+    (n) => `수원 SKV1모터스에서 중고차를 소개하는 프롬케이카 ${n}입니다. 오늘은 고객님들께 자주 받는 질문을 바탕으로 "${title}"에 대해 정리해 보았습니다.`
+  ];
+  const GENERIC_OUTROS = [
+    '이 글이 중고차를 고르시는 데 도움이 되었기를 바랍니다. 더 궁금한 점은 언제든 편하게 문의 주세요.'
+  ];
+
+  /* ---------------- 재고를 보고 만드는 주제 ---------------- */
+  // 지금 판매중인 매물로 만드는 글이라 재고가 바뀌면 주제도 새로 생긴다 ("계속 제안"의 핵심).
+  function priceBin(car) {
+    const man = (Number(car.price) || 0) / 10000;
+    if (man <= 0) return null;
+    if (man < 3000) return ['under3000', '3천만원 이하', '3천만원 이하 가성비 중고차'];
+    if (man < 5000) return ['3000to5000', '3천만원대', '3천만원대 중고차'];
+    if (man < 8000) return ['5000to8000', '5천만원대~7천만원대', '5천만원~8천만원 중고차'];
+    return ['over8000', '8천만원 이상', '8천만원 이상 프리미엄 중고차'];
+  }
+
+  function onSaleOf(cars) {
+    return (cars || []).filter((c) => c.status !== '판매완료' && !c.deleted);
+  }
+
+  // 차량 목록으로 만드는 글의 공통 본문: 소개 → 한눈에 비교 → 차량별 장점 → 마무리
+  function inventoryBlocks(list, o, v, { heading, intros, tip }) {
+    const blocks = [];
+    const shown = list.slice(0, 6);
+    blocks.push({ type: 'p', text: v(intros, 1)(shown.length, list.length) });
+
+    const priced = shown.filter((c) => Number(c.price) > 0);
+    const cheapest = priced.slice().sort((a, b) => a.price - b.price)[0];
+    const newest = shown.map((c) => ({ c, y: parseYears(c.year_info).model || 0 })).filter((x) => x.y).sort((a, b) => b.y - a.y)[0];
+    const lowKm = shown.filter((c) => Number(c.mileage) >= 0 && c.mileage !== null && c.mileage !== undefined).sort((a, b) => a.mileage - b.mileage)[0];
+    const cmp = [];
+    if (shown.length >= 2 && cheapest) cmp.push(['가장 합리적인 가격', `${cheapest.title} (${priceText(cheapest)})`]);
+    if (shown.length >= 2 && newest) cmp.push(['가장 최신 연식', `${newest.c.title} (${newest.y}년형)`]);
+    if (shown.length >= 2 && lowKm) cmp.push(['가장 낮은 주행거리', `${lowKm.title} (${kmText(lowKm.mileage)})`]);
+    if (cmp.length) {
+      blocks.push({ type: 'h', text: '한눈에 비교' });
+      blocks.push({ type: 'kv', items: cmp });
+    }
+
+    blocks.push({ type: 'h', text: heading });
+    shown.forEach((c, i) => {
+      const info = [parseYears(c.year_info).model ? parseYears(c.year_info).model + '년형' : '', c.mileage || c.mileage === 0 ? kmText(c.mileage) : '', c.fuel_type || '', priceText(c)].filter(Boolean).join(' · ');
+      blocks.push({ type: 'p', text: `${i + 1}. ${c.title}` });
+      blocks.push({ type: 'p', text: info });
+      const adv = buildAdvantages(c).slice(0, 3);
+      if (adv.length) blocks.push({ type: 'items', items: adv });
+      blocks.push({ type: 'kv', items: [['상세·사진 보기', carUrl(c)]] });
+    });
+    if (list.length > shown.length) {
+      blocks.push({ type: 'p', text: `그 밖에도 ${list.length - shown.length}대가 더 있습니다. 전체 매물은 아래 링크에서 확인해 주세요.` });
+    }
+    blocks.push({ type: 'h', text: '고르실 때 참고하세요' });
+    blocks.push({ type: 'p', text: tip });
+    return blocks;
+  }
+
+  const TIP_GENERIC = '같은 조건의 차량이라도 사고 이력과 도색 여부, 옵션에 따라 가격 차이가 큽니다. 가격만 보지 마시고 차량 상태와 이력을 함께 비교해 보세요. 실제 차량은 방문하셔서 직접 확인하실 수 있으니 방문 전에 연락 주세요.';
+
+  function dynamicTopics(cars) {
+    const list = onSaleOf(cars);
+    const topics = [];
+    const add = (t) => topics.push({ kind: 'data', ...t });
+
+    // 브랜드별
+    const byBrand = {};
+    list.forEach((c) => { const b = brandKo(c); if (b) (byBrand[b] = byBrand[b] || []).push(c); });
+    Object.keys(byBrand).forEach((b) => {
+      const group = byBrand[b];
+      add({
+        id: `data:brand:${b}`,
+        label: `현재 판매중인 ${b} 중고차 ${group.length}대 모아보기`,
+        title: `수원 ${b} 중고차 추천 — 현재 판매중인 ${group.length}대 한눈에 보기`,
+        tags: [`${b.replace(/\s+/g, '')}중고차`, `${b.replace(/\s+/g, '')}중고차추천`, '중고차추천', '중고차매물'],
+        render: (o, v) => inventoryBlocks(group, o, v, {
+          heading: `${b} 판매중 차량`,
+          intros: [
+            (shown, total) => `수원 SKV1모터스에서는 현재 ${b} 중고차 ${total}대를 판매하고 있습니다. ${b} 중고차를 알아보시는 분들을 위해 차량별 가격과 장점을 한눈에 정리했습니다.`,
+            (shown, total) => `${b} 중고차를 찾고 계신가요? 프롬케이카 ${DEALER.name}입니다. 지금 보유 중인 ${b} ${total}대의 가격과 특징을 정리해 드립니다.`
+          ],
+          tip: TIP_GENERIC
+        })
+      });
+    });
+
+    // 가격대별 (2대 이상일 때)
+    const byBin = {};
+    list.forEach((c) => { const b = priceBin(c); if (b) (byBin[b[0]] = byBin[b[0]] || { meta: b, cars: [] }).cars.push(c); });
+    Object.values(byBin).filter((g) => g.cars.length >= 2).forEach((g) => {
+      add({
+        id: `data:price:${g.meta[0]}`,
+        label: `${g.meta[1]} 중고차 ${g.cars.length}대 모아보기`,
+        title: `${g.meta[2]} — 수원에서 만나는 ${g.cars.length}대`,
+        tags: [g.meta[1].replace(/\s+/g, '') + '중고차', '중고차추천', '가성비중고차'],
+        render: (o, v) => inventoryBlocks(g.cars, o, v, {
+          heading: `${g.meta[1]} 판매중 차량`,
+          intros: [
+            (shown, total) => `예산 ${g.meta[1]}으로 중고차를 찾고 계신 분들을 위해 현재 판매중인 ${total}대를 모아 정리했습니다.`,
+            (shown, total) => `${g.meta[1]} 예산에서 선택할 수 있는 프롬케이카 판매 차량 ${total}대를 소개합니다.`
+          ],
+          tip: TIP_GENERIC
+        })
+      });
+    });
+
+    // 연료별 (전기·하이브리드·디젤)
+    [['전기', /전기|EV/i, '전기차'], ['하이브리드', /하이브리드|HEV/i, '하이브리드'], ['디젤', /디젤/, '디젤']].forEach(([key, re, name]) => {
+      const group = list.filter((c) => re.test(c.fuel_type || ''));
+      if (group.length < 1) return;
+      add({
+        id: `data:fuel:${key}`,
+        label: `${name} 중고차 ${group.length}대 모아보기`,
+        title: `${name} 중고차 추천 — 수원에서 판매중인 ${group.length}대`,
+        tags: [`${name}중고차`, `${name}중고`, '중고차추천'],
+        render: (o, v) => inventoryBlocks(group, o, v, {
+          heading: `${name} 판매중 차량`,
+          intros: [
+            (shown, total) => `${name} 중고차를 찾는 분들이 늘고 있습니다. 프롬케이카에서 지금 판매중인 ${name} 차량 ${total}대를 정리했습니다.`
+          ],
+          tip: key === '전기' ? '전기차는 배터리 상태와 충전 환경이 가장 중요합니다. 배터리 상태와 보증이 남아 있는지 문의하실 때 함께 확인해 보세요.' : TIP_GENERIC
+        })
+      });
+    });
+
+    // 무사고·무도색 / 신차급
+    const clean = list.filter((c) => effectiveNoAccident(c) && c.badge_no_paint);
+    if (clean.length >= 2) {
+      add({
+        id: 'data:clean',
+        label: `무사고·무도색 중고차 ${clean.length}대 모아보기`,
+        title: `무사고·무도색 중고차 모아보기 — 수원 ${clean.length}대`,
+        tags: ['무사고중고차', '무도색', '무사고무도색', '중고차추천'],
+        render: (o, v) => inventoryBlocks(clean, o, v, {
+          heading: '무사고·무도색 차량',
+          intros: [(shown, total) => `사고도 도색도 없는 차량만 찾으시는 분들을 위해, 프롬케이카가 현재 판매중인 무사고·무도색 차량 ${total}대를 모았습니다.`],
+          tip: TIP_GENERIC
+        })
+      });
+    }
+    const fresh = list.filter((c) => c.is_new_car);
+    if (fresh.length >= 1) {
+      add({
+        id: 'data:newcar',
+        label: `완전신차급 중고차 ${fresh.length}대 모아보기`,
+        title: `완전신차 중고차 추천 — 수원 판매중 ${fresh.length}대`,
+        tags: ['신차급중고차', '완전신차', '신차급', '중고차추천'],
+        render: (o, v) => inventoryBlocks(fresh, o, v, {
+          heading: '완전신차 차량',
+          intros: [(shown, total) => `신차 같은 차를 합리적인 가격에 찾는 분들께 소개합니다. 현재 판매중인 완전신차 ${total}대입니다.`],
+          tip: '신차급 차량은 조건이 좋은 만큼 빨리 판매되는 편입니다. 관심 있는 차량이 있다면 먼저 문의해 주세요.'
+        })
+      });
+    }
+
+    // 최근 2주 안에 등록된 신규 입고
+    const recent = list.filter((c) => (Date.now() - (c.created_at || 0)) < 14 * 86400000);
+    if (recent.length >= 1) {
+      add({
+        id: 'data:recent',
+        label: `이번 주 신규 입고 차량 ${recent.length}대`,
+        title: `신규 입고 소식 — 이번에 들어온 중고차 ${recent.length}대`,
+        tags: ['신규입고', '중고차신규', '중고차매물', '중고차추천'],
+        recent: true,
+        render: (o, v) => inventoryBlocks(recent, o, v, {
+          heading: '신규 입고 차량',
+          intros: [(shown, total) => `프롬케이카에 새로 입고된 차량 ${total}대를 소개합니다. 따끈따끈한 신규 매물을 가장 먼저 확인해 보세요.`],
+          tip: TIP_GENERIC
+        })
+      });
+    }
+    return topics;
+  }
+
+  function findTopic(id, cars) {
+    return TOPICS.find((t) => t.id === id) || dynamicTopics(cars).find((t) => t.id === id);
+  }
+
+  /**
+   * 지금 쓰면 좋은 주제를 우선순위 순으로 돌려준다.
+   * 이번 달 계절 글 > 재고(신규 입고·모아보기) 글 > 아직 안 쓴 일반 글 > 최근에 쓴 글(뒤로).
+   * @param {Array} cars 매물 목록
+   * @param {Object} doneMap { 주제id: 작성 시각(ms) }
+   */
+  function listTopics(cars, doneMap, now) {
+    const t0 = now || Date.now();
+    const month = new Date(t0).getMonth() + 1;
+    const done = doneMap || {};
+    const all = [];
+    TOPICS.forEach((t) => {
+      if (t.season && !t.season.includes(month)) return; // 계절 글은 그 철에만 보여준다
+      all.push({ id: t.id, label: t.label, kind: t.season ? 'season' : 'evergreen', score: t.season ? 40 : 10 });
+    });
+    dynamicTopics(cars).forEach((t) => {
+      all.push({ id: t.id, label: t.label, kind: t.recent ? 'recent' : 'data', score: t.recent ? 50 : 20 });
+    });
+    return all.map((t) => {
+      const at = done[t.id] || 0;
+      const days = at ? Math.floor((t0 - at) / 86400000) : null;
+      let score = t.score;
+      if (at) score = days < 45 ? -100 + days : score - 8; // 최근에 쓴 글은 뒤로, 오래됐으면 다시 제안
+      return { ...t, doneAt: at || null, daysAgo: days, score };
+    }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label, 'ko'));
   }
 
   /* ---------------- 다른 채널용 짧은 소개글 ---------------- */
@@ -785,5 +1228,5 @@
     ctx.textAlign = 'left';
   }
 
-  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, TOPICS, SHORT_CHANNELS, DEALER };
+  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, TOPICS, SHORT_CHANNELS, DEALER };
 })(window);

@@ -74,6 +74,21 @@ function ensureDataFile() {
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]', 'utf-8');
 }
 
+const TOPICS_FILE = path.join(DATA_DIR, 'blog_topics.json');
+
+function readTopicDone() {
+  try {
+    return JSON.parse(fs.readFileSync(TOPICS_FILE, 'utf-8')).done || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeTopicDone(done) {
+  ensureDataFile();
+  fs.writeFileSync(TOPICS_FILE, JSON.stringify({ done }), 'utf-8');
+}
+
 function ensureUploadsDir() {
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -921,6 +936,27 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(204);
     return res.end();
+  }
+
+  // 정보성 블로그 글 주제별 "작성 완료" 기록 (어느 주제를 이미 썼는지 기억해서 새 주제를 계속 제안하는 데 쓴다)
+  if (urlObj.pathname === '/admin/blog-topics') {
+    if (!requireAuth(req, res)) return;
+    if (req.method === 'GET') return sendJson(res, 200, { done: readTopicDone() });
+    if (req.method === 'POST') {
+      let body;
+      try {
+        body = await readRequestBody(req, 4096);
+      } catch (e) {
+        return sendJson(res, 400, { error: e.message });
+      }
+      const id = String((body && body.id) || '');
+      if (!/^[\w:.\- 가-힣]{1,80}$/.test(id)) return sendJson(res, 400, { error: 'invalid topic id' });
+      const done = readTopicDone();
+      if (body.done) done[id] = Date.now();
+      else delete done[id];
+      writeTopicDone(done);
+      return sendJson(res, 200, { done });
+    }
   }
 
   // 관리자 "사이트 리포트": 매물 현황 + 방문/조회/문의 집계

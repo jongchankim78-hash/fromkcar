@@ -407,8 +407,11 @@
     </div>
     <!-- 정보성 글: 주제 선택 -->
     <div class="topic-only hidden px-6 pt-3">
-      <label class="text-sm font-semibold text-[var(--fk-gray-800)] block mb-1">글 주제</label>
-      <select id="blog-topic" class="fk-input"></select>
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-sm font-semibold text-[var(--fk-gray-800)]">추천 주제</span>
+        <span class="text-xs text-[var(--fk-gray-600)]">위쪽일수록 지금 쓰기 좋은 주제예요. 누르면 아래에 글이 만들어집니다.</span>
+      </div>
+      <div id="topic-list" class="grid gap-1.5 max-h-48 overflow-y-auto pr-1"></div>
     </div>
 
     <div class="p-6 overflow-y-auto space-y-4">
@@ -466,6 +469,7 @@
     </div>
 
     <div class="px-6 py-4 border-t border-[var(--fk-gray-200)] flex flex-wrap gap-2 justify-end">
+      <button type="button" id="topic-mark-done" class="topic-only hidden btn-secondary text-sm !py-2.5 mr-auto"><i class="fa-regular fa-square-check mr-1.5"></i><span>이 주제 작성 완료로 표시</span></button>
       <button type="button" id="blog-mark-posted" class="car-only btn-secondary text-sm !py-2.5 mr-auto"><i class="fa-regular fa-square-check mr-1.5"></i><span>블로그 작성 완료로 표시</span></button>
       <div data-show="blog" class="contents">
         <a id="blog-zip" href="#" class="car-only btn-secondary text-sm !py-2.5"><i class="fa-solid fa-file-zipper mr-1.5"></i>사진 ZIP 받기</a>
@@ -534,6 +538,24 @@
     background: #fff;
     transition: all .15s ease;
   }
+  .topic-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--fk-gray-200);
+    background: #fff;
+    color: var(--fk-gray-800);
+    transition: all .15s ease;
+  }
+  .topic-item:hover { border-color: var(--fk-blue); }
+  .topic-item.active { border-color: var(--fk-blue); background: rgba(37,99,235,0.07); }
+  .topic-item.done { opacity: .55; }
+  .topic-chip { flex-shrink: 0; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 8px; }
   .blog-pane-tab:hover { border-color: var(--fk-blue); color: var(--fk-blue); }
   .blog-pane-tab.active { background: var(--fk-blue); border-color: var(--fk-blue); color: #fff; }
 

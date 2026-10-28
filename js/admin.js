@@ -523,7 +523,8 @@
   const blogPreview = document.getElementById('blog-preview');
   const blogTags = document.getElementById('blog-tags');
   const blogPhotos = document.getElementById('blog-photos');
-  const blogTopicSelect = document.getElementById('blog-topic');
+  const topicListEl = document.getElementById('topic-list');
+  const topicDoneBtn = document.getElementById('topic-mark-done');
   const shortText = document.getElementById('short-text');
   const blogCover = document.getElementById('blog-cover');
   const markPostedBtn = document.getElementById('blog-mark-posted');
@@ -532,9 +533,51 @@
   let blogCar = null;
   let blogSeed = 0;
 
-  KCarBlog.TOPICS.forEach((t) => {
-    blogTopicSelect.insertAdjacentHTML('beforeend', `<option value="${t.id}">${KCarUtil.escapeHtml(t.label)}</option>`);
-  });
+  // 정보성 글 주제: 추천 목록(우선순위순)과 "이미 쓴 주제" 기록. 기록은 서버에 저장해 다른 기기에서도 이어진다.
+  let topicDone = {};
+  let topicId = null;
+  let topicSuggestions = [];
+
+  function authHeader() {
+    const token = window.KCarAuth && KCarAuth.getToken();
+    return token ? { Authorization: 'Basic ' + token } : {};
+  }
+
+  async function loadTopicDone() {
+    try {
+      const res = await fetch('admin/blog-topics', { headers: authHeader() });
+      if (res.ok) topicDone = (await res.json()).done || {};
+    } catch (e) { /* 기록을 못 읽어도 주제 목록은 보여준다 */ }
+  }
+
+  const TOPIC_BADGES = {
+    season: ['이번 계절', 'bg-orange-100 text-orange-800'],
+    recent: ['신규 입고', 'bg-red-100 text-red-700'],
+    data: ['재고 기반', 'bg-blue-100 text-blue-800'],
+    evergreen: ['상시 주제', 'bg-gray-100 text-gray-600']
+  };
+
+  function renderTopicList() {
+    topicSuggestions = KCarBlog.listTopics(adminCars, topicDone);
+    if (!topicSuggestions.find(t => t.id === topicId)) topicId = topicSuggestions[0] && topicSuggestions[0].id;
+    topicListEl.innerHTML = topicSuggestions.map((t, i) => {
+      const [badgeText, badgeCls] = TOPIC_BADGES[t.kind] || TOPIC_BADGES.evergreen;
+      const doneMark = t.doneAt
+        ? `<span class="topic-chip bg-green-100 text-green-800"><i class="fa-solid fa-check mr-0.5"></i>${t.daysAgo === 0 ? '오늘' : t.daysAgo + '일 전'} 작성</span>`
+        : '';
+      const rec = i < 3 && !t.doneAt ? '<span class="topic-chip bg-[#03c75a] text-white">추천</span>' : '';
+      return `<button type="button" data-topic="${KCarUtil.escapeHtml(t.id)}" class="topic-item ${t.id === topicId ? 'active' : ''} ${t.doneAt && t.daysAgo < 45 ? 'done' : ''}">
+        ${rec}<span class="topic-chip ${badgeCls}">${badgeText}</span><span class="min-w-0 flex-1">${KCarUtil.escapeHtml(t.label)}</span>${doneMark}
+      </button>`;
+    }).join('');
+    updateTopicDoneButton();
+  }
+
+  function updateTopicDoneButton() {
+    const done = !!topicDone[topicId];
+    topicDoneBtn.querySelector('span').textContent = done ? '작성 완료 (눌러서 취소)' : '이 주제 작성 완료로 표시';
+    topicDoneBtn.querySelector('i').className = done ? 'fa-solid fa-square-check mr-1.5 text-[var(--fk-green)]' : 'fa-regular fa-square-check mr-1.5';
+  }
 
   function onSaleCars() {
     return adminCars.filter(c => c.status !== '판매완료');
@@ -578,7 +621,7 @@
 
   function renderBlog() {
     if (blogMode === 'topic') {
-      const post = KCarBlog.generateTopic(blogTopicSelect.value, { seed: blogSeed, cars: onSaleCars() });
+      const post = KCarBlog.generateTopic(topicId, { seed: blogSeed, cars: onSaleCars() });
       blogTitle.value = post.title;
       blogPreview.innerHTML = post.html;
       blogTags.value = post.tags;
@@ -595,7 +638,8 @@
       document.getElementById('short-note').textContent = short.note;
       return;
     }
-    document.getElementById('blog-length').textContent = `· 약 ${blogPreview.innerText.replace(/\s+/g, '').length.toLocaleString('ko-KR')}자`;
+    const chars = blogPreview.innerText.replace(/\s+/g, '').length;
+    document.getElementById('blog-length').textContent = `· 약 ${chars.toLocaleString('ko-KR')}자${chars < 1000 ? ' (짧은 편이에요. 직접 겪은 사례나 한마디를 한두 단락 덧붙이면 좋아요)' : ''}`;
   }
 
   function showBlogModal() {
@@ -631,17 +675,26 @@
     } catch (e) { /* 처음 받은 정보로 계속 */ }
   }
 
-  function openTopicModal() {
+  async function openTopicModal() {
     blogMode = 'topic';
     blogChannel = 'blog';
     blogCar = null;
     blogSeed = 0;
+    topicId = null;
     delete blogPreview.dataset.edited;
     document.getElementById('blog-modal-heading').textContent = '정보성 블로그 글';
-    document.getElementById('blog-modal-sub').textContent = '매물과 상관없이 올리는 글이에요. 글 아래에 판매중인 매물 링크가 자동으로 들어갑니다.';
+    document.getElementById('blog-modal-sub').textContent = '지금 쓰기 좋은 주제를 추천해 드려요. 글 아래에 판매중인 매물 링크가 자동으로 들어갑니다.';
     applyBlogLayout();
+    renderTopicList();
     renderBlog();
     showBlogModal();
+    // 작성 기록을 불러온 뒤 추천 순서를 다시 매긴다 (이미 쓴 주제는 뒤로)
+    await loadTopicDone();
+    if (blogMode === 'topic' && !blogPreview.dataset.edited) {
+      topicId = null;
+      renderTopicList();
+      renderBlog();
+    }
   }
 
   function closeBlogModal() {
@@ -718,11 +771,33 @@
     delete blogPreview.dataset.edited;
     renderBlog();
   });
-  blogTopicSelect.addEventListener('change', () => {
+  topicListEl.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-topic]');
+    if (!item || item.dataset.topic === topicId) return;
     if (!confirmDiscardEdits()) return;
     delete blogPreview.dataset.edited;
+    topicId = item.dataset.topic;
     blogSeed = 0;
+    renderTopicList();
     renderBlog();
+  });
+
+  topicDoneBtn.addEventListener('click', async () => {
+    if (!topicId) return;
+    const markDone = !topicDone[topicId];
+    try {
+      const res = await fetch('admin/blog-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ id: topicId, done: markDone })
+      });
+      if (!res.ok) throw new Error('save failed');
+      topicDone = (await res.json()).done || {};
+      renderTopicList();
+      KCarUtil.toast(markDone ? '작성 완료로 표시했습니다. 다음 추천 주제를 확인해 보세요.' : '작성 완료 표시를 취소했습니다.', 'success');
+    } catch (e) {
+      KCarUtil.toast('저장하지 못했습니다.', 'error');
+    }
   });
   blogPreview.addEventListener('input', () => { blogPreview.dataset.edited = '1'; });
 
