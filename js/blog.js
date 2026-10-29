@@ -390,9 +390,48 @@
     return parts.join(' ');
   }
 
-  function storyBlocks(car, ko, short, v) {
+  // 서버(/admin/generate-story)에 보낼 이 차량의 사실들: 매물 데이터에 실제로 있는 것만 담는다
+  function storyFacts(car) {
+    const brand = brandKo(car);
+    const data = [];
+    if (car.year_info) data.push(`연식: ${car.year_info}`);
+    if (car.mileage || car.mileage === 0) data.push(`주행거리: ${kmText(car.mileage)}`);
+    if (car.fuel_type) data.push(`연료: ${car.fuel_type}`);
+    if (car.transmission) data.push(`변속기: ${car.transmission}`);
+    if (car.displacement) data.push(`배기량: ${car.displacement}`);
+    if (!noInfo(car.color)) data.push(`외장 색상: ${car.color}`);
+    if (!noInfo(car.seat_color)) data.push(`내장 색상: ${car.seat_color}`);
+    const state = [car.is_new_car ? '완전신차' : '', effectiveNoAccident(car) ? '완전무사고' : '', car.badge_no_paint ? '무도색(외판 도색·판금 흔적 없음)' : ''].filter(Boolean);
+    if (state.length) data.push(`상태: ${state.join(', ')}`);
+    if (!noInfo(car.accident_info)) data.push(`사고 이력 표기: ${car.accident_info}`);
+    const options = (Array.isArray(car.options) ? car.options : []).filter(Boolean).slice(0, 12);
+    if (options.length) data.push(`주요 옵션: ${options.join(', ')}`);
+    return {
+      brand,
+      model: global.KCarKo ? global.KCarKo.koModel(car) : '',
+      title: String(car.title || ''),
+      known: { brand: BRAND_STORY[brand] || '', model: modelStoryOf(car) || '' },
+      data
+    };
+  }
+
+  function storyBlocks(car, ko, short, v, ai) {
     const blocks = [];
     const brand = brandKo(car);
+    // AI(전문 에디터 톤)가 쓴 스토리가 있으면 기본 문구 대신 그것을 쓴다
+    if (ai && (ai.brand || ai.car)) {
+      const paras = (t) => String(t || '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+      const storyHead = short.length > 18 ? '이 차량' : short;
+      if (ai.brand) {
+        blocks.push({ type: 'h', text: `${brand} 브랜드 이야기` });
+        paras(ai.brand).forEach((t) => blocks.push({ type: 'p', text: t }));
+      }
+      if (ai.car) {
+        blocks.push({ type: 'h', text: v([`${storyHead} 이야기`, `${storyHead} 모델 이야기`], 7) });
+        paras(ai.car).forEach((t) => blocks.push({ type: 'p', text: t }));
+      }
+      return blocks;
+    }
     if (BRAND_STORY[brand]) {
       blocks.push({ type: 'h', text: `${brand} 브랜드 이야기` });
       blocks.push({ type: 'p', text: BRAND_STORY[brand] });
@@ -456,7 +495,7 @@
     }
 
     // 브랜드·모델 이야기: 글에 읽을 거리를 더하고, 독자가 차에 대해 이해한 상태에서 장점을 보게 한다
-    blocks.push(...storyBlocks(car, ko, short, v));
+    blocks.push(...storyBlocks(car, ko, short, v, opts.story));
 
     if (adv.length) {
       blocks.push({ type: 'h', text: v([`${ko} 중고차 장점`, `${ko} 중고차, 이런 점이 좋습니다`, `${ko} 핵심 포인트 정리`], 3) });
@@ -1884,5 +1923,5 @@
     return out;
   }
 
-  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, seoCheck, articleFromData, skeletonFromTopic, TOPICS, SHORT_CHANNELS, DEALER };
+  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, seoCheck, articleFromData, skeletonFromTopic, storyFacts, TOPICS, SHORT_CHANNELS, DEALER };
 })(window);

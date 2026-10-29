@@ -438,6 +438,19 @@
           본문은 아래 미리보기에서 직접 고쳐도 됩니다.
         </div>
 
+        <div class="car-only rounded-2xl border border-[#03c75a]/40 bg-[#03c75a]/5 p-3.5">
+          <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+            <span class="text-sm font-bold text-[var(--fk-gray-800)]"><i class="fa-solid fa-feather-pointed mr-1.5 text-[#03c75a]"></i>브랜드·차량 스토리 <span class="font-normal text-xs text-[var(--fk-gray-600)]">(전문 자동차 에디터 톤, 각 300자 안팎)</span></span>
+            <span id="story-badge" class="text-[11px] font-bold rounded-full px-2.5 py-1 bg-gray-100 text-gray-600">기본 문구</span>
+          </div>
+          <textarea id="story-direction" rows="2" maxlength="600" placeholder="(선택) 어떤 방향으로 쓸까요? 비워 두면 에디터의 기본 시선으로 씁니다. 예) 가족용 SUV 관점에서 차분하고 신뢰감 있게 / 주행 질감 중심으로 / 처음 수입차를 사는 분도 이해하기 쉽게" class="fk-input resize-none"></textarea>
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <button type="button" id="story-go" class="btn-primary !py-2 !px-3 text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>스토리 쓰기</button>
+            <button type="button" id="story-reset" class="btn-secondary !py-2 !px-3 text-xs">기본 문구로 되돌리기</button>
+            <span id="story-status" class="text-xs text-[var(--fk-gray-600)] leading-relaxed">디렉션은 안 적으셔도 됩니다. 적으면 그 방향에 맞춰 다시 써요. (약 10~30초)</span>
+          </div>
+        </div>
+
         <div>
           <div class="flex items-center justify-between mb-1">
             <span class="text-sm font-semibold text-[var(--fk-gray-800)]">제목</span>

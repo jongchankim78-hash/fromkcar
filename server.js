@@ -313,6 +313,7 @@ async function getFx() {
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
 let articleInFlight = false;
+let storyInFlight = false;
 
 const ARTICLE_SCHEMA = {
   type: 'object',
@@ -377,15 +378,15 @@ const ARTICLE_SYSTEM_PROMPT = `당신은 경기도 수원의 중고차 판매·�
 - 연락처, 주소, 전화번호, URL, 매물 정보는 쓰지 않습니다. (프로그램이 글 끝에 따로 붙입니다.)
 - 마크다운 문법(#, **, - 목록)을 쓰지 않습니다. 순수한 문장만 씁니다.`;
 
-function callClaudeArticle(topic, notes) {
+// Claude Messages API를 한 번 호출해 JSON 스키마에 맞는 결과를 돌려준다 (글 전체 / 브랜드·차량 스토리 둘 다 이 함수를 쓴다).
+function callClaudeJson({ system, user, schema, effort = 'low', maxTokens = 12000 }) {
   return new Promise((resolve, reject) => {
-    const userText = `다음 주제로 네이버 블로그 정보성 글을 작성해 주세요.\n\n주제: ${topic}\n${notes ? `\n사장님이 추가로 요청한 내용(꼭 반영):\n${notes}\n` : ''}\n지정된 JSON 형식으로만 답하세요.`;
     const payload = JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 12000,
-      system: ARTICLE_SYSTEM_PROMPT,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: ARTICLE_SCHEMA } },
-      messages: [{ role: 'user', content: userText }]
+      max_tokens: maxTokens,
+      system,
+      output_config: { effort, format: { type: 'json_schema', schema } },
+      messages: [{ role: 'user', content: user }]
     });
     const req = https.request({
       hostname: 'api.anthropic.com',
@@ -409,8 +410,8 @@ function callClaudeArticle(topic, notes) {
           err.status = res.statusCode;
           return reject(err);
         }
-        if (data.stop_reason === 'refusal') return reject(new Error('Claude가 이 주제로는 글을 쓰지 않았어요. 주제를 바꿔 보세요.'));
-        if (data.stop_reason === 'max_tokens') return reject(new Error('글이 너무 길어져 중간에 끊겼어요. 주제를 좁혀서 다시 시도해 주세요.'));
+        if (data.stop_reason === 'refusal') return reject(new Error('Claude가 이 요청으로는 글을 쓰지 않았어요. 내용을 바꿔 보세요.'));
+        if (data.stop_reason === 'max_tokens') return reject(new Error('글이 너무 길어져 중간에 끊겼어요. 내용을 줄여서 다시 시도해 주세요.'));
         const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
         try {
           resolve(JSON.parse(text));
@@ -424,6 +425,52 @@ function callClaudeArticle(topic, notes) {
     req.write(payload);
     req.end();
   });
+}
+
+function callClaudeArticle(topic, notes) {
+  const user = `다음 주제로 네이버 블로그 정보성 글을 작성해 주세요.\n\n주제: ${topic}\n${notes ? `\n사장님이 추가로 요청한 내용(꼭 반영):\n${notes}\n` : ''}\n지정된 JSON 형식으로만 답하세요.`;
+  return callClaudeJson({ system: ARTICLE_SYSTEM_PROMPT, user, schema: ARTICLE_SCHEMA, effort: 'low', maxTokens: 12000 });
+}
+
+// --- 매물 블로그 글의 "브랜드 소개 + 차량 스토리" (전문 자동차 에디터 톤, 관리자가 방향을 줄 수 있음) ---------
+const STORY_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['brand_story', 'car_story'],
+  properties: { brand_story: { type: 'string' }, car_story: { type: 'string' } }
+};
+
+const STORY_SYSTEM_PROMPT = `당신은 자동차 전문지에서 오래 일한 한국어 자동차 에디터입니다. 중고차 판매·수출 업체 "프롬케이카"의 네이버 블로그에 들어갈 두 단락을 씁니다.
+
+쓸 내용
+- brand_story: 이 브랜드를 소개하는 한 단락. 브랜드가 걸어온 길과 철학, 디자인·주행의 성격, 시장에서의 위치를 에디터의 시선으로 풀어 씁니다.
+- car_story: 이 모델과 이 차량 한 대에 대한 한 단락. 모델의 성격(어떤 운전자에게 어울리는 차인지)과, 아래 "차량 데이터"에 있는 이 차량의 개별 정보(연식, 주행거리, 색상, 옵션, 상태)를 자연스럽게 엮습니다.
+- 각 단락은 공백 포함 약 300자(280~330자)로 씁니다. 한 단락은 줄바꿈 없이 이어지는 글입니다.
+- 문체는 존댓말이고, 잡지 에디터처럼 정돈되고 깊이 있되 어렵지 않게 씁니다. 광고 문구 같은 느낌표 남발은 피합니다.
+
+정직성 규칙 (매우 중요)
+- "제공된 사실"에 있는 내용은 그대로 활용해도 됩니다. 그 밖에 널리 알려진 사실만 쓰고, 확신이 없는 연도·수치·순위·수상 이력·판매량·제원(마력, 토크, 연비, 가격)은 쓰지 않습니다. 모르면 "~로 알려져 있습니다", "~라는 평가를 받습니다"처럼 완곡하게, 또는 일반적인 특징만 말합니다.
+- 이 차량의 이전 소유자, 정비·사고 이력, 보증, 성능 수치를 지어내지 않습니다. 차량 데이터에 없는 사실은 쓰지 않습니다.
+- "최고", "100%", "무조건", "완벽" 같은 단정·과장 표현을 쓰지 않습니다.
+- 가격, 연락처, 주소, 링크를 쓰지 않습니다.
+- 마크다운 문법을 쓰지 않습니다.
+- 사장님의 "디렉션"이 있으면 말투, 관점, 강조할 점을 그 방향으로 맞추되, 위 정직성 규칙과 충돌하는 요구(확인할 수 없는 사실을 단정하라는 것 등)는 따르지 않고 사실의 범위 안에서 가장 가깝게 표현합니다. 디렉션이 없으면 에디터의 기본 시선으로 씁니다.`;
+
+function callClaudeStory(facts, direction) {
+  const known = facts.known || {};
+  const user = `브랜드: ${facts.brand}
+모델: ${facts.model || '(한글 모델명 미확인)'}  / 원래 차량명: ${facts.title}
+
+제공된 사실(그대로 활용 가능)
+- 브랜드: ${known.brand || '(없음)'}
+- 모델: ${known.model || '(없음)'}
+
+차량 데이터
+${facts.data.map((l) => '- ' + l).join('\n')}
+
+${direction ? `사장님의 디렉션(반영해 주세요):\n${direction}\n` : '사장님의 디렉션: 없음 (에디터의 기본 시선으로 써 주세요)\n'}
+지정된 JSON 형식으로만 답하세요.`;
+  return callClaudeJson({ system: STORY_SYSTEM_PROMPT, user, schema: STORY_SCHEMA, effort: 'medium', maxTokens: 8000 });
 }
 
 async function notifyTelegramNewListing(car) {
@@ -1170,6 +1217,42 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: friendly });
     } finally {
       articleInFlight = false;
+    }
+  }
+
+  // 관리자 "브랜드·차량 스토리 쓰기": 매물 정보와 (선택) 사장님의 디렉션으로 에디터 톤의 두 단락을 받는다.
+  if (urlObj.pathname === '/admin/generate-story' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    if (!ANTHROPIC_API_KEY) return sendJson(res, 503, { code: 'NO_API_KEY', error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' });
+    let body;
+    try {
+      body = await readRequestBody(req, 16384);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    const f = (body && body.facts) || {};
+    const facts = {
+      brand: String(f.brand || '').slice(0, 40),
+      model: String(f.model || '').slice(0, 60),
+      title: String(f.title || '').slice(0, 120),
+      known: { brand: String((f.known && f.known.brand) || '').slice(0, 600), model: String((f.known && f.known.model) || '').slice(0, 600) },
+      data: (Array.isArray(f.data) ? f.data : []).slice(0, 20).map((l) => String(l).slice(0, 200))
+    };
+    const direction = String((body && body.direction) || '').trim().slice(0, 600);
+    if (!facts.brand && !facts.title) return sendJson(res, 400, { error: '차량 정보가 없습니다.' });
+    if (storyInFlight) return sendJson(res, 429, { error: '이미 스토리를 쓰는 중이에요. 잠시만 기다려 주세요.' });
+    storyInFlight = true;
+    try {
+      const story = await callClaudeStory(facts, direction);
+      return sendJson(res, 200, { data: { brand_story: String(story.brand_story || '').trim(), car_story: String(story.car_story || '').trim() }, model: ANTHROPIC_MODEL });
+    } catch (e) {
+      console.error('[generate-story]', e.status || '', e.message);
+      const friendly = e.status === 401 ? 'Claude API 키가 올바르지 않습니다. Render의 ANTHROPIC_API_KEY를 확인해 주세요.'
+        : e.status === 429 ? 'Claude 사용 한도에 걸렸어요. 잠시 후 다시 시도해 주세요.'
+        : e.message;
+      return sendJson(res, 502, { error: friendly });
+    } finally {
+      storyInFlight = false;
     }
   }
 

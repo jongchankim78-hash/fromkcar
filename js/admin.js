@@ -564,6 +564,7 @@
   let blogChannel = 'blog';
   let blogCar = null;
   let blogSeed = 0;
+  const storyByCar = {}; // 매물 id → { brand, car, direction }: AI가 쓴 브랜드·차량 스토리 (이 화면을 열어 둔 동안 보관)
 
   // 정보성 글 주제: 추천 목록(우선순위순)과 "이미 쓴 주제" 기록. 기록은 서버에 저장해 다른 기기에서도 이어진다.
   let topicDone = {};
@@ -707,7 +708,7 @@
       reinsertTopicImages();
     } else if (blogChannel === 'blog') {
       if (!blogCar) return;
-      const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked, cars: adminCars });
+      const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked, cars: adminCars, story: storyByCar[blogCar.id] });
       blogTitle.value = post.title;
       blogPreview.innerHTML = post.html;
       blogTags.value = post.tags;
@@ -736,6 +737,7 @@
     blogSeed = 0;
     blogPhotos.checked = false;
     delete blogPreview.dataset.edited;
+    updateStoryPanel();
     document.getElementById('blog-modal-heading').textContent = '홍보글 만들기';
     document.getElementById('blog-modal-sub').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
     document.getElementById('blog-zip').href = `/car/${car.id}/images.zip`;
@@ -973,6 +975,73 @@
     }
     topicImgStatus.classList.add('hidden');
     topicImgInput.value = '';
+  });
+
+  /* ---------- 브랜드·차량 스토리 (전문 에디터 톤, 디렉션은 선택) ---------- */
+  const storyDirection = document.getElementById('story-direction');
+  const storyStatus = document.getElementById('story-status');
+  const storyGoBtn = document.getElementById('story-go');
+  const STORY_STATUS_DEFAULT = '디렉션은 안 적으셔도 됩니다. 적으면 그 방향에 맞춰 다시 써요. (약 10~30초)';
+
+  // 이 매물에 AI 스토리가 적용돼 있는지에 따라 배지와 입력칸을 맞춘다
+  function updateStoryPanel() {
+    const saved = blogCar ? storyByCar[blogCar.id] : null;
+    storyDirection.value = saved ? (saved.direction || '') : '';
+    const badge = document.getElementById('story-badge');
+    badge.textContent = saved ? 'AI 에디터 스토리 적용 중' : '기본 문구';
+    badge.className = 'text-[11px] font-bold rounded-full px-2.5 py-1 ' + (saved ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600');
+    storyStatus.textContent = STORY_STATUS_DEFAULT;
+    storyStatus.style.color = '';
+  }
+
+  storyGoBtn.addEventListener('click', async () => {
+    if (!blogCar || blogMode !== 'car') return;
+    if (!confirmDiscardEdits()) return;
+    const car = blogCar;
+    const direction = storyDirection.value.trim();
+    storyGoBtn.disabled = true;
+    storyGoBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>쓰는 중…';
+    storyStatus.textContent = '전문 에디터가 쓰고 있어요. 10~30초 걸립니다.';
+    storyStatus.style.color = '';
+    try {
+      const res = await fetch('admin/generate-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ facts: KCarBlog.storyFacts(car), direction })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
+      if (res.status === 503 && body.code === 'NO_API_KEY') {
+        storyStatus.textContent = 'AI 연결(API 키)이 설정되지 않아 지금은 기본 문구를 쓰고 있어요.';
+        storyStatus.style.color = '#b45309';
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || '스토리를 쓰지 못했습니다.');
+      if (!blogCar || blogCar.id !== car.id) return; // 쓰는 동안 다른 매물로 넘어갔으면 버린다
+      storyByCar[car.id] = { brand: body.data.brand_story, car: body.data.car_story, direction };
+      delete blogPreview.dataset.edited;
+      renderBlog();
+      updateStoryPanel();
+      storyStatus.textContent = '스토리를 새로 썼어요. 읽어 보고 사실과 다른 부분이 없는지 확인해 주세요.';
+      KCarUtil.toast('브랜드·차량 스토리를 새로 썼어요.', 'success');
+    } catch (e) {
+      storyStatus.textContent = e.message || '스토리를 쓰지 못했습니다.';
+      storyStatus.style.color = '#dc2626';
+      KCarUtil.toast(e.message || '스토리를 쓰지 못했습니다.', 'error', 5000);
+    } finally {
+      storyGoBtn.disabled = false;
+      storyGoBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>스토리 쓰기';
+    }
+  });
+
+  document.getElementById('story-reset').addEventListener('click', () => {
+    if (!blogCar || !storyByCar[blogCar.id]) return;
+    if (!confirmDiscardEdits()) return;
+    delete storyByCar[blogCar.id];
+    delete blogPreview.dataset.edited;
+    renderBlog();
+    updateStoryPanel();
+    KCarUtil.toast('기본 문구로 되돌렸어요.', 'success');
   });
 
   // "내가 정한 주제로 글 만들기": 서버가 Claude에게 글을 쓰게 한다. API 키가 없으면 초안 뼈대로 대신한다.
