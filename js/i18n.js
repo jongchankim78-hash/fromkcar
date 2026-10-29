@@ -305,6 +305,14 @@
     }
   };
 
+  // 담당자 버전(/HOONS): 주소 맨 앞에 담당자 경로가 붙고, 담당자 이름이 바뀐다 (js/profiles.js). 기본 사이트는 base가 빈 문자열이라 기존과 같다.
+  const PROFILE = global.KCarProfiles ? global.KCarProfiles.fromPath(window.location.pathname) : { id: 'default', base: '' };
+  const innerPath = () => (PROFILE.base ? (window.location.pathname.slice(PROFILE.base.length) || '/') : window.location.pathname);
+  if (PROFILE.id !== 'default') {
+    DICT.ko.dealer_name = PROFILE.nameKo;
+    ['ru', 'mn', 'en'].forEach((l) => { DICT[l].dealer_name = PROFILE.nameEn; });
+  }
+
   const SUPPORTED_LANGS = ['ko', 'ru', 'mn', 'en'];
 
   // 언어별 주소: 한국어는 "/", "/car/:id" 그대로, 나머지는 "/ru", "/mn", "/en" 접두사 (server.js의 라우트와 짝).
@@ -312,7 +320,7 @@
   const BOT_RE = /bot|crawl|spider|slurp|yandex|bing|google|facebookexternalhit|telegram|preview/i;
 
   function langFromPath() {
-    const m = window.location.pathname.match(PREFIX_RE);
+    const m = innerPath().match(PREFIX_RE);
     return m ? m[1] : null;
   }
 
@@ -348,14 +356,15 @@
   function localizedPath(pagePath, lang) {
     const base = pagePath.replace(PREFIX_RE, '') || '/';
     const l = lang || getLang();
-    if (l === 'ko') return base;
-    return base === '/' ? '/' + l : '/' + l + base;
+    const local = l === 'ko' ? base : (base === '/' ? '/' + l : '/' + l + base);
+    if (!PROFILE.base) return local;
+    return local === '/' ? PROFILE.base : PROFILE.base + local;
   }
 
   // 홈("/")과 매물 상세("/car/:id")에서만 주소창을 현재 언어의 주소로 맞춘다 (관리자 등 다른 페이지는 건드리지 않음).
   function syncUrl() {
     const { pathname, search, hash } = window.location;
-    const base = pathname.replace(PREFIX_RE, '') || '/';
+    const base = innerPath().replace(PREFIX_RE, '') || '/';
     if (!/^\/(car\/[^/]+\/?)?$/.test(base)) return;
     const target = localizedPath(base) + search + hash;
     if (target !== pathname + search + hash) history.replaceState(history.state, '', target);
@@ -382,8 +391,8 @@
     const next = SUPPORTED_LANGS.includes(lang) ? lang : 'ko';
     try { localStorage.setItem(STORAGE_KEY, next); } catch (e) { /* 저장 못 해도 현재 화면은 바꾼다 */ }
     // 주소에 언어 접두사가 있으면 그것이 우선이므로, 새 언어의 주소로 먼저 바꾼 뒤 화면을 갱신한다.
-    const { pathname, search, hash } = window.location;
-    const base = pathname.replace(PREFIX_RE, '') || '/';
+    const { search, hash } = window.location;
+    const base = innerPath().replace(PREFIX_RE, '') || '/';
     if (/^\/(car\/[^/]+\/?)?$/.test(base)) {
       history.replaceState(history.state, '', localizedPath(base, next) + search + hash);
     }

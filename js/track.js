@@ -42,7 +42,10 @@
   }
 
   function currentCarId() {
-    const m = location.pathname.match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)/);
+    // 담당자 버전(/HOONS) 경로는 떼고 본다
+    const prof = window.KCarProfiles ? KCarProfiles.fromPath(location.pathname) : { base: '' };
+    const path = prof.base ? (location.pathname.slice(prof.base.length) || '/') : location.pathname;
+    const m = path.match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
 

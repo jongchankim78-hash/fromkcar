@@ -15,6 +15,7 @@ const { URL } = require('url');
 const { scrapeKbListing, parsePastedKbHtml } = require('./kb-scraper');
 const { createStats } = require('./stats');
 const KCarKo = require('./js/korean-name.js');
+const KCarProfiles = require('./js/profiles.js');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -806,12 +807,21 @@ function langPath(lang, pagePath) {
   return pagePath === '/' ? `/${lang}` : `/${lang}${pagePath}`;
 }
 
+// 담당자 버전(예: /HOONS)이면 모든 주소 앞에 그 경로를 붙인다. 기본(김종찬)은 빈 문자열이라 기존과 같다.
+const profileBase = (profile) => (profile && profile.base) || '';
+
 // index.html의 <head>를 해당 언어/페이지에 맞게 바꾼다 (제목, 설명, 대표 이미지, canonical, hreflang, og:locale).
-function renderLocalizedPage(indexHtml, lang, pagePath, { title, description, image }) {
-  const canonicalUrl = SITE_ORIGIN + langPath(lang, pagePath);
+// profile이 담당자 버전이면 주소(canonical/hreflang)를 그 버전 기준으로 만들고, 본문의 담당자 정보도 그 사람 것으로 바꾼다.
+function renderLocalizedPage(indexHtml, lang, pagePath, { title, description, image }, profile) {
+  const base = profileBase(profile);
+  const withBase = (l) => {
+    const p = langPath(l, pagePath);
+    return base ? (p === '/' ? base : base + p) : p;
+  };
+  const canonicalUrl = SITE_ORIGIN + withBase(lang);
   const alternates = SITE_LANGS
-    .map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE_ORIGIN}${langPath(l, pagePath)}">`)
-    .concat(`<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${langPath('ko', pagePath)}">`)
+    .map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE_ORIGIN}${withBase(l)}">`)
+    .concat(`<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${withBase('ko')}">`)
     .join('\n');
   const localeAlternates = SITE_LANGS.filter((l) => l !== lang)
     .map((l) => `<meta property="og:locale:alternate" content="${LANG_HEAD[l].locale}">`).join('\n');
@@ -831,11 +841,30 @@ function renderLocalizedPage(indexHtml, lang, pagePath, { title, description, im
   html = replaceMeta(html, /<meta name="twitter:title" content=".*?">/s, `<meta name="twitter:title" content="${escapeAttr(title)}">`);
   html = replaceMeta(html, /<meta name="twitter:description" content=".*?">/s, `<meta name="twitter:description" content="${escapeAttr(description)}">`);
   html = replaceMeta(html, /<meta name="twitter:image" content=".*?">/s, `<meta name="twitter:image" content="${escapeAttr(image)}">`);
-  return html;
+  return KCarProfiles.applyToHtml(html, profile);
+}
+
+// 담당자 버전의 한국어 첫 화면(/HOONS): index.html의 제목·설명은 그대로 두고 주소와 담당자 정보만 바꾼다.
+function handleVariantHome(req, res, profile) {
+  let indexHtml;
+  try {
+    indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
+  } catch (e) {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Server error');
+  }
+  const pick = (re) => { const m = indexHtml.match(re); return m ? m[1] : ''; };
+  const html = renderLocalizedPage(indexHtml, 'ko', '/', {
+    title: pick(/<title>(.*?)<\/title>/s),
+    description: pick(/<meta name="description" content="(.*?)">/s).replace(/&quot;/g, '"'),
+    image: `${SITE_ORIGIN}/images/og-image.png`
+  }, profile);
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
 }
 
 // /ru, /mn, /en — 언어별 홈페이지
-function handleLangHomePage(req, res, lang) {
+function handleLangHomePage(req, res, lang, profile) {
   let indexHtml;
   try {
     indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
@@ -848,14 +877,14 @@ function handleLangHomePage(req, res, lang) {
     title: head.homeTitle,
     description: head.homeDescription,
     image: `${SITE_ORIGIN}/images/og-image.png`
-  });
+  }, profile);
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
 }
 
 // /car/:id (및 /ru|/mn|/en/car/:id) — 매물별 실제 og:title/description/image가 박힌 상세페이지를 서버에서 렌더링한다.
 // (SPA 모달만으로는 크롤러/링크 미리보기가 특정 매물을 인식할 수 없어서 추가한 라우트)
-function handleCarDetailPage(req, res, carId, lang = 'ko') {
+function handleCarDetailPage(req, res, carId, lang = 'ko', profile) {
   let indexHtml;
   try {
     indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf-8');
@@ -867,7 +896,7 @@ function handleCarDetailPage(req, res, carId, lang = 'ko') {
   const car = readListings().find((c) => c.id === carId && !c.deleted);
   if (!car) {
     res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-    return res.end(indexHtml);
+    return res.end(KCarProfiles.applyToHtml(indexHtml, profile));
   }
 
   // 한국어가 아닌 페이지는 "8,590만원" 대신 원화 금액(₩85,900,000)으로 보여준다.
@@ -885,7 +914,7 @@ function handleCarDetailPage(req, res, carId, lang = 'ko') {
     : `${car.title || ''} ${car.year_info || ''} ${priceText} · ${head.carTagline}`.replace(/\s+/g, ' ').trim();
   const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || 'https://www.fromkcar.kr/images/og-image.png';
 
-  const html = renderLocalizedPage(indexHtml, lang, `/car/${car.id}`, { title, description, image });
+  const html = renderLocalizedPage(indexHtml, lang, `/car/${car.id}`, { title, description, image }, profile);
 
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
@@ -1263,6 +1292,11 @@ function serveStatic(req, res, urlObj) {
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
 
+  // 담당자 버전 주소: /HOONS, /hoons/car/abc, /HOONS/ru ... 맨 앞의 담당자 경로를 떼고 나머지는 기존 경로와 똑같이 처리한다.
+  // (사진·스크립트는 <base href="/">라서 항상 사이트 루트에서 불러오고, 담당자 정보 교체는 페이지를 내려줄 때 한다.)
+  const profile = KCarProfiles.fromPath(urlObj.pathname);
+  if (profile.base) urlObj.pathname = KCarProfiles.inner(urlObj.pathname, profile);
+
   if (urlObj.pathname === '/admin/verify' && req.method === 'POST') {
     let body;
     try {
@@ -1483,14 +1517,19 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // 담당자 버전(/HOONS)의 첫 화면. 기본(김종찬) 첫 화면("/")은 아래 정적 파일 그대로라 기존과 같다.
+  if (profile.base && (urlObj.pathname === '/' || urlObj.pathname === '') && (req.method === 'GET' || req.method === 'HEAD')) {
+    return handleVariantHome(req, res, profile);
+  }
+
   const langHomeMatch = urlObj.pathname.match(/^\/(ru|mn|en)\/?$/);
   if (langHomeMatch && (req.method === 'GET' || req.method === 'HEAD')) {
-    return handleLangHomePage(req, res, langHomeMatch[1]);
+    return handleLangHomePage(req, res, langHomeMatch[1], profile);
   }
 
   const carDetailMatch = urlObj.pathname.match(/^(?:\/(ru|mn|en))?\/car\/([^/]+)\/?$/);
   if (carDetailMatch && (req.method === 'GET' || req.method === 'HEAD')) {
-    return handleCarDetailPage(req, res, decodeURIComponent(carDetailMatch[2]), carDetailMatch[1] || 'ko');
+    return handleCarDetailPage(req, res, decodeURIComponent(carDetailMatch[2]), carDetailMatch[1] || 'ko', profile);
   }
 
   if (urlObj.pathname === '/sitemap.xml' && (req.method === 'GET' || req.method === 'HEAD')) {

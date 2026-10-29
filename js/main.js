@@ -8,8 +8,12 @@
   let currentModalIndex = 0;
   let currentModalCar = null;
 
+  // 담당자 버전(/HOONS)이면 그 담당자의 연락처·명함을 쓴다. 기본 사이트는 기존(김종찬 팀장) 그대로 (js/profiles.js)
+  const PROFILE = window.KCarProfiles ? KCarProfiles.fromPath(window.location.pathname) : { base: '', phone: '010-7449-8282', wa: '821074498282', cardKo: 'images/idcard-kr.jpg', cardEn: 'images/idcard-en.jpg' };
+  const innerPathname = () => (PROFILE.base ? (window.location.pathname.slice(PROFILE.base.length) || '/') : window.location.pathname);
+
   function getCarIdFromUrl() {
-    const m = window.location.pathname.match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)\/?$/);
+    const m = innerPathname().match(/^(?:\/(?:ru|mn|en))?\/car\/([^/]+)\/?$/);
     return m ? decodeURIComponent(m[1]) : null;
   }
 
@@ -478,7 +482,7 @@
 
   // 문의 메시지는 보는 사람의 언어와 상관없이 담당자가 어떤 차량인지 바로 알 수 있도록 한/영 병기로 만든다.
   function inquiryMessage(car) {
-    const url = `${window.location.origin}/car/${car.id}`;
+    const url = `${window.location.origin}${PROFILE.base}/car/${car.id}`;
     const title = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''}`.trim();
     return `안녕하세요, 이 차량 문의드립니다. / Hello, I'm interested in this car.\n${title}\n${car.price_display || ''}\n${url}`.replace(/\n\n/g, '\n');
   }
@@ -486,13 +490,13 @@
   // 문의 버튼 줄. WhatsApp은 문구를 미리 채워 열고, 텔레그램/카카오톡은 문구 자동 입력이 안 돼서
   // 누를 때 문구를 클립보드에 복사해 두고 대화창에 붙여넣게 한다 (복사 처리는 detail-modal 클릭 핸들러).
   function inquiryButtonsHtml(car, t) {
-    const wa = `https://wa.me/821074498282?text=${encodeURIComponent(inquiryMessage(car))}`;
+    const wa = `https://wa.me/${PROFILE.wa}?text=${encodeURIComponent(inquiryMessage(car))}`;
     const cls = 'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-sm font-bold hover:opacity-90 transition-opacity';
     return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <a href="${wa}" target="_blank" rel="noopener" class="${cls} text-white" style="background:#25D366"><i class="ti ti-brand-whatsapp text-lg"></i>WhatsApp</a>
       <a href="https://t.me/fromkcar" target="_blank" rel="noopener" data-copy-inquiry class="${cls} text-white" style="background:#26A5E4"><i class="ti ti-brand-telegram text-lg"></i>Telegram</a>
       <a href="http://pf.kakao.com/_jWCxnX/chat" target="_blank" rel="noopener" data-copy-inquiry class="${cls}" style="background:#FEE500;color:#3C1E1E"><i class="fa-solid fa-comment"></i>KakaoTalk</a>
-      <a href="tel:010-7449-8282" class="${cls} text-white" style="background:var(--fk-navy)"><i class="fa-solid fa-phone"></i>${t('inquiry_phone')}</a>
+      <a href="tel:${PROFILE.phone}" class="${cls} text-white" style="background:var(--fk-navy)"><i class="fa-solid fa-phone"></i>${t('inquiry_phone')}</a>
     </div>`;
   }
 
@@ -798,7 +802,7 @@
   });
 
   /* ---------------- 명함 다운로드 모달 ---------------- */
-  const IDCARD_IMAGES = { ko: 'images/idcard-kr.jpg', ru: 'images/idcard-en.jpg', mn: 'images/idcard-en.jpg', en: 'images/idcard-en.jpg' };
+  const IDCARD_IMAGES = { ko: PROFILE.cardKo, ru: PROFILE.cardEn, mn: PROFILE.cardEn, en: PROFILE.cardEn };
   const IDCARD_FILENAMES = { ko: 'FROMKCAR_명함.jpg', ru: 'FROMKCAR_business_card.jpg', mn: 'FROMKCAR_business_card.jpg', en: 'FROMKCAR_business_card.jpg' };
 
   function openIdCardModal() {
