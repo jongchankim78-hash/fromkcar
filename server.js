@@ -255,6 +255,57 @@ function translateText(text, targetLang) {
   });
 }
 
+// --- 환율 (매물 가격 옆에 달러 환산가를 보여주기 위한 원/달러 기준환율) ---------------------------------
+// 무료 공개 환율 API에서 3시간마다 한 번만 받아 서버에 보관한다 (방문자마다 외부 API를 부르지 않도록).
+// 1순위 Frankfurter(유럽중앙은행 기준환율, 영업일 하루 한 번 갱신), 실패하면 open.er-api.com. 둘 다 실패하면 마지막 값을 계속 쓴다.
+const FX_TTL_MS = 3 * 60 * 60 * 1000;
+let fxCache = { rate: null, date: null, source: '', fetchedAt: 0 };
+let fxInFlight = null;
+
+function httpsGetJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { timeout: 8000, headers: { 'user-agent': 'fromkcar-fx/1.0' } }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+  });
+}
+
+async function refreshFx() {
+  const sources = [
+    ['frankfurter', 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW', (d) => ({ rate: d.rates && d.rates.KRW, date: d.date })],
+    ['open.er-api', 'https://open.er-api.com/v6/latest/USD', (d) => ({
+      rate: d.rates && d.rates.KRW,
+      date: d.time_last_update_utc ? new Date(d.time_last_update_utc).toISOString().slice(0, 10) : null
+    })]
+  ];
+  for (const [name, url, pick] of sources) {
+    try {
+      const { rate, date } = pick(await httpsGetJson(url));
+      // 비정상 값(0, 문자열, 터무니없는 숫자)은 버린다
+      if (Number(rate) > 500 && Number(rate) < 5000) {
+        fxCache = { rate: Number(rate), date: date || null, source: name, fetchedAt: Date.now() };
+        return fxCache;
+      }
+    } catch (e) {
+      console.error(`[fx] ${name} failed:`, e.message);
+    }
+  }
+  return fxCache;
+}
+
+async function getFx() {
+  if (fxCache.rate && Date.now() - fxCache.fetchedAt < FX_TTL_MS) return fxCache;
+  if (!fxInFlight) fxInFlight = refreshFx().finally(() => { fxInFlight = null; });
+  return fxInFlight;
+}
+
 // --- 관리자 "내 주제로 정보성 글 만들기" (Claude API) -----------------------------------------
 // ANTHROPIC_API_KEY 환경변수가 있을 때만 동작한다. 키는 서버에만 있고 브라우저로 나가지 않는다.
 // 이 서버는 의존 패키지 없이 Node 내장 모듈만 쓰고 Render 빌드 명령도 비어 있어서(텔레그램/번역 호출과 같은 방식으로)
@@ -1049,6 +1100,13 @@ const server = http.createServer(async (req, res) => {
     }
     const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
     return sendJson(res, ok ? 200 : 401, { ok });
+  }
+
+  // 원/달러 환율 (공개). 가져오지 못했으면 rate가 null이고, 화면은 달러 표기를 숨긴다.
+  if (urlObj.pathname === '/api/fx' && req.method === 'GET') {
+    const fx = await getFx();
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    return sendJson(res, fx.rate ? 200 : 503, { rate: fx.rate, date: fx.date, source: fx.source });
   }
 
   // 방문/매물 조회/문의 클릭 집계. 브라우저의 sendBeacon이 보내며, 응답 내용은 필요 없다.

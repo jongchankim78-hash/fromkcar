@@ -125,7 +125,7 @@
         <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
-        <p class="text-xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+        <p class="text-xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-xs')}</p>
         <div class="flex flex-wrap gap-1.5 mb-4">
           <span class="spec-chip"><i class="fa-regular fa-calendar mr-1"></i>${KCarUtil.escapeHtml(car.year_info || '-')}</span>
           <span class="spec-chip"><i class="fa-solid fa-road mr-1"></i>${KCarUtil.formatMileage(car.mileage)}</span>
@@ -158,7 +158,7 @@
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-2 mb-1 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
-        <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+        <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-[11px]')}</p>
         <a href="${KCarI18n.path('/car/' + car.id)}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
           <i class="fa-solid fa-circle-info mr-1"></i>${t('detail_btn')}
         </a>
@@ -189,7 +189,7 @@
           ${colorBadgeHtml(car)}
         </div>
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-1">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h3>
-        <p class="text-base font-extrabold text-[var(--fk-navy)]">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+        <p class="text-base font-extrabold text-[var(--fk-navy)]">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-xs')}</p>
         <div class="flex flex-wrap gap-1.5">
           <span class="spec-chip">${KCarUtil.escapeHtml(car.year_info || '-')}</span>
           <span class="spec-chip">${KCarUtil.formatMileage(car.mileage)}</span>
@@ -546,7 +546,7 @@
           </div>
         </div>
       </div>
-      <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}</p>
+      <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-base')}</p>
 
       ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>${t('translate_btn')}</button>` : ''}
 
@@ -602,12 +602,6 @@
       </div>` : ''}
 
       <div class="mb-3">${inquiryButtonsHtml(car, t)}</div>
-
-      <div class="flex gap-3">
-        ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-primary flex-1 text-center">
-          <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>${t('original_listing_btn')}
-        </a>` : ''}
-      </div>
 
       ${similarCarsHtml(car, t)}
     `;
@@ -960,6 +954,14 @@
     btn.addEventListener('click', () => setViewMode(btn.dataset.view));
   });
   updateViewToggleUI();
+
+  // 환율이 화면을 그린 뒤에 도착하면 가격 옆 달러 표기를 넣어 다시 그린다
+  document.addEventListener('fxready', () => {
+    if (!allCars.length) return;
+    applyFiltersAndRender();
+    const panel = document.getElementById('car-info-panel');
+    if (panel && currentModalCar) panel.innerHTML = buildCarInfoHtml(currentModalCar, KCarI18n.t);
+  });
 
   document.addEventListener('langchange', () => {
     populateFilterOptions(allCars);

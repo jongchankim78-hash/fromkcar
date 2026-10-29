@@ -1876,6 +1876,10 @@
       const p = Number(o.photoCount) || 0;
       if (p >= 10) add('ok', '사진', `${p}장 — 10장 이상이에요. 직접 찍은 사진이면 더 좋아요.`);
       else add('warn', '사진', `${p}장 — 10장 이상을 권해요. 가능하면 직접 찍은 사진을 쓰세요.`);
+    } else if (typeof o.photoCount === 'number') {
+      // 정보성 글: 글 중간중간 사진이 있으면 읽는 시간이 길어지고 글이 더 믿음직해 보인다
+      if (o.photoCount >= 3) add('ok', '사진', `본문에 사진 ${o.photoCount}장이 있어요.`);
+      else add('warn', '사진', `본문에 사진 ${o.photoCount}장 — 3장 이상 넣으면 좋아요. 직접 찍은 사진이면 더 좋아요.`);
     }
     return out;
   }

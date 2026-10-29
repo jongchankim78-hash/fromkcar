@@ -684,7 +684,7 @@
       bodyText: blogPreview.innerText,
       tags: blogTags.value,
       keyword: blogMode === 'topic' ? (customTopics.find(t => t.id === topicId) || {}).topic : undefined,
-      photoCount: blogCar && Array.isArray(blogCar.images) ? blogCar.images.length : 0
+      photoCount: blogMode === 'topic' ? blogPreview.querySelectorAll('img').length : (blogCar && Array.isArray(blogCar.images) ? blogCar.images.length : 0)
     });
     const icon = { ok: ['fa-circle-check', '#16a34a'], warn: ['fa-triangle-exclamation', '#d97706'], bad: ['fa-circle-xmark', '#dc2626'] };
     document.getElementById('seo-list').innerHTML = checks.map((c) => `
@@ -704,6 +704,7 @@
       blogTitle.value = post.title;
       blogPreview.innerHTML = post.html;
       blogTags.value = post.tags;
+      reinsertTopicImages();
     } else if (blogChannel === 'blog') {
       if (!blogCar) return;
       const post = KCarBlog.generate(blogCar, { seed: blogSeed, photos: blogPhotos.checked, cars: adminCars });
@@ -761,6 +762,9 @@
     blogCar = null;
     blogSeed = 0;
     topicId = null;
+    topicImages = [];
+    previewRange = null;
+    renderTopicImages();
     delete blogPreview.dataset.edited;
     document.getElementById('blog-modal-heading').textContent = '정보성 블로그 글';
     document.getElementById('blog-modal-sub').textContent = '지금 쓰기 좋은 주제를 추천해 드려요. 글 아래에 판매중인 매물 링크가 자동으로 들어갑니다.';
@@ -863,6 +867,112 @@
     blogSeed = 0;
     renderTopicList();
     renderBlog();
+  });
+
+  /* ---------- 정보성 글에 넣을 사진 ---------- */
+  // 올린 사진은 서버(/uploads)에 저장되어 공개 주소를 갖는다. 본문 미리보기에 그 주소의 <img>를 넣으면
+  // "본문 복사(서식 유지)" 때 함께 복사된다. 네이버가 외부 주소 사진을 가져오지 못하면 "받기"로 내려받아 직접 올린다.
+  const topicImgInput = document.getElementById('topic-img-input');
+  const topicImgList = document.getElementById('topic-img-list');
+  const topicImgStatus = document.getElementById('topic-img-status');
+  let topicImages = []; // [{ url, inserted }]
+  let previewRange = null; // 본문에서 마지막으로 클릭한 자리
+
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel.rangeCount && sel.anchorNode && blogPreview.contains(sel.anchorNode)) previewRange = sel.getRangeAt(0).cloneRange();
+  });
+
+  const absImageUrl = (u) => (/^https?:/.test(u) ? u : window.location.origin + u);
+
+  function makeImageNode(url) {
+    const p = document.createElement('p');
+    p.style.cssText = 'text-align:center;margin:0 0 12px;';
+    p.dataset.topicImg = url;
+    const img = document.createElement('img');
+    img.src = absImageUrl(url);
+    img.style.maxWidth = '100%';
+    p.appendChild(img);
+    return p;
+  }
+
+  function refreshAfterImageChange() {
+    renderTopicImages();
+    renderSeoPanel();
+  }
+
+  function insertTopicImage(item) {
+    // 사진이 이미 본문에 있으면 옮기는 것으로 본다 (같은 사진이 두 번 들어가지 않게)
+    blogPreview.querySelectorAll('[data-topic-img]').forEach((n) => { if (n.dataset.topicImg === item.url) n.remove(); });
+    const node = makeImageNode(item.url);
+    let target = null;
+    if (previewRange && blogPreview.contains(previewRange.startContainer)) {
+      let n = previewRange.startContainer;
+      while (n && n.parentNode !== blogPreview) n = n.parentNode;
+      if (n && n !== blogPreview) target = n;
+    }
+    if (!target) target = blogPreview.firstElementChild; // 자리를 안 골랐으면 첫 문단 아래
+    if (target) target.after(node); else blogPreview.appendChild(node);
+    item.inserted = true;
+    blogPreview.dataset.edited = '1';
+    previewRange = null;
+    refreshAfterImageChange();
+    KCarUtil.toast('본문에 사진을 넣었어요.', 'success');
+  }
+
+  // 글을 다시 만들면 본문이 새로 그려져 사진이 빠지므로, 본문에 넣어 둔 사진은 첫 문단 아래에 다시 넣어 준다
+  function reinsertTopicImages() {
+    let ref = blogPreview.firstElementChild;
+    topicImages.filter(i => i.inserted).forEach((item) => {
+      const node = makeImageNode(item.url);
+      if (ref) { ref.after(node); ref = node; } else blogPreview.appendChild(node);
+    });
+  }
+
+  function renderTopicImages() {
+    topicImgList.innerHTML = topicImages.map((item, i) => `
+      <div class="w-28">
+        <img src="${KCarUtil.escapeHtml(item.url)}" class="w-28 h-20 object-cover rounded-lg border ${item.inserted ? 'border-[#03c75a] border-2' : 'border-[var(--fk-gray-200)]'}">
+        <button type="button" data-img-act="insert" data-i="${i}" class="btn-secondary !py-1 !px-1.5 text-[11px] w-full mt-1">${item.inserted ? '다른 자리에 넣기' : '본문에 넣기'}</button>
+        <div class="flex gap-1 mt-1">
+          <a href="${KCarUtil.escapeHtml(item.url)}" download class="btn-secondary !py-1 !px-1.5 text-[11px] flex-1 text-center">받기</a>
+          <button type="button" data-img-act="remove" data-i="${i}" class="btn-secondary !py-1 !px-1.5 text-[11px] flex-1">삭제</button>
+        </div>
+      </div>`).join('');
+  }
+
+  topicImgList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-img-act]');
+    if (!btn) return;
+    const item = topicImages[Number(btn.dataset.i)];
+    if (!item) return;
+    if (btn.dataset.imgAct === 'insert') {
+      insertTopicImage(item);
+    } else {
+      blogPreview.querySelectorAll('[data-topic-img]').forEach((n) => { if (n.dataset.topicImg === item.url) n.remove(); });
+      topicImages = topicImages.filter(x => x !== item);
+      refreshAfterImageChange();
+    }
+  });
+
+  topicImgInput.addEventListener('change', async () => {
+    const files = [...topicImgInput.files].slice(0, 15);
+    if (!files.length) return;
+    topicImgStatus.classList.remove('hidden');
+    let done = 0;
+    for (const file of files) {
+      topicImgStatus.textContent = `올리는 중… (${done + 1}/${files.length})`;
+      try {
+        const url = await uploadImageFile(file);
+        topicImages.push({ url, inserted: false });
+        renderTopicImages();
+      } catch (err) {
+        KCarUtil.toast(err.message || '사진을 올리지 못했습니다.', 'error');
+      }
+      done++;
+    }
+    topicImgStatus.classList.add('hidden');
+    topicImgInput.value = '';
   });
 
   // "내가 정한 주제로 글 만들기": 서버가 Claude에게 글을 쓰게 한다. API 키가 없으면 초안 뼈대로 대신한다.

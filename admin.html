@@ -457,6 +457,19 @@
           <div id="blog-preview" contenteditable="true" class="border border-[var(--fk-gray-200)] rounded-xl p-4 max-h-[40vh] overflow-y-auto bg-white" style="outline:none;"></div>
         </div>
 
+        <div class="topic-only hidden rounded-2xl border border-dashed border-[var(--fk-gray-300,#cbd5e1)] p-3.5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span class="text-sm font-semibold text-[var(--fk-gray-800)]"><i class="fa-regular fa-image mr-1.5 text-[#03c75a]"></i>글에 넣을 사진</span>
+            <label class="btn-secondary !py-1.5 !px-3 text-xs cursor-pointer inline-flex items-center">
+              <i class="fa-solid fa-upload mr-1.5"></i>사진 올리기
+              <input type="file" id="topic-img-input" accept="image/*" multiple class="hidden">
+            </label>
+          </div>
+          <p class="text-xs text-[var(--fk-gray-600)] mt-1.5 leading-relaxed">위 본문에서 사진을 넣을 자리를 한 번 클릭한 뒤, 사진 아래 <b>"본문에 넣기"</b>를 누르세요. 자리를 고르지 않으면 첫 문단 아래에 들어갑니다. 네이버에 붙여넣었을 때 사진이 안 보이면 <b>"받기"</b>로 내려받아 블로그에 직접 올려 주세요.</p>
+          <p id="topic-img-status" class="text-xs text-[var(--fk-gray-600)] mt-1 hidden"></p>
+          <div id="topic-img-list" class="flex flex-wrap gap-2.5 mt-2.5"></div>
+        </div>
+
         <details id="seo-panel" class="rounded-2xl border border-[var(--fk-gray-200)] bg-white" open>
           <summary class="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-[var(--fk-gray-800)]"><i class="fa-solid fa-magnifying-glass-chart mr-1.5 text-[#03c75a]"></i>검색 노출(SEO) 점검 <span id="seo-summary" class="text-xs font-bold ml-1"></span></summary>
           <ul id="seo-list" class="px-4 pb-3 space-y-1.5 text-xs"></ul>
