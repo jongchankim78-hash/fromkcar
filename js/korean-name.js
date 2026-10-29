@@ -99,16 +99,24 @@
     const title = String(car.title || '');
     const rules = BY_BRAND[brand] || [];
     let model = '';
+    let matched = '';
     for (const [re, name] of rules) {
       const m = title.match(re);
-      if (m) { model = typeof name === 'function' ? name(m) : name; break; }
+      if (m) { model = typeof name === 'function' ? name(m) : name; matched = m[0]; break; }
     }
     if (!model && hasHangul(title)) {
       // 이미 한글 차명이면("현대 제네시스 G80") 브랜드 표기만 걷어내고 그대로 쓴다
       const stripped = title.replace(/\(.*?\)/g, ' ').replace(/\s+/g, ' ').trim();
       return { brand, model: '', full: stripped, known: true };
     }
-    return { brand, model, full: model ? `${brand} ${model}` : '', known: !!model };
+    return { brand, model, full: model ? `${brand} ${model}` : '', known: !!model, matched };
+  }
+
+  // 영어 이미지 검색(위키미디어 등)용 이름: { brand: 'Kia', model: 'Sorento' }. 차명에서 모델 부분을 못 찾으면 model은 빈 문자열.
+  function enName(car) {
+    const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).map((w) => (/\d/.test(w) || /^[A-Z]{1,3}$/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(' ');
+    const g = guess(car);
+    return { brand: words(car.brand) || '', model: words(g.matched) };
   }
 
   /** 검색용 한글 차명: 관리자가 입력한 title_ko > 자동 추정 > 원래 차명 */
@@ -169,5 +177,5 @@
     return `수원 ${ko} 중고차${bits.length ? ' — ' + bits.join(' · ') : ''}${price ? '. ' + price : ''}. 프롬케이카(FROM K CAR) ${PHONE} 방문·전화 상담.`;
   }
 
-  return { guess, koName, koModel, koBrand, isImport, seoTitle, seoDescription, hasHangul };
+  return { guess, enName, koName, koModel, koBrand, isImport, seoTitle, seoDescription, hasHangul };
 });

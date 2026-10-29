@@ -712,6 +712,7 @@
       blogTitle.value = post.title;
       blogPreview.innerHTML = post.html;
       blogTags.value = post.tags;
+      reinsertTopicImages();
     } else {
       if (!blogCar) return;
       const short = KCarBlog.generateShort(blogCar, blogChannel);
@@ -737,6 +738,10 @@
     blogSeed = 0;
     blogPhotos.checked = false;
     delete blogPreview.dataset.edited;
+    topicImages = [];
+    previewRange = null;
+    renderTopicImages();
+    imgfindReset();
     updateStoryPanel();
     document.getElementById('blog-modal-heading').textContent = '홍보글 만들기';
     document.getElementById('blog-modal-sub').textContent = `${car.title || ''}${car.listing_no ? ` (No.${car.listing_no})` : ''}`;
@@ -767,6 +772,7 @@
     topicImages = [];
     previewRange = null;
     renderTopicImages();
+    imgfindReset();
     delete blogPreview.dataset.edited;
     document.getElementById('blog-modal-heading').textContent = '정보성 블로그 글';
     document.getElementById('blog-modal-sub').textContent = '지금 쓰기 좋은 주제를 추천해 드려요. 글 아래에 판매중인 매물 링크가 자동으로 들어갑니다.';
@@ -887,7 +893,8 @@
 
   const absImageUrl = (u) => (/^https?:/.test(u) ? u : window.location.origin + u);
 
-  function makeImageNode(url) {
+  // caption: { text, href } — 위키미디어·구글에서 가져온 사진에는 출처 문구를 사진 아래에 함께 넣는다
+  function makeImageNode(url, caption) {
     const p = document.createElement('p');
     p.style.cssText = 'text-align:center;margin:0 0 12px;';
     p.dataset.topicImg = url;
@@ -895,6 +902,21 @@
     img.src = absImageUrl(url);
     img.style.maxWidth = '100%';
     p.appendChild(img);
+    if (caption && caption.text) {
+      p.appendChild(document.createElement('br'));
+      const span = document.createElement('span');
+      span.style.cssText = 'font-size:12px;color:#888;';
+      if (caption.href) {
+        const a = document.createElement('a');
+        a.href = caption.href;
+        a.textContent = caption.text;
+        a.style.color = '#888';
+        span.appendChild(a);
+      } else {
+        span.textContent = caption.text;
+      }
+      p.appendChild(span);
+    }
     return p;
   }
 
@@ -906,7 +928,7 @@
   function insertTopicImage(item) {
     // 사진이 이미 본문에 있으면 옮기는 것으로 본다 (같은 사진이 두 번 들어가지 않게)
     blogPreview.querySelectorAll('[data-topic-img]').forEach((n) => { if (n.dataset.topicImg === item.url) n.remove(); });
-    const node = makeImageNode(item.url);
+    const node = makeImageNode(item.url, item.caption);
     let target = null;
     if (previewRange && blogPreview.contains(previewRange.startContainer)) {
       let n = previewRange.startContainer;
@@ -926,7 +948,7 @@
   function reinsertTopicImages() {
     let ref = blogPreview.firstElementChild;
     topicImages.filter(i => i.inserted).forEach((item) => {
-      const node = makeImageNode(item.url);
+      const node = makeImageNode(item.url, item.caption);
       if (ref) { ref.after(node); ref = node; } else blogPreview.appendChild(node);
     });
   }
@@ -1042,6 +1064,175 @@
     renderBlog();
     updateStoryPanel();
     KCarUtil.toast('기본 문구로 되돌렸어요.', 'success');
+  });
+
+  /* ---------- 브랜드·차량 이미지 찾기 (위키미디어 / 구글 / 공식 보도자료 링크) ---------- */
+  // 위키미디어는 사진마다 라이선스가 정해져 있어서, 고른 사진을 우리 서버에 저장하고 출처 문구를 자동으로 달아 본문에 넣는다.
+  // 구글은 저작권을 보장하지 않으므로 기본으로 "재사용 허용(CC) 사진만" 보이게 하고, 해제하면 경고를 띄운다.
+  // 공식 보도자료는 사진을 직접 받아 위의 "사진 올리기"로 넣는다 (제조사마다 사용 조건이 다르다).
+  const imgfindQ = document.getElementById('imgfind-q');
+  const imgfindNote = document.getElementById('imgfind-note');
+  const imgfindResults = document.getElementById('imgfind-results');
+  const imgfindOfficial = document.getElementById('imgfind-official');
+  const imgfindCcWrap = document.getElementById('imgfind-cc-wrap');
+  const imgfindGo = document.getElementById('imgfind-go');
+  let imgfindSource = 'wikimedia';
+  let imgfindItems = [];
+
+  // 제조사 공식 미디어센터 (주소를 확인한 곳만 넣었다. 나머지 브랜드는 아래 검색 링크를 쓴다)
+  const MEDIA_CENTERS = [
+    ['BMW', 'BMW 프레스클럽', 'https://www.press.bmwgroup.com/'],
+    ['벤츠', '메르세데스-벤츠 미디어', 'https://media.mercedes-benz.com/'],
+    ['볼보', '볼보자동차 미디어', 'https://www.media.volvocars.com/'],
+    ['현대', '현대자동차그룹 뉴스룸', 'https://www.hyundai.news/']
+  ];
+
+  function imgfindDefaultQuery(source) {
+    if (blogMode !== 'car' || !blogCar) return '';
+    const ko = KCarKo.koName(blogCar);
+    if (source === 'wikimedia') {
+      const en = KCarKo.enName(blogCar);
+      return [en.brand, en.model || String(blogCar.title || '').split(/\s+/).slice(1, 3).join(' ')].filter(Boolean).join(' ');
+    }
+    return source === 'google' ? `${ko} 공식 사진` : ko;
+  }
+
+  function imgfindSetNote(text, tone) {
+    imgfindNote.textContent = text;
+    imgfindNote.style.color = tone === 'error' ? '#dc2626' : (tone === 'warn' ? '#b45309' : '');
+  }
+
+  function imgfindRenderOfficial() {
+    const q = imgfindQ.value.trim() || (blogCar ? KCarKo.koName(blogCar) : '');
+    const enc = encodeURIComponent;
+    const brand = blogCar ? KCarKo.koBrand(blogCar) : '';
+    const centers = [...MEDIA_CENTERS].sort((a, b) => (b[0] === brand) - (a[0] === brand));
+    const btn = 'btn-secondary !py-1.5 !px-2.5 text-xs inline-block';
+    imgfindOfficial.innerHTML = `
+      <div>
+        <p class="font-semibold text-[var(--fk-gray-800)] mb-1">"${KCarUtil.escapeHtml(q)}" 공식 사진 찾기</p>
+        <div class="flex flex-wrap gap-1.5">
+          <a class="${btn}" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${enc(q + ' 공식 보도자료')}">구글 이미지 (보도자료)</a>
+          <a class="${btn}" target="_blank" rel="noopener" href="https://search.naver.com/search.naver?where=image&query=${enc(q + ' 공식')}">네이버 이미지</a>
+          <a class="${btn}" target="_blank" rel="noopener" href="https://www.google.com/search?q=${enc((brand || q) + ' 미디어센터 보도자료')}">제조사 미디어센터 찾기</a>
+        </div>
+      </div>
+      <div>
+        <p class="font-semibold text-[var(--fk-gray-800)] mb-1">제조사 공식 미디어센터 ${brand ? `<span class="font-normal text-[var(--fk-gray-600)]">(이 차량 브랜드: ${KCarUtil.escapeHtml(brand)})</span>` : ''}</p>
+        <div class="flex flex-wrap gap-1.5">${centers.map(([b, name, url]) => `<a class="${btn} ${b === brand ? '!border-[#03c75a] !text-[#03c75a]' : ''}" target="_blank" rel="noopener" href="${url}">${name}</a>`).join('')}</div>
+        <p class="text-[var(--fk-gray-600)] mt-1">기아·제네시스 등은 위의 "제조사 미디어센터 찾기"로 검색하세요.</p>
+      </div>
+      <p class="text-[var(--fk-gray-600)] leading-relaxed bg-[var(--fk-gray-50)] rounded-lg p-2.5">공식 보도자료 사진은 보통 <b>언론 보도용</b>으로 제공돼요. 상업적 홍보에 써도 되는지 해당 사이트의 이용 조건을 확인한 뒤 받아서, 위의 <b>"사진 올리기"</b>로 본문에 넣으세요. 출처는 "사진 출처: ${KCarUtil.escapeHtml(brand || '제조사')} 공식 미디어센터"처럼 본문에 적어 두는 것이 좋습니다.</p>`;
+  }
+
+  function imgfindSetSource(src) {
+    imgfindSource = src;
+    document.querySelectorAll('#imgfind-tabs [data-src]').forEach((b) => b.classList.toggle('active', b.dataset.src === src));
+    imgfindQ.value = imgfindDefaultQuery(src);
+    imgfindQ.placeholder = src === 'wikimedia' ? '영어 검색어 (예: Kia Sorento)' : '검색어 (예: 기아 쏘렌토 공식 사진)';
+    imgfindCcWrap.classList.toggle('hidden', src !== 'google');
+    imgfindCcWrap.classList.toggle('flex', src === 'google');
+    imgfindGo.classList.toggle('hidden', src === 'official');
+    imgfindResults.innerHTML = '';
+    imgfindItems = [];
+    imgfindOfficial.classList.toggle('hidden', src !== 'official');
+    if (src === 'official') { imgfindRenderOfficial(); imgfindSetNote(''); }
+    else if (src === 'wikimedia') imgfindSetNote('영어로 검색하면 잘 나와요. 사진마다 저작자·라이선스가 있어서, 고르면 출처 문구가 자동으로 붙습니다. 공식 보도 사진이 아니라 일반인이 찍은 사진이 많아요.');
+    else imgfindSetNote('구글 검색 결과예요. 기본은 재사용이 허용된 라이선스(CC) 사진만 보여줍니다. 그래도 라이선스 조건(저작자 표기 등)은 원본 페이지에서 확인하세요.');
+  }
+
+  function imgfindReset() {
+    imgfindSetSource('wikimedia');
+  }
+
+  function imgfindCardHtml(item, i) {
+    const sub = imgfindSource === 'wikimedia'
+      ? `${KCarUtil.escapeHtml(item.license || '')} · ${KCarUtil.escapeHtml(item.author || '')}`
+      : KCarUtil.escapeHtml(item.host || '');
+    return `<div class="rounded-xl border border-[var(--fk-gray-200)] overflow-hidden bg-white">
+      <img src="${KCarUtil.escapeHtml(item.thumb)}" loading="lazy" referrerpolicy="no-referrer" class="w-full h-24 object-cover bg-[var(--fk-gray-100)]" onerror="this.style.opacity=.2">
+      <div class="p-1.5">
+        <p class="text-[11px] font-semibold text-[var(--fk-gray-800)] truncate" title="${KCarUtil.escapeHtml(item.title)}">${KCarUtil.escapeHtml(item.title)}</p>
+        <p class="text-[10px] text-[var(--fk-gray-600)] truncate" title="${sub}">${sub}</p>
+        <div class="flex gap-1 mt-1">
+          <button type="button" data-find-act="use" data-i="${i}" class="btn-primary !py-1 !px-1.5 text-[11px] flex-1">이 사진 쓰기</button>
+          ${item.pageUrl ? `<a href="${KCarUtil.escapeHtml(item.pageUrl)}" target="_blank" rel="noopener" class="btn-secondary !py-1 !px-1.5 text-[11px] text-center">출처</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function imgfindSearch() {
+    const q = imgfindQ.value.trim();
+    if (q.length < 2) { imgfindSetNote('검색어를 2자 이상 입력해 주세요.', 'error'); return; }
+    imgfindGo.disabled = true;
+    imgfindSetNote('찾는 중…');
+    imgfindResults.innerHTML = '';
+    try {
+      const cc = document.getElementById('imgfind-cc').checked ? '1' : '0';
+      const res = await fetch(`admin/image-search?source=${imgfindSource}&q=${encodeURIComponent(q)}&cc=${cc}`, { headers: authHeader() });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
+      if (res.status === 503 && body.code === 'NO_GOOGLE_KEY') {
+        imgfindSetNote('구글 이미지 검색은 아직 연결되지 않았어요. Render에 GOOGLE_API_KEY와 GOOGLE_CSE_ID를 설정하면 쓸 수 있습니다. 지금은 위키미디어나 공식 보도자료 탭을 이용해 주세요.', 'warn');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || '검색하지 못했습니다.');
+      imgfindItems = body.results || [];
+      if (!imgfindItems.length) {
+        imgfindSetNote(imgfindSource === 'wikimedia' ? '검색 결과가 없어요. 영어 모델명으로 바꿔 보세요. (최신 모델은 없을 수 있어요)' : '검색 결과가 없어요. 검색어를 바꾸거나 "재사용 허용만" 체크를 풀어 보세요.', 'warn');
+        return;
+      }
+      imgfindSetNote(`${imgfindItems.length}장을 찾았어요. 마음에 드는 사진의 "이 사진 쓰기"를 누르면 우리 서버에 저장하고 본문에 넣습니다.`);
+      imgfindResults.innerHTML = imgfindItems.map(imgfindCardHtml).join('');
+    } catch (e) {
+      imgfindSetNote(e.message || '검색하지 못했습니다.', 'error');
+    } finally {
+      imgfindGo.disabled = false;
+    }
+  }
+
+  // 고른 사진을 서버에 저장 → "글에 넣을 사진" 목록에 추가 → 본문에 출처 문구와 함께 넣는다
+  async function imgfindUse(item, btn) {
+    if (imgfindSource === 'google' && !document.getElementById('imgfind-cc').checked) {
+      const ok = confirm('재사용 허용 여부를 확인하지 않은 사진입니다.\n상업적 블로그에 쓰면 저작권 문제가 생길 수 있어요. 원본 페이지에서 사용 조건을 확인하셨나요?\n\n확인했다면 [확인]을 눌러 주세요.');
+      if (!ok) return;
+    }
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '가져오는 중…';
+    try {
+      const res = await fetch('admin/image-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ url: item.full, source: imgfindSource })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || '사진을 가져오지 못했습니다.');
+      const caption = imgfindSource === 'wikimedia'
+        ? { text: `사진: ${item.author}, ${item.license}, 위키미디어 커먼즈`, href: item.pageUrl }
+        : { text: `이미지 출처: ${item.host || '구글 검색'}`, href: item.pageUrl };
+      const entry = { url: body.url, inserted: false, caption };
+      topicImages.push(entry);
+      insertTopicImage(entry);
+    } catch (e) {
+      KCarUtil.toast(e.message || '사진을 가져오지 못했습니다.', 'error', 5000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  document.getElementById('imgfind-tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-src]');
+    if (tab) imgfindSetSource(tab.dataset.src);
+  });
+  imgfindGo.addEventListener('click', imgfindSearch);
+  imgfindQ.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (imgfindSource !== 'official') imgfindSearch(); } });
+  imgfindQ.addEventListener('input', () => { if (imgfindSource === 'official') imgfindRenderOfficial(); });
+  imgfindResults.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-find-act="use"]');
+    if (btn) imgfindUse(imgfindItems[Number(btn.dataset.i)], btn);
   });
 
   // "내가 정한 주제로 글 만들기": 서버가 Claude에게 글을 쓰게 한다. API 키가 없으면 초안 뼈대로 대신한다.

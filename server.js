@@ -8,6 +8,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const dns = require('dns');
+const net = require('net');
 const zlib = require('zlib');
 const { URL } = require('url');
 const { scrapeKbListing, parsePastedKbHtml } = require('./kb-scraper');
@@ -262,13 +264,19 @@ const FX_TTL_MS = 3 * 60 * 60 * 1000;
 let fxCache = { rate: null, date: null, source: '', fetchedAt: 0 };
 let fxInFlight = null;
 
-function httpsGetJson(url) {
+function httpsGetJson(url, extraHeaders) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: 8000, headers: { 'user-agent': 'fromkcar-fx/1.0' } }, (res) => {
+    const req = https.get(url, { timeout: 8000, headers: { 'user-agent': 'fromkcar-fx/1.0', ...(extraHeaders || {}) } }, (res) => {
       let body = '';
       res.on('data', (chunk) => { body += chunk; });
       res.on('end', () => {
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        if (res.statusCode !== 200) {
+          let detail = '';
+          try { detail = (JSON.parse(body).error || {}).message || ''; } catch (e) { /* 본문이 JSON이 아니면 무시 */ }
+          const err = new Error(detail || `HTTP ${res.statusCode}`);
+          err.status = res.statusCode;
+          return reject(err);
+        }
         try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
       });
     });
@@ -304,6 +312,143 @@ async function getFx() {
   if (fxCache.rate && Date.now() - fxCache.fetchedAt < FX_TTL_MS) return fxCache;
   if (!fxInFlight) fxInFlight = refreshFx().finally(() => { fxInFlight = null; });
   return fxInFlight;
+}
+
+// --- 관리자 "브랜드·차량 이미지 찾기" (위키미디어 커먼즈 / 구글 이미지 검색 API) ---------------------------
+// 위키미디어: 키 없이 쓸 수 있고 사진마다 라이선스·저작자가 있어서, 글에 넣을 때 출처 문구를 자동으로 달아 준다.
+// 구글: Programmable Search Engine(맞춤 검색) API를 쓴다. GOOGLE_API_KEY, GOOGLE_CSE_ID 환경변수가 있어야 하고
+//       검색 엔진 설정에서 "이미지 검색"과 "전체 웹 검색"이 켜져 있어야 한다. 무료는 하루 100건.
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID || '';
+const IMAGE_UA = 'fromkcar-admin/1.0 (https://www.fromkcar.kr; contact: chanini78@naver.com)';
+
+function stripHtml(s) {
+  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+}
+
+async function searchCommons(q) {
+  const params = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    generator: 'search',
+    gsrsearch: `${q} filetype:bitmap`,
+    gsrnamespace: '6',
+    gsrlimit: '24',
+    prop: 'imageinfo',
+    iiprop: 'url|size|mime|extmetadata',
+    iiurlwidth: '960',
+    iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl|ImageDescription'
+  });
+  const data = await httpsGetJson(`https://commons.wikimedia.org/w/api.php?${params}`, { 'user-agent': IMAGE_UA });
+  const pages = Object.values((data.query && data.query.pages) || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  return pages.map((p) => {
+    const ii = (p.imageinfo || [])[0];
+    if (!ii || !/^image\/(jpeg|png|webp)$/.test(ii.mime || '')) return null;
+    const meta = ii.extmetadata || {};
+    const val = (k) => stripHtml(meta[k] && meta[k].value);
+    return {
+      title: String(p.title || '').replace(/^File:/, '').replace(/\.\w+$/, ''),
+      thumb: ii.thumburl || ii.url,
+      full: ii.thumburl || ii.url, // 960px 너비 사진이면 블로그 본문에 쓰기 충분하다
+      width: ii.thumbwidth || ii.width,
+      author: val('Artist') || '알 수 없음',
+      license: val('LicenseShortName'),
+      licenseUrl: meta.LicenseUrl && meta.LicenseUrl.value,
+      pageUrl: ii.descriptionurl,
+      note: val('ImageDescription').slice(0, 120)
+    };
+  }).filter(Boolean);
+}
+
+async function searchGoogleImages(q, ccOnly, start) {
+  const params = new URLSearchParams({
+    key: GOOGLE_API_KEY, cx: GOOGLE_CSE_ID, q, searchType: 'image', num: '10', safe: 'active', imgSize: 'large',
+    start: String(Math.min(91, Math.max(1, Number(start) || 1)))
+  });
+  // 재사용이 허용된 라이선스(크리에이티브 커먼즈)로 표시된 사진만 — 기본으로 켜 둔다
+  if (ccOnly) params.set('rights', 'cc_publicdomain|cc_attribute|cc_sharealike');
+  const data = await httpsGetJson(`https://www.googleapis.com/customsearch/v1?${params}`);
+  return (data.items || []).map((it) => ({
+    title: stripHtml(it.title),
+    thumb: (it.image && it.image.thumbnailLink) || it.link,
+    full: it.link,
+    width: it.image && it.image.width,
+    host: it.displayLink || '',
+    pageUrl: it.image && it.image.contextLink
+  }));
+}
+
+// 사설망·내부 주소로 향하는 요청을 막는다 (관리자가 넣은 주소라도 서버가 내부망을 들여다보지 않도록)
+function isPrivateIp(ip) {
+  if (net.isIPv6(ip)) {
+    const v = ip.toLowerCase();
+    if (v === '::1' || v === '::' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80')) return true;
+    const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    return mapped ? isPrivateIp(mapped[1]) : false;
+  }
+  const p = ip.split('.').map(Number);
+  return p[0] === 0 || p[0] === 10 || p[0] === 127 || p[0] >= 224
+    || (p[0] === 169 && p[1] === 254) || (p[0] === 172 && p[1] >= 16 && p[1] <= 31)
+    || (p[0] === 192 && p[1] === 168) || (p[0] === 100 && p[1] >= 64 && p[1] <= 127);
+}
+
+// 공개 인터넷의 https 이미지 한 장을 내려받는다. 이동(리다이렉트)할 때마다 주소를 다시 검사하고,
+// 검사한 IP로만 접속한다 (검사 후 다른 주소로 바꿔치기하는 DNS 속임수 방지). 용량은 12MB까지.
+async function fetchPublicImage(url, redirectsLeft = 3) {
+  const u = new URL(url);
+  if (u.protocol !== 'https:' || (u.port && u.port !== '443')) throw new Error('https 주소의 사진만 가져올 수 있어요.');
+  const addrs = await dns.promises.lookup(u.hostname, { all: true });
+  if (!addrs.length || addrs.some((a) => isPrivateIp(a.address))) throw new Error('가져올 수 없는 주소예요.');
+  const pinned = addrs[0];
+  return new Promise((resolve, reject) => {
+    const req = https.get(u, {
+      timeout: 12000,
+      headers: { 'user-agent': IMAGE_UA, accept: 'image/*' },
+      lookup: (host, opts, cb) => (opts && opts.all ? cb(null, [{ address: pinned.address, family: pinned.family }]) : cb(null, pinned.address, pinned.family))
+    }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        res.resume();
+        if (redirectsLeft <= 0) return reject(new Error('주소가 너무 여러 번 바뀌어요.'));
+        return resolve(fetchPublicImage(new URL(res.headers.location, u).toString(), redirectsLeft - 1));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`사진을 가져오지 못했어요 (HTTP ${res.statusCode}).`));
+      }
+      const type = String(res.headers['content-type'] || '').split(';')[0].trim();
+      if (!UPLOAD_MIME_EXT[type]) {
+        res.resume();
+        return reject(new Error('이미지 파일이 아니에요.'));
+      }
+      const chunks = [];
+      let size = 0;
+      res.on('data', (c) => {
+        size += c.length;
+        if (size > 12 * 1024 * 1024) { req.destroy(new Error('사진이 너무 커요 (12MB 초과).')); return; }
+        chunks.push(c);
+      });
+      res.on('end', () => resolve({ buffer: Buffer.concat(chunks), ext: UPLOAD_MIME_EXT[type] }));
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error('사진을 가져오는 데 너무 오래 걸려요.')));
+    req.on('error', reject);
+  });
+}
+
+// 찾은 사진을 우리 서버(/uploads)에 저장하고 그 주소를 돌려준다 (남의 서버 주소를 그대로 걸어 두면 사진이 사라질 수 있다)
+async function importPublicImage(url, source) {
+  const host = new URL(url).hostname.toLowerCase();
+  if (source === 'wikimedia' && !host.endsWith('wikimedia.org')) throw new Error('위키미디어 사진이 아니에요.');
+  const { buffer, ext } = await fetchPublicImage(url);
+  ensureUploadsDir();
+  const filename = crypto.createHash('sha1').update(url).digest('hex').slice(0, 24) + ext;
+  const filePath = path.join(UPLOADS_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    const tmp = `${filePath}.tmp`;
+    fs.writeFileSync(tmp, buffer);
+    fs.renameSync(tmp, filePath);
+  }
+  return `/uploads/${filename}`;
 }
 
 // --- 관리자 "내 주제로 정보성 글 만들기" (Claude API) -----------------------------------------
@@ -1187,6 +1332,45 @@ const server = http.createServer(async (req, res) => {
       else delete done[id];
       writeTopicDone(done);
       return sendJson(res, 200, { done });
+    }
+  }
+
+  // 관리자 "이미지 찾기": 위키미디어(키 없음) / 구글(키 필요) 검색 결과를 같은 모양으로 돌려준다.
+  if (urlObj.pathname === '/admin/image-search' && req.method === 'GET') {
+    if (!requireAuth(req, res)) return;
+    const q = String(urlObj.searchParams.get('q') || '').trim().slice(0, 100);
+    const source = urlObj.searchParams.get('source') === 'google' ? 'google' : 'wikimedia';
+    if (q.length < 2) return sendJson(res, 400, { error: '검색어를 2자 이상 입력해 주세요.' });
+    try {
+      if (source === 'google') {
+        if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) return sendJson(res, 503, { code: 'NO_GOOGLE_KEY', error: '구글 이미지 검색이 설정되지 않았습니다.' });
+        const results = await searchGoogleImages(q, urlObj.searchParams.get('cc') !== '0', urlObj.searchParams.get('start'));
+        return sendJson(res, 200, { source, results });
+      }
+      return sendJson(res, 200, { source, results: await searchCommons(q) });
+    } catch (e) {
+      console.error('[image-search]', source, e.status || '', e.message);
+      const friendly = source === 'google' && (e.status === 403 || e.status === 429)
+        ? '구글 검색 한도(하루 100건)를 넘었거나 키 설정이 올바르지 않아요. ' + e.message
+        : `이미지를 검색하지 못했어요. ${e.message}`;
+      return sendJson(res, 502, { error: friendly });
+    }
+  }
+
+  // 찾은 사진 한 장을 우리 서버에 저장한다 (글에 넣기 직전에 호출)
+  if (urlObj.pathname === '/admin/image-import' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    let body;
+    try {
+      body = await readRequestBody(req, 4096);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    try {
+      const url = await importPublicImage(String((body && body.url) || ''), body && body.source === 'wikimedia' ? 'wikimedia' : 'google');
+      return sendJson(res, 200, { url });
+    } catch (e) {
+      return sendJson(res, 422, { error: e.message || '사진을 가져오지 못했어요.' });
     }
   }
 
