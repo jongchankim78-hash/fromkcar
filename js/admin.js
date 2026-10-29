@@ -584,6 +584,7 @@
 
   // "새 주제 제안받기"로 받은 주제(이번에 연 동안 목록 맨 위에 둔다)와, 이미 제안한 주제 기록(브라우저에 저장)
   let proposedTopics = [];
+  let customTopics = []; // "내가 정한 주제로 글 만들기"로 만든 글 (이 화면을 열어 둔 동안 보관)
   const SEEN_KEY = 'fkcar_topic_seen';
   function loadSeenTopics() {
     try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch (e) { return []; }
@@ -593,6 +594,7 @@
   }
 
   const TOPIC_BADGES = {
+    custom: ['내 주제', 'bg-green-100 text-green-800'],
     new: ['새 제안', 'bg-purple-100 text-purple-800'],
     season: ['이번 계절', 'bg-orange-100 text-orange-800'],
     recent: ['신규 입고', 'bg-red-100 text-red-700'],
@@ -607,7 +609,11 @@
       return { ...t, doneAt: at || null, daysAgo: at ? Math.floor((now - at) / 86400000) : null };
     });
     const proposedIds = new Set(proposed.map(t => t.id));
-    topicSuggestions = [...proposed, ...KCarBlog.listTopics(adminCars, topicDone).filter(t => !proposedIds.has(t.id))];
+    const custom = customTopics.map((t) => {
+      const at = topicDone[t.id] || 0;
+      return { id: t.id, label: t.label, kind: 'custom', doneAt: at || null, daysAgo: at ? Math.floor((now - at) / 86400000) : null };
+    });
+    topicSuggestions = [...custom, ...proposed, ...KCarBlog.listTopics(adminCars, topicDone).filter(t => !proposedIds.has(t.id))];
     if (!topicSuggestions.find(t => t.id === topicId)) topicId = topicSuggestions[0] && topicSuggestions[0].id;
     topicListEl.innerHTML = topicSuggestions.map((t, i) => {
       const [badgeText, badgeCls] = TOPIC_BADGES[t.kind] || TOPIC_BADGES.evergreen;
@@ -677,6 +683,7 @@
       title: blogTitle.value,
       bodyText: blogPreview.innerText,
       tags: blogTags.value,
+      keyword: blogMode === 'topic' ? (customTopics.find(t => t.id === topicId) || {}).topic : undefined,
       photoCount: blogCar && Array.isArray(blogCar.images) ? blogCar.images.length : 0
     });
     const icon = { ok: ['fa-circle-check', '#16a34a'], warn: ['fa-triangle-exclamation', '#d97706'], bad: ['fa-circle-xmark', '#dc2626'] };
@@ -692,7 +699,8 @@
 
   function renderBlog() {
     if (blogMode === 'topic') {
-      const post = KCarBlog.generateTopic(topicId, { seed: blogSeed, cars: onSaleCars() });
+      const customTopic = customTopics.find(t => t.id === topicId);
+      const post = customTopic ? customTopic.article : KCarBlog.generateTopic(topicId, { seed: blogSeed, cars: onSaleCars() });
       blogTitle.value = post.title;
       blogPreview.innerHTML = post.html;
       blogTags.value = post.tags;
@@ -832,6 +840,9 @@
   document.getElementById('blog-regenerate').addEventListener('click', () => {
     if (!confirmDiscardEdits()) return;
     delete blogPreview.dataset.edited;
+    // 내가 정한 주제 글은 AI에게 다시 쓰게 한다 (문장 틀을 돌려쓰는 방식이 아니라서)
+    const custom = blogMode === 'topic' ? customTopics.find(t => t.id === topicId) : null;
+    if (custom) { makeCustomArticle(custom.topic, custom.notes); return; }
     blogSeed += 1;
     renderBlog();
   });
@@ -852,6 +863,79 @@
     blogSeed = 0;
     renderTopicList();
     renderBlog();
+  });
+
+  // "내가 정한 주제로 글 만들기": 서버가 Claude에게 글을 쓰게 한다. API 키가 없으면 초안 뼈대로 대신한다.
+  const customTopicInput = document.getElementById('custom-topic');
+  const customNotesInput = document.getElementById('custom-notes');
+  const customStatus = document.getElementById('custom-status');
+  const customGoBtn = document.getElementById('custom-topic-go');
+  const CUSTOM_STATUS_DEFAULT = '주제를 적으면 AI(Claude)가 그 주제에 맞는 글을 씁니다. 20~60초 걸려요.';
+
+  function setCustomStatus(text, tone) {
+    customStatus.textContent = text;
+    customStatus.style.color = tone === 'error' ? '#dc2626' : (tone === 'warn' ? '#b45309' : '');
+  }
+
+  async function makeCustomArticle(topic, notes) {
+    customGoBtn.disabled = true;
+    customGoBtn.textContent = '글 쓰는 중…';
+    setCustomStatus('AI가 글을 쓰고 있어요. 20~60초 걸립니다. 창을 닫지 말고 기다려 주세요.');
+    const cars = onSaleCars();
+    let article;
+    let mode = 'ai';
+    try {
+      const res = await fetch('admin/generate-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ topic, notes })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
+      if (res.status === 503 && body.code === 'NO_API_KEY') {
+        // AI를 쓸 수 없는 서버: 검색에 유리한 구성만 갖춘 초안 뼈대를 만든다
+        mode = 'skeleton';
+        article = KCarBlog.skeletonFromTopic(topic, { cars, notes });
+        setCustomStatus('AI 연결(API 키)이 설정되지 않아 초안 뼈대를 만들었어요. 【직접 작성】 부분을 채워 주세요. (AI 연결 방법은 안내를 참고하세요.)', 'warn');
+      } else if (!res.ok) {
+        throw new Error(body.error || '글을 만들지 못했습니다.');
+      } else {
+        article = KCarBlog.articleFromData(body.data, { cars, topic });
+        setCustomStatus('AI가 쓴 글이에요. 올리기 전에 사실과 다른 부분이 없는지 꼭 읽어 보세요.');
+      }
+    } catch (e) {
+      setCustomStatus(e.message || '글을 만들지 못했습니다.', 'error');
+      KCarUtil.toast(e.message || '글을 만들지 못했습니다.', 'error', 5000);
+      return;
+    } finally {
+      customGoBtn.disabled = false;
+      customGoBtn.textContent = '글 만들기';
+    }
+
+    const slug = topic.replace(/[^\w가-힣 .\-]/g, '').trim().replace(/\s+/g, ' ').slice(0, 60);
+    const entry = { id: `custom:${slug || Date.now()}`, label: `${topic}${mode === 'skeleton' ? ' (초안 뼈대)' : ''}`, topic, notes, article, mode };
+    customTopics = [entry, ...customTopics.filter(t => t.id !== entry.id)].slice(0, 8);
+    delete blogPreview.dataset.edited;
+    topicId = entry.id;
+    blogSeed = 0;
+    renderTopicList();
+    renderBlog();
+    topicListEl.scrollTop = 0;
+    KCarUtil.toast(mode === 'ai' ? 'AI가 글을 썼어요. 내용을 읽어 보고 올려 주세요.' : '초안 뼈대를 만들었어요.', 'success');
+  }
+
+  customGoBtn.addEventListener('click', () => {
+    const topic = customTopicInput.value.trim();
+    if (topic.length < 2) {
+      setCustomStatus('주제를 2자 이상 입력해 주세요.', 'error');
+      customTopicInput.focus();
+      return;
+    }
+    if (!confirmDiscardEdits()) return;
+    makeCustomArticle(topic, customNotesInput.value.trim());
+  });
+  customTopicInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); customGoBtn.click(); }
   });
 
   document.getElementById('topic-suggest-new').addEventListener('click', () => {

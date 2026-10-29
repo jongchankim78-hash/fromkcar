@@ -413,6 +413,15 @@
     </div>
     <!-- 정보성 글: 주제 선택 -->
     <div class="topic-only hidden px-6 pt-3">
+      <div class="rounded-2xl border border-[#03c75a]/40 bg-[#03c75a]/5 p-3.5 mb-4">
+        <label for="custom-topic" class="text-sm font-bold text-[var(--fk-gray-800)] block mb-1.5"><i class="fa-solid fa-lightbulb mr-1.5 text-[#03c75a]"></i>내가 정한 주제로 글 만들기</label>
+        <div class="flex gap-2">
+          <input id="custom-topic" type="text" maxlength="100" placeholder="예: 겨울철 중고차 배터리 관리법" class="fk-input">
+          <button type="button" id="custom-topic-go" class="btn-primary text-sm !py-2 !px-4 whitespace-nowrap flex-shrink-0">글 만들기</button>
+        </div>
+        <textarea id="custom-notes" rows="2" maxlength="800" placeholder="(선택) 꼭 넣고 싶은 내용이나 강조할 점, 피하고 싶은 내용을 적어 주세요." class="fk-input resize-none mt-2"></textarea>
+        <p id="custom-status" class="text-xs text-[var(--fk-gray-600)] mt-1.5 leading-relaxed">주제를 적으면 AI(Claude)가 그 주제에 맞는 글을 씁니다. 20~60초 걸려요.</p>
+      </div>
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-sm font-semibold text-[var(--fk-gray-800)]">추천 주제</span>
         <button type="button" id="topic-suggest-new" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1" style="color:#03c75a"></i>새 주제 제안받기</button>

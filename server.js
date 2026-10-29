@@ -255,6 +255,126 @@ function translateText(text, targetLang) {
   });
 }
 
+// --- 관리자 "내 주제로 정보성 글 만들기" (Claude API) -----------------------------------------
+// ANTHROPIC_API_KEY 환경변수가 있을 때만 동작한다. 키는 서버에만 있고 브라우저로 나가지 않는다.
+// 이 서버는 의존 패키지 없이 Node 내장 모듈만 쓰고 Render 빌드 명령도 비어 있어서(텔레그램/번역 호출과 같은 방식으로)
+// SDK 대신 내장 https로 Messages API를 직접 호출한다.
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
+let articleInFlight = false;
+
+const ARTICLE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['title', 'intro', 'sections', 'faq', 'closing', 'tags'],
+  properties: {
+    title: { type: 'string' },
+    intro: { type: 'array', items: { type: 'string' } },
+    sections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['heading', 'paragraphs', 'points'],
+        properties: {
+          heading: { type: 'string' },
+          paragraphs: { type: 'array', items: { type: 'string' } },
+          points: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['label', 'text'],
+              properties: { label: { type: 'string' }, text: { type: 'string' } }
+            }
+          }
+        }
+      }
+    },
+    faq: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['q', 'a'],
+        properties: { q: { type: 'string' }, a: { type: 'string' } }
+      }
+    },
+    closing: { type: 'string' },
+    tags: { type: 'array', items: { type: 'string' } }
+  }
+};
+
+const ARTICLE_SYSTEM_PROMPT = `당신은 경기도 수원의 중고차 판매·수출 업체 "프롬케이카(FROM K CAR)"의 네이버 블로그 글을 쓰는 한국어 카피라이터입니다.
+업체 정보: 수원 SKV1모터스에 있는 중고차 판매·수출 업체이며 담당자는 김종찬 팀장입니다. 국내 판매와 함께 러시아·몽골·우즈베키스탄 등으로 중고차 수출도 합니다.
+
+글쓰기 규칙
+- 독자는 네이버·구글에서 한국어로 중고차 관련 정보를 검색하는 일반 고객입니다. 존댓말, 쉽고 친근한 설명체로 씁니다.
+- 본문은 공백 제외 1,600~2,200자 분량입니다.
+- 제목은 40자 이내, 검색어가 되는 핵심 키워드를 맨 앞에 둡니다.
+- 첫 문단(intro의 첫 항목)의 150자 안에 핵심 키워드를 자연스럽게 넣고, "수원"도 한 번 언급합니다.
+- 소제목(sections)은 4~6개이며 검색어 변형이 자연스럽게 들어가게 짓습니다. 각 섹션은 짧은 문단 1~3개와, 필요하면 항목(points: 굵게 보일 짧은 라벨 + 설명)으로 구성합니다. 항목이 필요 없는 섹션은 points를 빈 배열로 둡니다.
+- 자주 묻는 질문(faq)은 3~4개, 실제 고객이 물을 법한 질문과 간결한 답변입니다.
+- 핵심 키워드는 본문에서 3~7번만 자연스럽게 반복합니다. 억지로 반복하지 않습니다.
+- tags는 네이버 블로그 태그로 쓸 검색어 8~10개이며 '#' 없이 띄어쓰기 없는 한글 위주 단어로 씁니다.
+
+정직성 규칙 (매우 중요)
+- 확인할 수 없는 통계, 수치, 가격, 시세, 법 조항 번호, 날짜, 제도 세부 내용을 지어내지 않습니다. 확실하지 않으면 "일반적으로", "경우에 따라 다를 수 있으니 확인이 필요합니다"처럼 표현합니다.
+- 실제로 있지 않은 고객 후기나 "제가 직접 겪은 사례"를 지어내지 않습니다.
+- "최고", "100%", "무조건", "보장" 같은 과장·단정 표현을 쓰지 않습니다. 의료·법률 조언처럼 보이는 단정도 피합니다.
+- 업체가 하지 않는다고 확인되지 않은 서비스(보증, 배송, 할부 등)를 한다고 쓰지 않습니다.
+- 연락처, 주소, 전화번호, URL, 매물 정보는 쓰지 않습니다. (프로그램이 글 끝에 따로 붙입니다.)
+- 마크다운 문법(#, **, - 목록)을 쓰지 않습니다. 순수한 문장만 씁니다.`;
+
+function callClaudeArticle(topic, notes) {
+  return new Promise((resolve, reject) => {
+    const userText = `다음 주제로 네이버 블로그 정보성 글을 작성해 주세요.\n\n주제: ${topic}\n${notes ? `\n사장님이 추가로 요청한 내용(꼭 반영):\n${notes}\n` : ''}\n지정된 JSON 형식으로만 답하세요.`;
+    const payload = JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 12000,
+      system: ARTICLE_SYSTEM_PROMPT,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: ARTICLE_SCHEMA } },
+      messages: [{ role: 'user', content: userText }]
+    });
+    const req = https.request({
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2026-10-21',
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(payload)
+      },
+      timeout: 120000
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        let data;
+        try { data = JSON.parse(body); } catch (e) { return reject(new Error(`Claude 응답을 읽지 못했습니다 (HTTP ${res.statusCode})`)); }
+        if (res.statusCode !== 200) {
+          const err = new Error((data.error && data.error.message) || `Claude API 오류 (HTTP ${res.statusCode})`);
+          err.status = res.statusCode;
+          return reject(err);
+        }
+        if (data.stop_reason === 'refusal') return reject(new Error('Claude가 이 주제로는 글을 쓰지 않았어요. 주제를 바꿔 보세요.'));
+        if (data.stop_reason === 'max_tokens') return reject(new Error('글이 너무 길어져 중간에 끊겼어요. 주제를 좁혀서 다시 시도해 주세요.'));
+        const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+        try {
+          resolve(JSON.parse(text));
+        } catch (e) {
+          reject(new Error('Claude가 보낸 글의 형식이 올바르지 않았어요. 다시 시도해 주세요.'));
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('Claude 응답이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.')));
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
 async function notifyTelegramNewListing(car) {
   if (!TELEGRAM_BOT_TOKEN) return;
   try {
@@ -962,6 +1082,36 @@ const server = http.createServer(async (req, res) => {
       else delete done[id];
       writeTopicDone(done);
       return sendJson(res, 200, { done });
+    }
+  }
+
+  // 관리자 "내 주제로 글 만들기": 입력한 주제로 Claude가 블로그 글(JSON)을 써서 돌려준다.
+  // API 키가 없으면 503 + code NO_API_KEY → 화면에서 초안 뼈대로 대신한다.
+  if (urlObj.pathname === '/admin/generate-article' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    if (!ANTHROPIC_API_KEY) return sendJson(res, 503, { code: 'NO_API_KEY', error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' });
+    let body;
+    try {
+      body = await readRequestBody(req, 8192);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    const topic = String((body && body.topic) || '').trim().slice(0, 100);
+    const notes = String((body && body.notes) || '').trim().slice(0, 800);
+    if (topic.length < 2) return sendJson(res, 400, { error: '주제를 2자 이상 입력해 주세요.' });
+    if (articleInFlight) return sendJson(res, 429, { error: '이미 글을 만드는 중이에요. 잠시만 기다려 주세요.' });
+    articleInFlight = true;
+    try {
+      const article = await callClaudeArticle(topic, notes);
+      return sendJson(res, 200, { data: article, model: ANTHROPIC_MODEL });
+    } catch (e) {
+      console.error('[generate-article]', e.status || '', e.message);
+      const friendly = e.status === 401 ? 'Claude API 키가 올바르지 않습니다. Render의 ANTHROPIC_API_KEY를 확인해 주세요.'
+        : e.status === 429 ? 'Claude 사용 한도에 걸렸어요. 잠시 후 다시 시도해 주세요.'
+        : e.message;
+      return sendJson(res, 502, { error: friendly });
+    } finally {
+      articleInFlight = false;
     }
   }
 

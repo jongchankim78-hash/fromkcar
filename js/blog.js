@@ -304,6 +304,108 @@
     return prefix + fitTitle(pick, 46);
   }
 
+  /* ---------------- 브랜드 · 모델 이야기 ---------------- */
+  // 널리 알려진 공개 정보만 짧게 담았다. 연도·사실은 게시 전에 한 번 더 확인하는 것이 좋다 (관리자 화면에도 안내가 있다).
+  const BRAND_STORY = {
+    'BMW': 'BMW는 1916년 독일 바이에른에서 항공기 엔진 제조사로 출발한 브랜드입니다. 이후 자동차와 오토바이로 영역을 넓혔고, "운전의 즐거움"을 앞세운 주행 감성으로 프리미엄 시장에서 입지를 다졌습니다.',
+    '벤츠': '벤츠의 뿌리는 1886년 카를 벤츠가 특허를 받은 세계 최초의 내연기관 자동차로 거슬러 올라갑니다. 1926년 다임러와 벤츠가 합쳐지며 지금의 메르세데스-벤츠가 되었고, 안전과 고급스러움을 상징하는 브랜드로 자리 잡았습니다.',
+    '볼보': '볼보는 1927년 스웨덴 예테보리에서 첫 차를 선보인 브랜드로, 안전을 최우선으로 하는 철학으로 유명합니다. 1959년 3점식 안전벨트를 개발하고 그 특허를 다른 업체도 쓸 수 있게 공개한 일화로 널리 알려져 있습니다.',
+    '기아': '기아는 1944년 자전거 부품을 만드는 회사로 출발해 한국을 대표하는 완성차 브랜드로 성장했습니다. 1998년부터 현대자동차그룹의 일원으로 SUV와 전기차 라인업을 빠르게 넓혀 왔습니다.',
+    '현대': '현대자동차는 1967년 설립되어 1975년 한국 최초의 고유 모델 "포니"를 선보인 한국 대표 완성차 브랜드입니다. 오늘날에는 SUV와 전기차(아이오닉) 라인업으로 세계 시장에서 존재감을 키우고 있습니다.',
+    '제네시스': '제네시스는 2015년 현대자동차가 독립 브랜드로 선보인 프리미엄 브랜드입니다. 세단 G80, G90과 SUV GV70, GV80 등으로 라인업을 넓히며 국산 프리미엄 시장을 이끌고 있습니다.',
+    '혼다': '혼다는 1948년 일본에서 혼다 소이치로가 창업한 브랜드로, 엔진 기술력으로 이름을 알렸습니다. 신뢰성과 실용성을 중시하는 SUV와 미니밴으로 꾸준한 인기를 얻고 있습니다.',
+    '토요타': '토요타는 1937년 일본에서 자동차 사업을 시작한 브랜드로, 1997년 세계 최초의 양산 하이브리드 "프리우스"를 선보인 것으로 유명합니다. 내구성과 신뢰성 면에서 높은 평가를 받아 왔습니다.',
+    '렉서스': '렉서스는 1989년 토요타가 선보인 프리미엄 브랜드로, 정숙성과 꼼꼼한 품질 관리, 하이브리드 기술로 알려져 있습니다.',
+    '아우디': '아우디는 1909년 독일에서 창업한 브랜드로, "기술을 통한 진보(Vorsprung durch Technik)"라는 슬로건으로 유명합니다. 1980년대 선보인 콰트로 사륜구동 시스템이 대표적인 기술로 꼽힙니다.',
+    '폭스바겐': '폭스바겐은 "국민차"라는 뜻으로, 1937년 독일에서 시작했습니다. 비틀과 골프로 대중에게 사랑받아 온 브랜드입니다.',
+    '포르쉐': '포르쉐는 1931년 페르디난트 포르쉐 박사가 독일 슈투트가르트에서 설립한 스포츠카 브랜드입니다. 911로 대표되는 주행 성능과, SUV 카이엔·마칸으로도 폭넓은 사랑을 받고 있습니다.',
+    '랜드로버': '랜드로버는 1948년 영국에서 첫 모델을 선보인 오프로드 SUV 전문 브랜드입니다. 레인지로버와 디펜더 같은 대표 모델로 알려져 있습니다.',
+    '테슬라': '테슬라는 2003년 미국에서 설립된 전기차 전문 브랜드로, 소프트웨어 업데이트와 자체 충전 인프라로 전기차 시장을 이끌어 왔습니다.',
+    '미니': '미니는 1959년 영국에서 첫 모델이 나온 소형차 브랜드로, 개성 있는 디자인과 경쾌한 주행감으로 사랑받아 왔으며 지금은 BMW 그룹에 속해 있습니다.',
+    '포드': '포드는 1903년 헨리 포드가 설립하고, 1908년 모델 T로 자동차 대중화를 이끈 미국 브랜드입니다.',
+    '지프': '지프는 제2차 세계대전 군용차에서 출발한 미국의 오프로드 SUV 브랜드로, 랭글러로 대표되는 험로 주행 능력으로 유명합니다.',
+    '쉐보레': '쉐보레는 1911년 미국에서 시작된 브랜드로, 한국에서는 한국GM을 통해 판매되고 있습니다.',
+    'KG모빌리티': 'KG모빌리티는 쌍용자동차가 2023년 새 이름으로 출발한 브랜드로, 토레스·렉스턴 등 SUV 중심의 라인업을 갖추고 있습니다.',
+    '르노': '르노코리아는 르노삼성자동차에서 2022년 이름을 바꾼 브랜드로, 프랑스 르노 그룹의 한국 법인입니다.'
+  };
+
+  const MODEL_STORY = {
+    '쏘렌토': '쏘렌토는 2002년 처음 출시된 기아의 대표 중형 SUV로, 세대를 거듭하며 패밀리 SUV 시장에서 꾸준한 사랑을 받고 있습니다.',
+    '카니발': '카니발은 1998년 처음 선보인 기아의 대표 미니밴(MPV)입니다. 넉넉한 실내 공간으로 대가족과 패밀리카 수요에서 꾸준히 사랑받아 왔습니다.',
+    '스포티지': '스포티지는 1993년 처음 출시된 기아의 대표 준중형 SUV로, 국산 SUV 시장을 연 모델 중 하나로 꼽힙니다.',
+    'EV6': 'EV6는 2021년 출시된 기아 최초의 전기차 전용 모델로, 전용 플랫폼(E-GMP)을 바탕으로 만들어졌습니다.',
+    '모닝': '모닝은 2004년 처음 출시된 기아의 대표 경차입니다.',
+    '그랜저': '그랜저는 1986년 처음 출시된 현대자동차의 대표 준대형 세단으로, 오랫동안 국산 고급 세단의 대명사로 불려 왔습니다.',
+    '쏘나타': '쏘나타는 1985년 처음 출시된 현대자동차의 대표 중형 세단으로, 오랜 기간 국민 세단으로 사랑받아 왔습니다.',
+    '팰리세이드': '팰리세이드는 2018년 출시된 현대자동차의 대형 SUV로, 넉넉한 3열 공간으로 큰 인기를 얻었습니다.',
+    '싼타페': '싼타페는 2000년 처음 출시된 현대자동차의 대표 중형 SUV입니다.',
+    '투싼': '투싼은 2004년 처음 출시된 현대자동차의 준중형 SUV로, 도심형 SUV 시장에서 꾸준히 인기를 얻어 왔습니다.',
+    '아반떼': '아반떼는 1990년 처음 출시된 현대자동차의 준중형 세단으로, 합리적인 가격과 실용성으로 사랑받아 왔습니다.',
+    '아이오닉 5': '아이오닉 5는 2021년 출시된 현대자동차의 전기차 전용 플랫폼(E-GMP) 기반 모델입니다.',
+    '아이오닉 6': '아이오닉 6는 2022년 출시된 현대자동차의 전기차 전용 플랫폼(E-GMP) 기반 모델로, 유선형 디자인이 특징입니다.',
+    'GV80': 'GV80은 2020년 출시된 제네시스 최초의 SUV입니다. 제네시스 브랜드의 디자인과 고급 사양을 SUV로 구현한 모델로 알려져 있습니다.',
+    'GV70': 'GV70은 2020년 출시된 제네시스의 중형 SUV로, 스포티한 주행감과 고급스러운 실내로 주목받았습니다.',
+    'G80': 'G80은 제네시스를 대표하는 중대형 세단입니다. 2020년 출시된 3세대(RG3)부터 제네시스 고유의 디자인 언어를 본격적으로 보여 주었습니다.',
+    'X3': 'BMW X3는 2003년 처음 출시된 BMW의 중형 SUV(SAV)입니다.',
+    'X5': 'BMW X5는 1999년 BMW 최초의 SUV(SAV)로 출시되어 프리미엄 SUV 시장을 연 대표 모델입니다.',
+    'X6': 'BMW X6는 2008년 처음 선보인 쿠페형 SUV(SAC)로, 쿠페형 SUV라는 장르를 대중화한 모델로 알려져 있습니다.',
+    'X7': 'BMW X7은 2019년 출시된 BMW의 플래그십 SUV입니다.',
+    '3시리즈': 'BMW 3시리즈는 1975년 처음 출시된 BMW의 대표 컴팩트 스포츠 세단입니다.',
+    '5시리즈': 'BMW 5시리즈는 1972년 처음 출시된 BMW의 대표 중형 세단입니다.',
+    '7시리즈': 'BMW 7시리즈는 1977년 처음 출시된 BMW의 플래그십 세단입니다.',
+    'E클래스': '벤츠 E클래스는 오랜 역사를 가진 벤츠의 대표 중형 세단으로, 안전과 편의 신기술을 앞서 도입해 온 모델로 알려져 있습니다.',
+    'S클래스': '벤츠 S클래스는 벤츠의 플래그십 세단으로, 새로운 기술을 가장 먼저 선보이는 모델로 알려져 있습니다.',
+    'C클래스': '벤츠 C클래스는 벤츠의 대표 준중형 세단으로, S클래스의 감성을 담은 모델로 알려져 있습니다.',
+    'ML': '벤츠 M클래스(ML)는 1997년 벤츠 최초의 양산 SUV로 출시된 모델로, 이후 GLE로 이름이 바뀌었습니다.',
+    'GLE': '벤츠 GLE는 M클래스(ML)의 후속으로 2015년 이름이 바뀐 벤츠의 대표 중대형 SUV입니다.',
+    'GLC': '벤츠 GLC는 2015년 GLK의 후속으로 나온 벤츠의 대표 중형 SUV입니다.',
+    'XC60': '볼보 XC60은 2008년 처음 선보인 중형 SUV로, 볼보의 안전 기술을 담은 베스트셀러 모델입니다.',
+    'XC90': '볼보 XC90은 2002년 출시된 볼보의 플래그십 SUV입니다.',
+    'S90': '볼보 S90은 볼보의 플래그십 세단입니다.',
+    '파일럿': '혼다 파일럿은 2002년 처음 출시된 3열 대형 SUV로, 넉넉한 실내 공간이 장점입니다.',
+    '카이엔': '포르쉐 카이엔은 2002년 출시된 포르쉐 최초의 SUV로, 스포츠카의 주행 감각을 SUV에 담았다는 평가를 받았습니다.'
+  };
+
+  function modelStoryOf(car) {
+    const m = global.KCarKo ? global.KCarKo.koModel(car) : '';
+    if (!m) return '';
+    if (MODEL_STORY[m]) return MODEL_STORY[m];
+    if (/^ML\d*$/i.test(m)) return MODEL_STORY.ML;
+    return '';
+  }
+
+  // 이 차량 자체의 이야기: 매물 데이터(연식·주행거리·색상·상태)만으로 쓴다. 이력이나 주인에 대해 지어내지 않는다.
+  function carDataStory(car, ko, v) {
+    const yrs = parseYears(car.year_info);
+    const parts = [];
+    if (yrs.reg) parts.push(`이 차량은 ${yrs.reg}년${yrs.regMonth && car.year_info.match(/월/) ? ` ${yrs.regMonth}월` : ''}에 등록된${yrs.model && yrs.model !== yrs.reg ? ` ${yrs.model}년형` : ''} ${ko}입니다.`);
+    else parts.push(`이 차량은 프롬케이카에 입고된 ${ko}입니다.`);
+    const km = Number(car.mileage);
+    if (car.is_new_car && Number.isFinite(km)) parts.push(`주행거리는 ${kmText(km)}로 사실상 새 차 상태 그대로입니다.`);
+    else if (Number.isFinite(km) && car.mileage !== null && car.mileage !== undefined && car.mileage !== '') parts.push(`지금까지 ${kmText(km)}를 달렸습니다.`);
+    const colors = [noInfo(car.color) ? '' : `외장 ${car.color}`, noInfo(car.seat_color) ? '' : `내장 ${car.seat_color}`].filter(Boolean);
+    if (colors.length) parts.push(`${colors.join(', ')} 조합입니다.`);
+    const status = [effectiveNoAccident(car) ? '완전무사고' : '', car.badge_no_paint ? '무도색' : ''].filter(Boolean);
+    parts.push(status.length ? `${status.join('·')} 상태로 프롬케이카에 입고되어 새 주인을 기다리고 있습니다.` : '지금은 수원 프롬케이카에서 새 주인을 기다리고 있습니다.');
+    return parts.join(' ');
+  }
+
+  function storyBlocks(car, ko, short, v) {
+    const blocks = [];
+    const brand = brandKo(car);
+    if (BRAND_STORY[brand]) {
+      blocks.push({ type: 'h', text: `${brand} 브랜드 이야기` });
+      blocks.push({ type: 'p', text: BRAND_STORY[brand] });
+    }
+    // 한글 모델명을 못 찾아 영문 차명이 길게 남은 경우에는 소제목을 "이 차량 이야기"로 짧게 쓴다
+    const storyName = short.length > 18 ? '이 차량' : short;
+    blocks.push({ type: 'h', text: v([`${storyName} 이야기`, `${storyName} 모델 이야기`], 7) });
+    const ms = modelStoryOf(car);
+    if (ms) blocks.push({ type: 'p', text: ms });
+    blocks.push({ type: 'p', text: carDataStory(car, ko, v) });
+    return blocks;
+  }
+
   function buildBlocks(car, opts) {
     const seed = opts.seed || 0;
     const v = (arr, salt) => arr[(hash(String(car.id)) + seed + (salt || 0)) % arr.length];
@@ -352,6 +454,9 @@
         `${priceText(car) ? priceText(car) + '에 ' : ''}만나보실 수 있는 차량입니다. 장점과 상태를 꼼꼼히 정리했습니다.`
       ], 2) });
     }
+
+    // 브랜드·모델 이야기: 글에 읽을 거리를 더하고, 독자가 차에 대해 이해한 상태에서 장점을 보게 한다
+    blocks.push(...storyBlocks(car, ko, short, v));
 
     if (adv.length) {
       blocks.push({ type: 'h', text: v([`${ko} 중고차 장점`, `${ko} 중고차, 이런 점이 좋습니다`, `${ko} 핵심 포인트 정리`], 3) });
@@ -1614,6 +1719,84 @@
     ctx.textAlign = 'left';
   }
 
+  /* ---------------- 내가 입력한 주제로 만드는 글 ---------------- */
+  // 판매중 매물 링크(최대 3대)와 연락처 블록은 AI가 쓰지 않고 코드가 붙인다 (연락처가 틀리지 않게).
+  function tailBlocks(cars) {
+    const blocks = [];
+    const onSale = onSaleOf(cars).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).slice(0, 3);
+    if (onSale.length) {
+      blocks.push({ type: 'h', text: '프롬케이카 추천 매물' });
+      blocks.push({ type: 'kv', items: onSale.map((c) => [`${carLabel(c)}${priceText(c) ? ' ' + priceText(c) : ''}`, carUrl(c)]) });
+    }
+    blocks.push(...contactBlocks(null));
+    return blocks;
+  }
+
+  function cleanTags(list, extra) {
+    const tags = (list || []).map((t) => String(t).replace(/[#\s]/g, '')).filter(Boolean);
+    return [...new Set([...tags, ...extra])].slice(0, 10).map((t) => `#${t}`).join(' ');
+  }
+
+  /** Claude가 돌려준 글(JSON)을 화면용 글로 바꾼다. */
+  function articleFromData(data, opts) {
+    const o = { cars: [], ...(opts || {}) };
+    const blocks = [];
+    (data.intro || []).forEach((t) => { if (t) blocks.push({ type: 'p', text: String(t) }); });
+    (data.sections || []).forEach((s) => {
+      if (s.heading) blocks.push({ type: 'h', text: String(s.heading) });
+      (s.paragraphs || []).forEach((t) => { if (t) blocks.push({ type: 'p', text: String(t) }); });
+      if (s.points && s.points.length) blocks.push({ type: 'items', items: s.points.map((p) => ({ b: String(p.label || ''), t: String(p.text || '') })) });
+    });
+    if ((data.faq || []).length) {
+      blocks.push({ type: 'h', text: `${o.topic || '자주 묻는 질문'} 자주 묻는 질문` });
+      blocks.push({ type: 'faq', items: data.faq.map((f) => ({ q: String(f.q || ''), a: String(f.a || '') })) });
+    }
+    if (data.closing) blocks.push({ type: 'p', text: String(data.closing) });
+    blocks.push(...tailBlocks(o.cars));
+    return {
+      title: String(data.title || o.topic || '').trim(),
+      html: renderHtml(blocks),
+      text: renderText(blocks),
+      tags: cleanTags(data.tags, ['수원중고차', '프롬케이카'])
+    };
+  }
+
+  /**
+   * AI(API 키)를 쓸 수 없을 때의 초안 뼈대: 검색에 유리한 제목·첫 문단·소제목·질문 구성은 갖추고,
+   * 실제 내용은 사장님이 채울 자리를 【직접 작성】으로 표시한다 (주제를 모르는 채로 아는 척 쓴 내용을 만들지 않기 위해).
+   */
+  function skeletonFromTopic(topic, opts) {
+    const o = { cars: [], notes: '', ...(opts || {}) };
+    const t = String(topic).trim();
+    const blocks = [];
+    blocks.push({ type: 'p', text: `수원에서 중고차를 판매하는 프롬케이카 ${DEALER.name}입니다. 오늘은 "${t}"에 대해 이야기해 보겠습니다.` });
+    blocks.push({ type: 'p', text: `【직접 작성】 이 주제를 다루는 이유나, 고객님께 자주 받는 질문을 한두 문장으로 적어 주세요.${o.notes ? ` (요청하신 내용: ${o.notes})` : ''}` });
+    blocks.push({ type: 'h', text: `${t}, 먼저 알아둘 점` });
+    blocks.push({ type: 'p', text: '【직접 작성】 이 주제에서 가장 중요한 핵심을 두세 문장으로 설명해 주세요.' });
+    blocks.push({ type: 'h', text: `${t} 확인 포인트` });
+    blocks.push({ type: 'items', items: [
+      { b: '포인트 1', t: '【직접 작성】 첫 번째로 확인할 내용을 적어 주세요.' },
+      { b: '포인트 2', t: '【직접 작성】 두 번째로 확인할 내용을 적어 주세요.' },
+      { b: '포인트 3', t: '【직접 작성】 세 번째로 확인할 내용을 적어 주세요.' }
+    ] });
+    blocks.push({ type: 'h', text: `${t} 현장에서 느끼는 점` });
+    blocks.push({ type: 'p', text: '【직접 작성】 현장에서 직접 보고 느낀 점이나 고객님께 드리는 조언을 적어 주세요. 직접 겪은 이야기가 들어가면 글이 훨씬 신뢰를 얻습니다.' });
+    blocks.push({ type: 'h', text: `${t} 자주 묻는 질문` });
+    blocks.push({ type: 'faq', items: [
+      { q: `${t}, 왜 중요한가요?`, a: '【직접 작성】 한두 문장으로 답해 주세요.' },
+      { q: `${t}, 어떻게 확인하나요?`, a: '【직접 작성】 확인 방법을 간단히 적어 주세요.' },
+      { q: `${t}에 대해 상담받을 수 있나요?`, a: `네, 전화(${DEALER.phone})나 카카오톡으로 편하게 문의해 주세요. 수원 SKV1모터스에서 방문 상담도 가능합니다.` }
+    ] });
+    blocks.push({ type: 'p', text: `${t}에 대해 궁금한 점은 언제든 편하게 문의 주세요. 감사합니다.` });
+    blocks.push(...tailBlocks(o.cars));
+    return {
+      title: `${t} | 수원 중고차 프롬케이카`,
+      html: renderHtml(blocks),
+      text: renderText(blocks),
+      tags: cleanTags(t.split(/\s+/).filter((w) => w.length >= 2), ['수원중고차', '중고차', '프롬케이카'])
+    };
+  }
+
   /* ---------------- SEO 점검 ---------------- */
   /**
    * 네이버·구글 검색 기준으로 글을 점검한다 (일반적으로 알려진 기준이며 순위를 보장하지는 않는다).
@@ -1628,7 +1811,10 @@
     const flat = body.replace(/\s+/g, '');
     const isCar = o.mode === 'car' && o.car;
     const ko = isCar ? koName(o.car) : '';
-    const key = isCar ? ko : '중고차';
+    // 내가 입력한 주제 글(o.keyword)은 그 주제어를 핵심 키워드로 본다
+    const custom = !isCar && o.keyword ? String(o.keyword).trim() : '';
+    const key = isCar ? ko : (custom || '중고차');
+    const minCount = custom ? 1 : 3;
     const count = (text, k) => (k ? text.split(k).length - 1 : 0);
 
     // 1. 제목 길이
@@ -1642,6 +1828,10 @@
       const mk = global.KCarKo ? (global.KCarKo.koModel(o.car) || ko) : ko;
       if (head.includes(mk) && /중고/.test(head)) add('ok', '제목 앞 키워드', `앞 26자 안에 "${mk}"와 "중고"가 있어요.`);
       else add('bad', '제목 앞 키워드', `앞 26자 안에 "${mk}"와 "중고"가 모두 있어야 검색에 유리해요.`);
+    } else if (custom) {
+      const firstWord = custom.split(/\s+/)[0];
+      if (head.includes(firstWord)) add('ok', '제목 앞 키워드', `앞 26자 안에 주제어(${firstWord})가 있어요.`);
+      else add('bad', '제목 앞 키워드', `앞 26자 안에 주제어(${firstWord})를 넣어 주세요.`);
     } else if (/중고/.test(head)) {
       add('ok', '제목 앞 키워드', '앞부분에 "중고"가 있어요.');
     } else {
@@ -1653,8 +1843,9 @@
     else add('warn', '지역 키워드', '제목이나 첫 문단에 "수원"을 넣으면 지역 검색에 유리해요.');
 
     // 4. 첫 150자에 핵심 키워드
-    if (body.slice(0, 160).includes(key)) add('ok', '첫 문단 키워드', `첫 문단에 "${key}"가 들어 있어요.`);
-    else add('bad', '첫 문단 키워드', `본문 첫 150자 안에 "${key}"를 넣어 주세요.`);
+    const firstKey = custom ? custom.split(/\s+/)[0] : key;
+    if (body.slice(0, 160).includes(firstKey)) add('ok', '첫 문단 키워드', `첫 문단에 핵심어(${firstKey})가 들어 있어요.`);
+    else add('bad', '첫 문단 키워드', `본문 첫 150자 안에 핵심어(${firstKey})를 넣어 주세요.`);
 
     // 5. 본문 분량
     if (flat.length >= 1500) add('ok', '본문 분량', `약 ${flat.length.toLocaleString('ko-KR')}자 — 충분해요.`);
@@ -1663,8 +1854,8 @@
 
     // 6. 핵심 키워드 횟수 (너무 적어도, 너무 많아도 좋지 않다)
     const n = count(body, key);
-    if (n >= 3 && n <= 9) add('ok', '키워드 횟수', `"${key}" ${n}번 — 자연스러운 범위예요.`);
-    else if (n < 3) add('warn', '키워드 횟수', `"${key}" ${n}번 — 3번 이상 자연스럽게 넣어 보세요.`);
+    if (n >= minCount && n <= 9) add('ok', '키워드 횟수', `"${key}" ${n}번 — 자연스러운 범위예요.`);
+    else if (n < minCount) add('warn', '키워드 횟수', `"${key}" ${n}번 — ${minCount}번 이상 자연스럽게 넣어 보세요.`);
     else add('warn', '키워드 횟수', `"${key}" ${n}번 — 너무 많으면 스팸으로 보일 수 있어요. 일부를 다른 표현으로 바꿔 보세요.`);
 
     // 7. 사이트 링크 (블로그 → 사이트 유입)
@@ -1689,5 +1880,5 @@
     return out;
   }
 
-  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, seoCheck, TOPICS, SHORT_CHANNELS, DEALER };
+  global.KCarBlog = { generate, generateTopic, generateShort, renderCover, listTopics, suggestNew, seoCheck, articleFromData, skeletonFromTopic, TOPICS, SHORT_CHANNELS, DEALER };
 })(window);
