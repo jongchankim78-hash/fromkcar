@@ -59,9 +59,10 @@ a { text-decoration: none; color: inherit; }
 
 .brand-nav-item {
   flex-shrink: 0;
-  padding: 8px 14px;
+  /* 브랜드가 늘어도 한 줄에 들어가도록 글자 크기와 좌우 여백을 js/main.js(fitBrandNav)가 --brand-fs / --brand-px로 줄여 준다 */
+  padding: 8px var(--brand-px, 14px);
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: var(--brand-fs, 12.5px);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: rgba(255,255,255,0.7);

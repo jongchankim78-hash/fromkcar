@@ -316,6 +316,29 @@
 
   const GNB_PRIMARY_BRANDS = ['BMW', '벤츠', '아우디'];
 
+  // 브랜드가 많아져도 가로 스크롤 없이 한 줄에 보이도록, 글자 크기와 좌우 여백을 한 단계씩 줄여 가며 딱 맞는 크기를 찾는다.
+  // 가장 작은 크기로도 안 들어가면 (모바일처럼 폭이 좁을 때) 스크롤 대신 여러 줄로 줄바꿈한다.
+  const BRAND_NAV_STEPS = [[12.5, 14], [12, 12], [11.5, 10], [11, 9], [10.5, 8], [10, 6]]; // [글자 px, 좌우 여백 px]
+  function fitBrandNav() {
+    const container = document.getElementById('brand-nav-inner');
+    if (!container) return;
+    const items = [...container.querySelectorAll('.brand-nav-item')];
+    if (!items.length) return;
+    container.classList.remove('flex-wrap');
+    const style = getComputedStyle(container);
+    const avail = container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const gap = parseFloat(style.columnGap) || 0;
+    for (const [fs, px] of BRAND_NAV_STEPS) {
+      container.style.setProperty('--brand-fs', fs + 'px');
+      container.style.setProperty('--brand-px', px + 'px');
+      const needed = items.reduce((sum, el) => sum + el.offsetWidth, 0) + gap * (items.length - 1);
+      if (needed <= avail) return;
+    }
+    container.classList.add('flex-wrap'); // 최소 크기로도 한 줄에 안 들어가면 줄바꿈
+  }
+  window.addEventListener('resize', KCarUtil.debounce(fitBrandNav, 150));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitBrandNav);
+
   function renderHeaderBrandNav(cars) {
     const counts = {};
     cars.forEach(c => { const b = effectiveBrand(c); if (b) counts[b] = (counts[b] || 0) + 1; });
@@ -335,6 +358,7 @@
         <button type="button" class="brand-nav-item${current === brand ? ' active' : ''}" data-brand="${KCarUtil.escapeHtml(brand)}">${KCarUtil.escapeHtml(brandLabel(brand))}</button>
       `).join('')}
     `;
+    fitBrandNav();
     container.querySelectorAll('.brand-nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
         brandFilter.value = btn.dataset.brand;
