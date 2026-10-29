@@ -29,6 +29,8 @@
       id: 'hoons',
       base: '/HOONS',
       nameKo: '정훈 이사',
+      // 화면에 보이는 한국어 이름: 이름 글자 사이를 띄우고 직함(이사)은 작게 (명함과 같은 모양). alt 등 일반 텍스트에는 nameKo를 쓴다.
+      nameKoHtml: '정 훈 <span style="font-size:0.65em;margin-left:0.15em;">이사</span>',
       nameEn: 'JEONG HOON',
       phone: '010-6422-1235',
       phoneIntl: '+82-10-6422-1235',
@@ -62,6 +64,8 @@
     if (!profile || profile.id === 'default') return html;
     const d = PROFILES.default;
     const pairs = [
+      // 담당자 이름 표시칸은 글자 모양을 바꾼 버전으로 (아래 일반 이름 교체보다 먼저 해야 한다)
+      ...(profile.nameKoHtml ? [[`data-i18n="dealer_name">${d.nameKo}<`, `data-i18n="dealer_name">${profile.nameKoHtml}<`]] : []),
       [`wa.me/${d.wa}`, `wa.me/${profile.wa}`],
       [d.phoneIntl, profile.phoneIntl],
       [d.phone, profile.phone],

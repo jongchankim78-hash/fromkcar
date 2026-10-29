@@ -377,7 +377,10 @@
 
   function applyStaticI18n() {
     document.querySelectorAll('[data-i18n]').forEach((el) => {
-      el.textContent = t(el.getAttribute('data-i18n'));
+      const key = el.getAttribute('data-i18n');
+      // 정훈 이사 버전의 한국어 이름은 "정 훈 이사"(직함은 작게)로 보여준다
+      if (key === 'dealer_name' && PROFILE.nameKoHtml && getLang() === 'ko') el.innerHTML = PROFILE.nameKoHtml;
+      else el.textContent = t(key);
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
