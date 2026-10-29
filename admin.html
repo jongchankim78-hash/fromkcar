@@ -475,14 +475,15 @@
           <div class="text-sm font-bold text-[var(--fk-gray-800)] mb-2"><i class="fa-solid fa-images mr-1.5 text-[#03c75a]"></i>브랜드·차량 이미지 찾기</div>
           <div class="flex flex-wrap gap-1.5 mb-2" id="imgfind-tabs">
             <button type="button" class="blog-pane-tab active" data-src="wikimedia">위키미디어 (출처 자동 표기)</button>
-            <button type="button" class="blog-pane-tab" data-src="google">구글 이미지 검색</button>
+            <button type="button" class="blog-pane-tab" data-src="google">구글·네이버 이미지 검색</button>
             <button type="button" class="blog-pane-tab" data-src="official">공식 보도자료 바로가기</button>
           </div>
           <div class="flex gap-2">
             <input id="imgfind-q" type="text" maxlength="100" class="fk-input" placeholder="검색어 (예: Kia Sorento)">
-            <button type="button" id="imgfind-go" class="btn-secondary text-xs !py-2 !px-3 whitespace-nowrap flex-shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i>검색</button>
+            <button type="button" id="imgfind-go" class="btn-secondary text-xs !py-2 !px-3 whitespace-nowrap flex-shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i><span id="imgfind-go-label">검색</span></button>
+            <button type="button" id="imgfind-naver" class="hidden btn-secondary text-xs !py-2 !px-3 whitespace-nowrap flex-shrink-0"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>네이버에서 열기</button>
           </div>
-          <label id="imgfind-cc-wrap" class="hidden items-center gap-1.5 text-xs text-[var(--fk-gray-600)] mt-1.5 cursor-pointer"><input type="checkbox" id="imgfind-cc" checked class="w-3.5 h-3.5">재사용이 허용된(크리에이티브 커먼즈) 라이선스 사진만 보기 (권장)</label>
+          <label id="imgfind-cc-wrap" class="hidden items-center gap-1.5 text-xs text-[var(--fk-gray-600)] mt-1.5 cursor-pointer"><input type="checkbox" id="imgfind-cc" checked class="w-3.5 h-3.5"><span id="imgfind-cc-text">상업적 이용이 가능한 라이선스 사진만 보기 (구글 사용 권한 필터, 권장)</span></label>
           <p id="imgfind-note" class="text-xs text-[var(--fk-gray-600)] mt-1.5 leading-relaxed"></p>
           <div id="imgfind-results" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-2.5 max-h-80 overflow-y-auto pr-1"></div>
           <div id="imgfind-official" class="hidden mt-2 space-y-2 text-xs"></div>

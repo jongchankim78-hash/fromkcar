@@ -1133,12 +1133,14 @@
     imgfindCcWrap.classList.toggle('hidden', src !== 'google');
     imgfindCcWrap.classList.toggle('flex', src === 'google');
     imgfindGo.classList.toggle('hidden', src === 'official');
+    document.getElementById('imgfind-go-label').textContent = src === 'google' ? '구글에서 열기' : '검색';
+    document.getElementById('imgfind-naver').classList.toggle('hidden', src !== 'google');
     imgfindResults.innerHTML = '';
     imgfindItems = [];
     imgfindOfficial.classList.toggle('hidden', src !== 'official');
     if (src === 'official') { imgfindRenderOfficial(); imgfindSetNote(''); }
     else if (src === 'wikimedia') imgfindSetNote('영어로 검색하면 잘 나와요. 사진마다 저작자·라이선스가 있어서, 고르면 출처 문구가 자동으로 붙습니다. 공식 보도 사진이 아니라 일반인이 찍은 사진이 많아요.');
-    else imgfindSetNote('구글 검색 결과예요. 기본은 재사용이 허용된 라이선스(CC) 사진만 보여줍니다. 그래도 라이선스 조건(저작자 표기 등)은 원본 페이지에서 확인하세요.');
+    else imgfindSetNote('검색어를 확인하고 "구글에서 열기" 또는 "네이버에서 열기"를 누르면 새 창에 이미지 검색 결과가 열려요. 마음에 드는 사진은 저장한 뒤 아래 "사진 올리기"로 본문에 넣고, 사진 출처(사이트 이름 등)를 본문에 적어 주세요. 사용 조건은 원본 페이지에서 꼭 확인하세요.');
   }
 
   function imgfindReset() {
@@ -1146,9 +1148,7 @@
   }
 
   function imgfindCardHtml(item, i) {
-    const sub = imgfindSource === 'wikimedia'
-      ? `${KCarUtil.escapeHtml(item.license || '')} · ${KCarUtil.escapeHtml(item.author || '')}`
-      : KCarUtil.escapeHtml(item.host || '');
+    const sub = `${KCarUtil.escapeHtml(item.license || '')} · ${KCarUtil.escapeHtml(item.author || '')}`;
     return `<div class="rounded-xl border border-[var(--fk-gray-200)] overflow-hidden bg-white">
       <img src="${KCarUtil.escapeHtml(item.thumb)}" loading="lazy" referrerpolicy="no-referrer" class="w-full h-24 object-cover bg-[var(--fk-gray-100)]" onerror="this.style.opacity=.2">
       <div class="p-1.5">
@@ -1162,25 +1162,38 @@
     </div>`;
   }
 
+  // 구글/네이버 이미지 검색은 앱 안에 가져오지 않고, 검색 결과 페이지를 새 창으로 연다
+  // (구글이 이 프로젝트에는 검색 API를 열어 주지 않고, 남의 사진을 자동으로 가져오는 것도 저작권상 권하지 않기 때문)
+  // 구글의 tbs=sur:fmc 는 "사용 권한: 수정·상업적 이용 가능으로 표시된 이미지"만 보여 주는 필터다. 구글이 표시한 정보일 뿐이라
+  // 쓰기 전에 원본 페이지에서 조건을 확인해야 한다.
+  function imgfindOpenExternal(engine, q) {
+    const enc = encodeURIComponent(q);
+    let url;
+    if (engine === 'naver') {
+      url = `https://search.naver.com/search.naver?where=image&query=${enc}`;
+    } else {
+      const filter = document.getElementById('imgfind-cc').checked ? '&tbs=sur:fmc' : '';
+      url = `https://www.google.com/search?tbm=isch&hl=ko&q=${enc}${filter}`;
+    }
+    window.open(url, '_blank', 'noopener');
+    imgfindSetNote(`${engine === 'naver' ? '네이버' : '구글'} 이미지 검색을 새 창에 열었어요. 사진을 저장한 뒤 아래 "사진 올리기"로 본문에 넣고, 사진 출처를 본문에 적어 주세요.`);
+  }
+
   async function imgfindSearch() {
     const q = imgfindQ.value.trim();
     if (q.length < 2) { imgfindSetNote('검색어를 2자 이상 입력해 주세요.', 'error'); return; }
+    if (imgfindSource === 'google') { imgfindOpenExternal('google', q); return; }
     imgfindGo.disabled = true;
     imgfindSetNote('찾는 중…');
     imgfindResults.innerHTML = '';
     try {
-      const cc = document.getElementById('imgfind-cc').checked ? '1' : '0';
-      const res = await fetch(`admin/image-search?source=${imgfindSource}&q=${encodeURIComponent(q)}&cc=${cc}`, { headers: authHeader() });
+      const res = await fetch(`admin/image-search?source=wikimedia&q=${encodeURIComponent(q)}`, { headers: authHeader() });
       const body = await res.json().catch(() => ({}));
       if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
-      if (res.status === 503 && body.code === 'NO_GOOGLE_KEY') {
-        imgfindSetNote('구글 이미지 검색은 아직 연결되지 않았어요. Render에 GOOGLE_API_KEY와 GOOGLE_CSE_ID를 설정하면 쓸 수 있습니다. 지금은 위키미디어나 공식 보도자료 탭을 이용해 주세요.', 'warn');
-        return;
-      }
       if (!res.ok) throw new Error(body.error || '검색하지 못했습니다.');
       imgfindItems = body.results || [];
       if (!imgfindItems.length) {
-        imgfindSetNote(imgfindSource === 'wikimedia' ? '검색 결과가 없어요. 영어 모델명으로 바꿔 보세요. (최신 모델은 없을 수 있어요)' : '검색 결과가 없어요. 검색어를 바꾸거나 "재사용 허용만" 체크를 풀어 보세요.', 'warn');
+        imgfindSetNote('검색 결과가 없어요. 영어 모델명으로 바꿔 보세요. (최신 모델은 없을 수 있어요)', 'warn');
         return;
       }
       imgfindSetNote(`${imgfindItems.length}장을 찾았어요. 마음에 드는 사진의 "이 사진 쓰기"를 누르면 우리 서버에 저장하고 본문에 넣습니다.`);
@@ -1194,10 +1207,6 @@
 
   // 고른 사진을 서버에 저장 → "글에 넣을 사진" 목록에 추가 → 본문에 출처 문구와 함께 넣는다
   async function imgfindUse(item, btn) {
-    if (imgfindSource === 'google' && !document.getElementById('imgfind-cc').checked) {
-      const ok = confirm('재사용 허용 여부를 확인하지 않은 사진입니다.\n상업적 블로그에 쓰면 저작권 문제가 생길 수 있어요. 원본 페이지에서 사용 조건을 확인하셨나요?\n\n확인했다면 [확인]을 눌러 주세요.');
-      if (!ok) return;
-    }
     const label = btn.textContent;
     btn.disabled = true;
     btn.textContent = '가져오는 중…';
@@ -1205,13 +1214,11 @@
       const res = await fetch('admin/image-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ url: item.full, source: imgfindSource })
+        body: JSON.stringify({ url: item.full })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || '사진을 가져오지 못했습니다.');
-      const caption = imgfindSource === 'wikimedia'
-        ? { text: `사진: ${item.author}, ${item.license}, 위키미디어 커먼즈`, href: item.pageUrl }
-        : { text: `이미지 출처: ${item.host || '구글 검색'}`, href: item.pageUrl };
+      const caption = { text: `사진: ${item.author}, ${item.license}, 위키미디어 커먼즈`, href: item.pageUrl };
       const entry = { url: body.url, inserted: false, caption };
       topicImages.push(entry);
       insertTopicImage(entry);
@@ -1228,6 +1235,11 @@
     if (tab) imgfindSetSource(tab.dataset.src);
   });
   imgfindGo.addEventListener('click', imgfindSearch);
+  document.getElementById('imgfind-naver').addEventListener('click', () => {
+    const q = imgfindQ.value.trim();
+    if (q.length < 2) { imgfindSetNote('검색어를 2자 이상 입력해 주세요.', 'error'); return; }
+    imgfindOpenExternal('naver', q);
+  });
   imgfindQ.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (imgfindSource !== 'official') imgfindSearch(); } });
   imgfindQ.addEventListener('input', () => { if (imgfindSource === 'official') imgfindRenderOfficial(); });
   imgfindResults.addEventListener('click', (e) => {

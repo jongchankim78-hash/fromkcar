@@ -314,12 +314,9 @@ async function getFx() {
   return fxInFlight;
 }
 
-// --- 관리자 "브랜드·차량 이미지 찾기" (위키미디어 커먼즈 / 구글 이미지 검색 API) ---------------------------
+// --- 관리자 "브랜드·차량 이미지 찾기" (위키미디어 커먼즈) ---------------------------------------------
 // 위키미디어: 키 없이 쓸 수 있고 사진마다 라이선스·저작자가 있어서, 글에 넣을 때 출처 문구를 자동으로 달아 준다.
-// 구글: Programmable Search Engine(맞춤 검색) API를 쓴다. GOOGLE_API_KEY, GOOGLE_CSE_ID 환경변수가 있어야 하고
-//       검색 엔진 설정에서 "이미지 검색"과 "전체 웹 검색"이 켜져 있어야 한다. 무료는 하루 100건.
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
-const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID || '';
+// (구글 이미지 검색은 API가 신규 프로젝트에 열리지 않아, 화면에서 구글/네이버 이미지 검색 페이지를 새 창으로 여는 방식으로 대신한다.)
 const IMAGE_UA = 'fromkcar-admin/1.0 (https://www.fromkcar.kr; contact: chanini78@naver.com)';
 
 function stripHtml(s) {
@@ -358,24 +355,6 @@ async function searchCommons(q) {
       note: val('ImageDescription').slice(0, 120)
     };
   }).filter(Boolean);
-}
-
-async function searchGoogleImages(q, ccOnly, start) {
-  const params = new URLSearchParams({
-    key: GOOGLE_API_KEY, cx: GOOGLE_CSE_ID, q, searchType: 'image', num: '10', safe: 'active', imgSize: 'large',
-    start: String(Math.min(91, Math.max(1, Number(start) || 1)))
-  });
-  // 재사용이 허용된 라이선스(크리에이티브 커먼즈)로 표시된 사진만 — 기본으로 켜 둔다
-  if (ccOnly) params.set('rights', 'cc_publicdomain|cc_attribute|cc_sharealike');
-  const data = await httpsGetJson(`https://www.googleapis.com/customsearch/v1?${params}`);
-  return (data.items || []).map((it) => ({
-    title: stripHtml(it.title),
-    thumb: (it.image && it.image.thumbnailLink) || it.link,
-    full: it.link,
-    width: it.image && it.image.width,
-    host: it.displayLink || '',
-    pageUrl: it.image && it.image.contextLink
-  }));
 }
 
 // 사설망·내부 주소로 향하는 요청을 막는다 (관리자가 넣은 주소라도 서버가 내부망을 들여다보지 않도록)
@@ -436,9 +415,10 @@ async function fetchPublicImage(url, redirectsLeft = 3) {
 }
 
 // 찾은 사진을 우리 서버(/uploads)에 저장하고 그 주소를 돌려준다 (남의 서버 주소를 그대로 걸어 두면 사진이 사라질 수 있다)
-async function importPublicImage(url, source) {
+async function importPublicImage(url) {
+  // 저작권이 정리된 위키미디어 사진만 서버에 저장한다 (다른 사이트 사진은 사용자가 직접 받아 "사진 올리기"로 올린다)
   const host = new URL(url).hostname.toLowerCase();
-  if (source === 'wikimedia' && !host.endsWith('wikimedia.org')) throw new Error('위키미디어 사진이 아니에요.');
+  if (!host.endsWith('wikimedia.org')) throw new Error('위키미디어 사진만 가져올 수 있어요.');
   const { buffer, ext } = await fetchPublicImage(url);
   ensureUploadsDir();
   const filename = crypto.createHash('sha1').update(url).digest('hex').slice(0, 24) + ext;
@@ -1335,25 +1315,16 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // 관리자 "이미지 찾기": 위키미디어(키 없음) / 구글(키 필요) 검색 결과를 같은 모양으로 돌려준다.
+  // 관리자 "이미지 찾기": 위키미디어 커먼즈 검색 결과 (사진마다 저작자·라이선스 포함)
   if (urlObj.pathname === '/admin/image-search' && req.method === 'GET') {
     if (!requireAuth(req, res)) return;
     const q = String(urlObj.searchParams.get('q') || '').trim().slice(0, 100);
-    const source = urlObj.searchParams.get('source') === 'google' ? 'google' : 'wikimedia';
     if (q.length < 2) return sendJson(res, 400, { error: '검색어를 2자 이상 입력해 주세요.' });
     try {
-      if (source === 'google') {
-        if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) return sendJson(res, 503, { code: 'NO_GOOGLE_KEY', error: '구글 이미지 검색이 설정되지 않았습니다.' });
-        const results = await searchGoogleImages(q, urlObj.searchParams.get('cc') !== '0', urlObj.searchParams.get('start'));
-        return sendJson(res, 200, { source, results });
-      }
-      return sendJson(res, 200, { source, results: await searchCommons(q) });
+      return sendJson(res, 200, { source: 'wikimedia', results: await searchCommons(q) });
     } catch (e) {
-      console.error('[image-search]', source, e.status || '', e.message);
-      const friendly = source === 'google' && (e.status === 403 || e.status === 429)
-        ? '구글 검색 한도(하루 100건)를 넘었거나 키 설정이 올바르지 않아요. ' + e.message
-        : `이미지를 검색하지 못했어요. ${e.message}`;
-      return sendJson(res, 502, { error: friendly });
+      console.error('[image-search]', e.status || '', e.message);
+      return sendJson(res, 502, { error: `이미지를 검색하지 못했어요. ${e.message}` });
     }
   }
 
@@ -1367,7 +1338,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: e.message });
     }
     try {
-      const url = await importPublicImage(String((body && body.url) || ''), body && body.source === 'wikimedia' ? 'wikimedia' : 'google');
+      const url = await importPublicImage(String((body && body.url) || ''));
       return sendJson(res, 200, { url });
     } catch (e) {
       return sendJson(res, 422, { error: e.message || '사진을 가져오지 못했어요.' });
