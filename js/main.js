@@ -56,14 +56,17 @@
   }
 
   // 가격 표시: 판매완료 매물은 판매가와 달러 환산가를 보여주지 않고 "판매완료"만 보여준다
+  // 한국어가 아닌 화면은 가격을 그 나라 화폐(₽·₮·$)로 환산해 보여준다
   function priceHtml(car, usdCls) {
     if (car.status === '판매완료') return `<span class="text-[var(--fk-gray-400)]">${KCarI18n.t('status_sold')}</span>`;
+    if (KCarI18n.getLang() !== 'ko') return KCarFx.localHtml(car, usdCls) || KCarI18n.t('price_ask');
     return `${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, usdCls)}`;
   }
 
   // 문의·공유 문구에 넣을 가격 (판매완료면 빈 문자열)
   function sharePrice(car) {
-    return car.status === '판매완료' ? '' : car.price_display || '';
+    if (car.status === '판매완료') return '';
+    return KCarI18n.getLang() !== 'ko' && KCarFx.localText(car) || car.price_display || '';
   }
 
   function statusBadge(status) {
@@ -546,7 +549,7 @@
             <img src="${esc(img)}" alt="${esc(c.title)}" loading="lazy" class="w-full aspect-[4/3] object-cover" onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
             <div class="p-2.5">
               <p class="text-xs font-bold text-[var(--fk-gray-800)] truncate">${esc(c.title)}</p>
-              <p class="text-sm font-extrabold text-[var(--fk-navy)]">${c.status === '판매완료' ? esc(KCarI18n.t('status_sold')) : esc(c.price_display || KCarUtil.formatPrice(c.price))}</p>
+              <p class="text-sm font-extrabold text-[var(--fk-navy)]">${c.status === '판매완료' ? esc(KCarI18n.t('status_sold')) : esc(KCarI18n.getLang() !== 'ko' ? KCarFx.localText(c) || KCarI18n.t('price_ask') : c.price_display || KCarUtil.formatPrice(c.price))}</p>
               <p class="text-[11px] text-[var(--fk-gray-600)] truncate">${esc([c.year_info, c.mileage ? KCarUtil.formatMileage(c.mileage) : ''].filter(Boolean).join(' · '))}</p>
             </div>
           </a>`;
