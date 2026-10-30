@@ -154,7 +154,6 @@
           <a href="${KCarI18n.path('/car/' + car.id)}" class="btn-secondary flex-1 !py-2 text-sm text-center" data-action="open-detail" data-id="${car.id}">
             <i class="fa-solid fa-circle-info mr-1.5"></i>${t('detail_btn')}
           </a>
-          ${car.source_url ? `<a href="${car.source_url}" target="_blank" rel="noopener" class="btn-secondary !py-2 !px-3 text-sm" title="${t('original_listing_title')}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
         </div>
       </div>
     </article>`;
