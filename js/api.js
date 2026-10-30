@@ -23,13 +23,14 @@
     params.set('limit', limit);
     if (search) params.set('search', search);
     if (sort) params.set('sort', sort);
-    const res = await fetch(`tables/${TABLE}?${params.toString()}`);
+    // 관리자로 로그인한 상태에서만 판매완료 매물의 가격까지 받는다 (방문자에게는 서버가 가격을 빼고 보낸다)
+    const res = await fetch(`tables/${TABLE}?${params.toString()}`, { headers: { ...authHeaders() } });
     if (!res.ok) throw new Error('목록을 불러오지 못했습니다.');
     return res.json();
   }
 
   async function getCar(id) {
-    const res = await fetch(`tables/${TABLE}/${id}`);
+    const res = await fetch(`tables/${TABLE}/${id}`, { headers: { ...authHeaders() } });
     if (!res.ok) throw new Error('매물을 찾지 못했습니다.');
     return res.json();
   }

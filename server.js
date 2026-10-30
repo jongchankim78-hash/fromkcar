@@ -669,6 +669,13 @@ async function notifyTelegramNewListing(car) {
   }
 }
 
+// 판매완료 매물의 판매가는 방문자에게 내보내지 않는다 (화면에서 숨기는 것만으로는 개발자 도구로 값이 보이므로 응답에서도 뺀다).
+// 관리자(로그인한 요청)에게는 그대로 준다. 정렬은 이 처리 전의 전체 데이터로 이미 끝난 뒤다.
+function publicView(car, isAdmin) {
+  if (isAdmin || car.status !== '판매완료') return car;
+  return { ...car, price: null, price_display: '' };
+}
+
 async function handleTablesApi(req, res, urlObj, idFromPath) {
   const method = req.method;
 
@@ -690,7 +697,8 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
 
     const total = list.length;
     const start = (page - 1) * limit;
-    const pageItems = list.slice(start, start + limit);
+    const isAdmin = isAuthorized(req);
+    const pageItems = list.slice(start, start + limit).map((c) => publicView(c, isAdmin));
 
     return sendJson(res, 200, { data: pageItems, total, page, limit });
   }
@@ -698,7 +706,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
   if (method === 'GET' && idFromPath) {
     const item = readListings().find((c) => c.id === idFromPath && !c.deleted);
     if (!item) return sendJson(res, 404, { error: 'Not found' });
-    return sendJson(res, 200, item);
+    return sendJson(res, 200, publicView(item, isAuthorized(req)));
   }
 
   if (method === 'POST' && !idFromPath) {
@@ -901,7 +909,9 @@ function handleCarDetailPage(req, res, carId, lang = 'ko', profile) {
 
   // 한국어가 아닌 페이지는 "8,590만원" 대신 원화 금액(₩85,900,000)으로 보여준다.
   const krw = car.price ? `₩${Number(car.price).toLocaleString('en-US')}` : '';
-  const priceText = lang === 'ko'
+  // 판매완료 매물은 가격을 제목·설명에도 넣지 않는다
+  const sold = car.status === '판매완료';
+  const priceText = sold ? '' : lang === 'ko'
     ? (car.price_display || (car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : ''))
     : (krw || car.price_display || '');
   const head = LANG_HEAD[lang];

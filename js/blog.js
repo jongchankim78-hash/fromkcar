@@ -79,7 +79,9 @@
     };
   }
 
+  // 판매완료 매물은 판매가를 공개하지 않는다 (사이트·글·이미지 어디에도 가격이 나가지 않게 여기서 비운다)
   function priceText(car) {
+    if (car.status === '판매완료') return '';
     if (car.price_display) return car.price_display;
     return car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '';
   }
@@ -154,7 +156,9 @@
     }
     return [
       { q: `${short} 중고차 사고 이력은 어떤가요?`, a: accident },
-      { q: `${ko} 중고차 가격은 얼마인가요?`, a: `${sold ? '판매 당시' : '판매'} 가격은 ${price}입니다. 가격과 판매 상태는 변동될 수 있으니 문의하실 때 최신 정보를 확인해 주세요.` },
+      { q: `${ko} 중고차 가격은 얼마인가요?`, a: sold
+        ? '이 차량은 판매가 완료되어 가격은 공개하지 않습니다. 비슷한 조건의 판매중인 차량은 문의 주시면 안내해 드립니다.'
+        : `판매 가격은 ${price}입니다. 가격과 판매 상태는 변동될 수 있으니 문의하실 때 최신 정보를 확인해 주세요.` },
       { q: `${short} 실차는 어디서 볼 수 있나요?`, a: `수원 SKV1모터스(${DEALER.address})에서 직접 확인하실 수 있습니다. 방문 전에 ${DEALER.phone}로 연락 주시면 차량을 준비해 두겠습니다.` },
       { q: `${short} 구매 절차는 어떻게 되나요?`, a: '전화나 카카오톡으로 상담한 뒤 차량을 확인하고 계약, 이전 등록 순서로 진행됩니다. 필요한 서류와 비용은 상담할 때 안내해 드립니다.' }
     ];
@@ -478,7 +482,7 @@
         `안녕하세요, 수원 SKV1모터스 프롬케이카 ${DEALER.name}입니다. 많은 관심을 받았던 ${spec}${ko} 매물의 판매가 완료되어 소개글을 남깁니다.`,
         `프롬케이카 ${DEALER.name}입니다. ${spec}${ko} 차량은 좋은 주인을 만나 판매가 완료되었습니다. 수원에서 ${ko} 중고차를 찾으신다면 아래 내용을 참고해 주세요.`
       ], 1) });
-      blocks.push({ type: 'p', text: `판매 당시 가격은 ${priceText(car) || '문의'}였습니다. 같은 조건의 차량을 찾으신다면 비슷한 매물을 안내해 드릴 수 있으니 편하게 문의 주세요.` });
+      blocks.push({ type: 'p', text: '같은 조건의 차량을 찾으신다면 비슷한 매물을 안내해 드릴 수 있으니 편하게 문의 주세요.' });
     } else {
       blocks.push({ type: 'p', text: v([
         `수원에서 ${ko} 중고차를 찾고 계신가요? 프롬케이카 ${DEALER.name}입니다. ${spec}${ko} 매물이 입고되었습니다.`,
@@ -521,8 +525,8 @@
     if (car.displacement) kv.push(['배기량', car.displacement]);
     if (!noInfo(car.color)) kv.push(['외장 색상', car.color]);
     if (!noInfo(car.seat_color)) kv.push(['내장 색상', car.seat_color]);
-    kv.push(['판매 가격', priceText(car) || '문의']);
-    blocks.push({ type: 'h', text: `${ko} 중고차 가격과 기본 정보` });
+    if (!sold) kv.push(['판매 가격', priceText(car) || '문의']);
+    blocks.push({ type: 'h', text: sold ? `${ko} 중고차 기본 정보` : `${ko} 중고차 가격과 기본 정보` });
     blocks.push({ type: 'kv', items: kv });
 
     const options = Array.isArray(car.options) ? car.options.filter(Boolean) : [];
@@ -1359,7 +1363,7 @@
             c.year_info ? ['연식', c.year_info] : null,
             c.mileage || c.mileage === 0 ? ['주행거리', kmText(c.mileage)] : null,
             c.fuel_type ? ['연료', c.fuel_type] : null,
-            ['판매 가격', priceText(c) || '문의'],
+            c.status === '판매완료' ? null : ['판매 가격', priceText(c) || '문의'],
             ['상세·사진 보기', carUrl(c)]
           ].filter(Boolean) });
           return blocks;
@@ -1558,9 +1562,10 @@
 
   function generateShort(car, channel) {
     const adv = buildAdvantages(car);
+    const isSold = car.status === '판매완료';
     const price = priceText(car) || '문의';
     const words = badgeWords(car);
-    const sold = car.status === '판매완료' ? '[판매완료] ' : '';
+    const sold = isSold ? '[판매완료] ' : '';
     const info = infoLines(car);
 
     if (channel === 'instagram') {
@@ -1571,7 +1576,7 @@
         koName(car) !== car.title ? `(${car.title})` : '',
         words.length ? words.map((w) => `✅ ${w}`).join('  ') : '',
         '',
-        `💰 ${price}`,
+        isSold ? '' : `💰 ${price}`,
         ...info.map(([k, val]) => `${{ 연식: '📅', 주행거리: '🛣', 연료: '⛽' }[k]} ${val}`),
         '',
         ...adv.slice(0, 3).map((a) => `✔ ${a.b}`),
@@ -1591,7 +1596,7 @@
         `[${mark}] ${parseYears(car.year_info).model ? parseYears(car.year_info).model + '년형 ' : ''}${koName(car)} 중고차`,
         koName(car) !== car.title ? `차량명: ${car.title}` : '',
         '',
-        `가격: ${price}`,
+        isSold ? '' : `가격: ${price}`,
         ...info.map(([k, val]) => `${k}: ${val}`),
         !noInfo(car.color) ? `색상: ${car.color}${!noInfo(car.seat_color) ? ' / 내장 ' + car.seat_color : ''}` : '',
         '',
@@ -1610,7 +1615,7 @@
     const lines = [
       `[프롬케이카] ${sold}${carLabel(car)}`,
       info.map(([, val]) => val).join(' · '),
-      `💰 ${price}`,
+      isSold ? '' : `💰 ${price}`,
       adv.length ? `✔ ${adv.slice(0, 3).map((a) => a.b).join(' / ')}` : '',
       '',
       `🔗 사진·상세 보기: ${carUrl(car, 'kakao')}`,
@@ -1748,7 +1753,7 @@
 
     // 가격 (글자가 안전 영역을 넘으면 크기를 줄여 맞춘다)
     const priceY = titleY + (titleLines.length - 1) * 66 + (sub ? 150 : 130);
-    const priceStr = priceText(car) || '가격 문의';
+    const priceStr = car.status === '판매완료' ? 'SOLD OUT' : priceText(car) || '가격 문의';
     let priceSize = 110;
     ctx.font = `800 ${priceSize}px ${FONT}`;
     while (ctx.measureText(priceStr).width > W - 2 * M && priceSize > 60) {

@@ -55,6 +55,17 @@
     return car.is_new_car ? `<span class="badge badge-newcar"><i class="fa-solid fa-star"></i>${t('badge_new_car')}</span>` : '';
   }
 
+  // 가격 표시: 판매완료 매물은 판매가와 달러 환산가를 보여주지 않고 "판매완료"만 보여준다
+  function priceHtml(car, usdCls) {
+    if (car.status === '판매완료') return `<span class="text-[var(--fk-gray-400)]">${KCarI18n.t('status_sold')}</span>`;
+    return `${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, usdCls)}`;
+  }
+
+  // 문의·공유 문구에 넣을 가격 (판매완료면 빈 문자열)
+  function sharePrice(car) {
+    return car.status === '판매완료' ? '' : car.price_display || '';
+  }
+
   function statusBadge(status) {
     const t = KCarI18n.t;
     const map = {
@@ -129,7 +140,7 @@
         <h3 class="font-bold text-[15px] text-[var(--fk-gray-800)] line-clamp-2 mb-2 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
-        <p class="text-xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-xs')}</p>
+        <p class="text-xl font-extrabold text-[var(--fk-navy)] mb-3">${priceHtml(car, 'text-xs')}</p>
         <div class="flex flex-wrap gap-1.5 mb-4">
           <span class="spec-chip"><i class="fa-regular fa-calendar mr-1"></i>${KCarUtil.escapeHtml(car.year_info || '-')}</span>
           <span class="spec-chip"><i class="fa-solid fa-road mr-1"></i>${KCarUtil.formatMileage(car.mileage)}</span>
@@ -162,7 +173,7 @@
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-2 mb-1 cursor-pointer" data-action="open-detail" data-id="${car.id}">
           ${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}
         </h3>
-        <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-[11px]')}</p>
+        <p class="text-sm font-extrabold text-[var(--fk-navy)] mb-2">${priceHtml(car, 'text-[11px]')}</p>
         <a href="${KCarI18n.path('/car/' + car.id)}" class="btn-secondary block w-full !py-2 text-xs text-center" data-action="open-detail" data-id="${car.id}">
           <i class="fa-solid fa-circle-info mr-1"></i>${t('detail_btn')}
         </a>
@@ -193,7 +204,7 @@
           ${colorBadgeHtml(car)}
         </div>
         <h3 class="font-bold text-sm text-[var(--fk-gray-800)] line-clamp-1">${KCarUtil.escapeHtml(car.title || t('car_title_fallback'))}</h3>
-        <p class="text-base font-extrabold text-[var(--fk-navy)]">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-xs')}</p>
+        <p class="text-base font-extrabold text-[var(--fk-navy)]">${priceHtml(car, 'text-xs')}</p>
         <div class="flex flex-wrap gap-1.5">
           <span class="spec-chip">${KCarUtil.escapeHtml(car.year_info || '-')}</span>
           <span class="spec-chip">${KCarUtil.formatMileage(car.mileage)}</span>
@@ -394,7 +405,7 @@
           mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'KMT' } : undefined,
           offers: {
             '@type': 'Offer',
-            price: car.price,
+            price: car.status === '판매완료' ? undefined : car.price,
             priceCurrency: 'KRW',
             availability: car.status === '판매중' ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             url: 'https://www.fromkcar.kr/'
@@ -484,7 +495,7 @@
   function inquiryMessage(car) {
     const url = `${window.location.origin}${PROFILE.base}/car/${car.id}`;
     const title = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''}`.trim();
-    return `안녕하세요, 이 차량 문의드립니다. / Hello, I'm interested in this car.\n${title}\n${car.price_display || ''}\n${url}`.replace(/\n\n/g, '\n');
+    return `안녕하세요, 이 차량 문의드립니다. / Hello, I'm interested in this car.\n${title}\n${sharePrice(car)}\n${url}`.replace(/\n\n/g, '\n');
   }
 
   // 문의 버튼 줄. WhatsApp은 문구를 미리 채워 열고, 텔레그램/카카오톡은 문구 자동 입력이 안 돼서
@@ -535,7 +546,7 @@
             <img src="${esc(img)}" alt="${esc(c.title)}" loading="lazy" class="w-full aspect-[4/3] object-cover" onerror="this.src='https://via.placeholder.com/480x360?text=No+Image'">
             <div class="p-2.5">
               <p class="text-xs font-bold text-[var(--fk-gray-800)] truncate">${esc(c.title)}</p>
-              <p class="text-sm font-extrabold text-[var(--fk-navy)]">${esc(c.price_display || KCarUtil.formatPrice(c.price))}</p>
+              <p class="text-sm font-extrabold text-[var(--fk-navy)]">${c.status === '판매완료' ? esc(KCarI18n.t('status_sold')) : esc(c.price_display || KCarUtil.formatPrice(c.price))}</p>
               <p class="text-[11px] text-[var(--fk-gray-600)] truncate">${esc([c.year_info, c.mileage ? KCarUtil.formatMileage(c.mileage) : ''].filter(Boolean).join(' · '))}</p>
             </div>
           </a>`;
@@ -574,7 +585,7 @@
           </div>
         </div>
       </div>
-      <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${car.price_display || KCarUtil.formatPrice(car.price)}${KCarFx.html(car, 'text-base')}</p>
+      <p class="text-3xl font-extrabold text-[var(--fk-navy)] mb-3">${priceHtml(car, 'text-base')}</p>
 
       ${showTranslateBtn ? `<button type="button" id="translate-all-btn" class="btn-secondary !py-2 text-sm mb-5"><i class="fa-solid fa-language mr-1.5"></i>${t('translate_btn')}</button>` : ''}
 
@@ -850,7 +861,7 @@
       const car = currentModalCar;
       if (!car) return;
       const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
-      const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${car.price_display || ''}`.trim();
+      const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${sharePrice(car)}`.trim();
       if (navigator.share) {
         navigator.share({ title: shareText, url: shareUrl }).catch(() => {});
       } else if (menu) {
@@ -879,7 +890,7 @@
           objectType: 'feed',
           content: {
             title: `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''}`.trim(),
-            description: `${car.price_display || ''} · ${car.year_info || ''}`.trim(),
+            description: [sharePrice(car), car.year_info || ''].filter(Boolean).join(' · '),
             imageUrl,
             link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
           },
@@ -898,7 +909,7 @@
       const car = currentModalCar;
       if (!car) return;
       const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
-      const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${car.price_display || ''}`.trim();
+      const shareText = `${car.title || ''}${car.listing_no ? ' (No.' + car.listing_no + ')' : ''} ${sharePrice(car)}`.trim();
       if (whatsappBtn) {
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank', 'noopener');
       } else if (telegramBtn) {

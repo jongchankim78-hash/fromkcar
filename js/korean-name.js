@@ -151,6 +151,7 @@
   }
 
   function priceText(car) {
+    if (car.status === '판매완료') return ''; // 판매완료 매물은 판매가를 보여주지 않는다
     if (car.price_display) return car.price_display;
     return car.price ? `${Math.round(car.price / 10000).toLocaleString('ko-KR')}만원` : '';
   }
