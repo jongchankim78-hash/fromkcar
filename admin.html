@@ -515,23 +515,28 @@
           </div>
           <textarea id="blog-tags" rows="2" class="fk-input resize-none"></textarea>
         </div>
-
-        <div class="car-only">
-          <span class="text-sm font-semibold text-[var(--fk-gray-800)] block mb-1">블로그 대표 이미지</span>
-          <div class="flex items-center gap-4">
-            <canvas id="blog-cover" class="w-36 h-36 rounded-xl border border-[var(--fk-gray-200)] bg-[var(--fk-gray-100)] flex-shrink-0"></canvas>
-            <div class="min-w-0">
-              <p id="blog-cover-note" class="text-xs text-[var(--fk-gray-600)] mb-2 leading-relaxed">대표 사진 위에 뱃지·차량명·가격을 얹은 정사각형 이미지예요. 블로그 첫 사진이나 썸네일로 쓰세요.</p>
-              <button type="button" id="blog-cover-save" class="btn-secondary !py-2 !px-3 text-xs"><i class="fa-solid fa-download mr-1"></i>이미지 저장 (PNG)</button>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- 인스타그램 · 당근 · 카카오 패널 -->
       <div id="blog-pane-short" class="hidden space-y-3">
         <p id="short-note" class="text-xs text-[var(--fk-gray-600)] leading-relaxed"></p>
         <textarea id="short-text" rows="16" class="fk-input" style="resize:vertical;"></textarea>
+      </div>
+
+      <!-- 대표 이미지 (네이버 블로그·인스타그램 탭에서 보인다) -->
+      <div id="cover-wrap" class="car-only">
+        <span class="text-sm font-semibold text-[var(--fk-gray-800)] block mb-1">대표 이미지 <span class="font-normal text-xs text-[var(--fk-gray-600)]">(차량 사진 위에 뱃지·차량명·가격을 얹은 이미지)</span></span>
+        <div class="flex flex-wrap gap-1.5 mb-2" id="cover-format-tabs">
+          <button type="button" class="blog-pane-tab" data-cover-fmt="instagram">인스타그램 (4:5 · 1080×1350)</button>
+          <button type="button" class="blog-pane-tab" data-cover-fmt="square">정사각형 1:1 (네이버 블로그 · 1080×1080)</button>
+        </div>
+        <div class="flex items-start gap-4">
+          <canvas id="blog-cover" class="w-36 h-auto rounded-xl border border-[var(--fk-gray-200)] bg-[var(--fk-gray-100)] flex-shrink-0"></canvas>
+          <div class="min-w-0">
+            <p id="blog-cover-note" class="text-xs text-[var(--fk-gray-600)] mb-2 leading-relaxed"></p>
+            <button type="button" id="blog-cover-save" class="btn-secondary !py-2 !px-3 text-xs"><i class="fa-solid fa-download mr-1"></i>이미지 저장 (PNG)</button>
+          </div>
+        </div>
       </div>
     </div>
 

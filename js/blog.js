@@ -1675,10 +1675,19 @@
     return lines;
   }
 
-  /** 대표 사진 위에 뱃지·차량명·가격을 얹은 1080x1080 이미지를 canvas에 그린다. 사진을 못 읽으면 예외를 던진다. */
-  async function renderCover(car, canvas) {
+  /**
+   * 대표 사진 위에 뱃지·차량명·가격을 얹은 이미지를 canvas에 그린다. 사진을 못 읽으면 예외를 던진다.
+   * format
+   *  - 'instagram': 1080×1350 (4:5). 인스타그램 피드가 허용하는 가장 큰 세로 비율이다. 프로필 격자는 게시물을 3:4로
+   *                 가운데만 잘라 보여주므로(4:5는 좌우가 각각 약 34px씩 잘림), 글자는 좌우 84px 안쪽 안전 영역에만 둔다.
+   *  - 'square'   : 1080×1080 (1:1). 네이버 블로그 대표 이미지(썸네일은 정사각형으로 잘린다)용.
+   */
+  async function renderCover(car, canvas, opts) {
+    const insta = !opts || opts.format !== 'square';
     const W = 1080;
-    const H = 1080;
+    const H = insta ? 1350 : 1080;
+    const M = insta ? 84 : 40; // 좌우 여백: 인스타그램은 격자에서 잘려도 글자가 남도록 넉넉히
+    const PH = insta ? 860 : 700; // 사진 영역 높이
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -1694,67 +1703,75 @@
 
     ctx.fillStyle = NAVY;
     ctx.fillRect(0, 0, W, H);
-    coverFit(ctx, img, 0, 0, W, 700);
-    const g = ctx.createLinearGradient(0, 520, 0, 700);
+    coverFit(ctx, img, 0, 0, W, PH);
+    const g = ctx.createLinearGradient(0, PH - 180, 0, PH);
     g.addColorStop(0, 'rgba(11,27,58,0)');
     g.addColorStop(1, 'rgba(11,27,58,1)');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 520, W, 180);
+    ctx.fillRect(0, PH - 180, W, 180);
 
     // 뱃지 (왼쪽 위)
     const chips = [];
     if (car.is_new_car) chips.push(['완전신차', '#f59e0b', '#3b2300']);
     if (effectiveNoAccident(car)) chips.push(['완전무사고', '#16a34a', '#ffffff']);
     if (car.badge_no_paint) chips.push(['NO PAINT', '#2563eb', '#ffffff']);
-    let cx = 40;
+    let cx = M;
+    const chipTop = insta ? 56 : 40;
     ctx.font = `800 36px ${FONT}`;
     ctx.textBaseline = 'middle';
     chips.forEach(([label, bg, fg]) => {
       const w = ctx.measureText(label).width + 48;
-      roundRect(ctx, cx, 40, w, 68, 34);
+      roundRect(ctx, cx, chipTop, w, 68, 34);
       ctx.fillStyle = bg;
       ctx.fill();
       ctx.fillStyle = fg;
-      ctx.fillText(label, cx + 24, 75);
+      ctx.fillText(label, cx + 24, chipTop + 35);
       cx += w + 14;
     });
 
     // 차량명
+    const titleY = PH + 60;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#ffffff';
     ctx.font = `800 54px ${FONT}`;
     // 큰 글씨는 검색에서 쓰는 한글 차명, 그 아래에 원래(영문) 차명을 작게 덧붙인다
     const ko = koName(car);
-    const titleLines = wrapLines(ctx, ko || car.title || '', W - 80, 2);
-    titleLines.forEach((line, i) => ctx.fillText(line, 40, 760 + i * 66));
+    const titleLines = wrapLines(ctx, ko || car.title || '', W - 2 * M, 2);
+    titleLines.forEach((line, i) => ctx.fillText(line, M, titleY + i * 66));
     const sub = ko && ko !== car.title ? car.title : '';
     if (sub) {
       ctx.fillStyle = 'rgba(255,255,255,0.65)';
       ctx.font = `600 28px ${FONT}`;
-      ctx.fillText(wrapLines(ctx, sub, W - 80, 1)[0], 40, 760 + (titleLines.length - 1) * 66 + 44);
+      ctx.fillText(wrapLines(ctx, sub, W - 2 * M, 1)[0], M, titleY + (titleLines.length - 1) * 66 + 44);
       ctx.fillStyle = '#ffffff';
     }
 
-    // 가격
-    const priceY = 760 + (titleLines.length - 1) * 66 + (sub ? 150 : 130);
+    // 가격 (글자가 안전 영역을 넘으면 크기를 줄여 맞춘다)
+    const priceY = titleY + (titleLines.length - 1) * 66 + (sub ? 150 : 130);
+    const priceStr = priceText(car) || '가격 문의';
+    let priceSize = 110;
+    ctx.font = `800 ${priceSize}px ${FONT}`;
+    while (ctx.measureText(priceStr).width > W - 2 * M && priceSize > 60) {
+      priceSize -= 4;
+      ctx.font = `800 ${priceSize}px ${FONT}`;
+    }
     ctx.fillStyle = GOLD;
-    ctx.font = `800 110px ${FONT}`;
-    ctx.fillText(priceText(car) || '가격 문의', 40, priceY);
+    ctx.fillText(priceStr, M, priceY);
 
     // 연식 · 주행거리 · 연료
     const meta = [car.year_info ? car.year_info.replace(/\(.*\)/, '').trim() : '', Number(car.mileage) >= 0 && car.mileage !== null && car.mileage !== undefined ? kmText(car.mileage) : '', car.fuel_type || ''].filter(Boolean).join('  ·  ');
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.font = `700 34px ${FONT}`;
-    ctx.fillText(meta, 40, priceY + 56);
+    ctx.fillText(meta, M, priceY + 56);
 
     // 하단 서명
     ctx.fillStyle = GOLD;
     ctx.font = '800 34px "Poppins", sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('FROM K CAR', W - 40, H - 36);
+    ctx.fillText('FROM K CAR', W - M, H - 36);
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.font = `600 26px ${FONT}`;
-    ctx.fillText(`수원 SKV1모터스 · ${DEALER.phone}`, W - 40, H - 78);
+    ctx.fillText(`수원 SKV1모터스 · ${DEALER.phone}`, W - M, H - 78);
     ctx.textAlign = 'left';
   }
 

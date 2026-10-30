@@ -653,6 +653,19 @@
     blogModal.querySelectorAll('#blog-channel-tabs .blog-pane-tab').forEach((b) => {
       b.classList.toggle('active', b.dataset.channel === blogChannel);
     });
+    // 대표 이미지: 네이버 블로그·인스타그램 탭에서만 보인다 (당근·카카오 글에는 필요 없다)
+    document.getElementById('cover-wrap').classList.toggle('hidden', !(isCar && (blogChannel === 'blog' || blogChannel === 'instagram')));
+  }
+
+  // 대표 이미지 형식: 인스타그램 탭은 4:5(1080×1350), 네이버 블로그 탭은 정사각형이 기본. 직접 고르면 그 선택을 따른다.
+  let coverFormat = 'square';
+  let coverFormatChosen = false;
+  function coverFormatForChannel() {
+    return coverFormatChosen ? coverFormat : (blogChannel === 'instagram' ? 'instagram' : 'square');
+  }
+  function updateCoverTabs() {
+    const fmt = coverFormatForChannel();
+    document.querySelectorAll('#cover-format-tabs [data-cover-fmt]').forEach((b) => b.classList.toggle('active', b.dataset.coverFmt === fmt));
   }
 
   function updateMarkPostedButton() {
@@ -664,13 +677,19 @@
 
   async function renderCoverImage() {
     const note = document.getElementById('blog-cover-note');
+    updateCoverTabs();
     try {
-      await KCarBlog.renderCover(blogCar, blogCover);
-      note.textContent = '대표 사진 위에 뱃지·차량명·가격을 얹은 정사각형 이미지예요. 블로그 첫 사진이나 썸네일로 쓰세요.';
+      const fmt = coverFormatForChannel();
+      await KCarBlog.renderCover(blogCar, blogCover, { format: fmt });
+      blogCover.dataset.format = fmt;
+      note.textContent = fmt === 'instagram'
+        ? '인스타그램 피드용 4:5 세로 이미지(1080×1350)예요. 프로필 격자에서 좌우가 조금 잘려도 글자가 남도록 여백을 두었어요. 올릴 때 "원본 비율 유지"(또는 자르기 없이)로 올리세요.'
+        : '네이버 블로그 대표 이미지용 정사각형(1080×1080)이에요. 블로그 첫 사진이나 썸네일로 쓰세요. 인스타그램에는 위의 4:5 형식을 쓰세요.';
       blogCover.dataset.ready = '1';
     } catch (e) {
       delete blogCover.dataset.ready;
       blogCover.getContext('2d').clearRect(0, 0, blogCover.width, blogCover.height);
+      updateCoverTabs();
       note.textContent = `${e.message} 사진이 우리 서버에 저장되는 중일 수 있어요. 잠시 후 다시 열어 주세요.`;
     }
   }
@@ -734,6 +753,7 @@
   async function openBlogModal(car) {
     blogMode = 'car';
     blogChannel = 'blog';
+    coverFormatChosen = false;
     blogCar = car;
     blogSeed = 0;
     blogPhotos.checked = false;
@@ -1373,6 +1393,17 @@
     blogChannel = tab.dataset.channel;
     applyBlogLayout();
     renderBlog();
+    if (blogChannel === 'blog' || blogChannel === 'instagram') { updateCoverTabs(); renderCoverImage(); }
+  });
+
+  // 형식 직접 선택 (인스타그램 4:5 / 정사각형)
+  document.getElementById('cover-format-tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-cover-fmt]');
+    if (!tab || !blogCar) return;
+    coverFormat = tab.dataset.coverFmt;
+    coverFormatChosen = true;
+    updateCoverTabs();
+    renderCoverImage();
   });
 
   document.getElementById('blog-cover-save').addEventListener('click', () => {
@@ -1384,7 +1415,7 @@
       if (!blob) { KCarUtil.toast('이미지를 저장하지 못했습니다.', 'error'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `fromkcar_${blogCar && blogCar.listing_no ? 'no' + blogCar.listing_no : 'cover'}.png`;
+      a.download = `fromkcar_${blogCar && blogCar.listing_no ? 'no' + blogCar.listing_no : 'cover'}_${blogCover.dataset.format === 'instagram' ? 'instagram' : 'square'}.png`;
       document.body.appendChild(a);
       a.click();
       a.remove();
