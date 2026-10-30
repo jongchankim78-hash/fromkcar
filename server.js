@@ -865,7 +865,7 @@ function handleVariantHome(req, res, profile) {
   const html = renderLocalizedPage(indexHtml, 'ko', '/', {
     title: pick(/<title>(.*?)<\/title>/s),
     description: pick(/<meta name="description" content="(.*?)">/s).replace(/&quot;/g, '"'),
-    image: `${SITE_ORIGIN}/images/og-image.png`
+    image: `${SITE_ORIGIN}/${profile.ogImage}`
   }, profile);
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
@@ -884,7 +884,7 @@ function handleLangHomePage(req, res, lang, profile) {
   const html = renderLocalizedPage(indexHtml, lang, '/', {
     title: head.homeTitle,
     description: head.homeDescription,
-    image: `${SITE_ORIGIN}/images/og-image.png`
+    image: `${SITE_ORIGIN}/${profile.ogImage}`
   }, profile);
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
@@ -922,7 +922,7 @@ function handleCarDetailPage(req, res, carId, lang = 'ko', profile) {
   const description = lang === 'ko'
     ? KCarKo.seoDescription(car)
     : `${car.title || ''} ${car.year_info || ''} ${priceText} · ${head.carTagline}`.replace(/\s+/g, ' ').trim();
-  const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || 'https://www.fromkcar.kr/images/og-image.png';
+  const image = absoluteImageUrl(car.main_image || (Array.isArray(car.images) ? car.images[0] : '')) || `${SITE_ORIGIN}/${profile.ogImage}`;
 
   const html = renderLocalizedPage(indexHtml, lang, `/car/${car.id}`, { title, description, image }, profile);
 

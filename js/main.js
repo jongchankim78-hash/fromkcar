@@ -885,7 +885,7 @@
       } else {
         const shareUrl = `${window.location.origin}${KCarI18n.path('/car/' + car.id)}`;
         const images = Array.isArray(car.images) && car.images.length ? car.images : [];
-        const imageUrl = absUrl(car.main_image || images[0]) || `${window.location.origin}/images/og-image.png`;
+        const imageUrl = absUrl(car.main_image || images[0]) || `${window.location.origin}/${PROFILE.ogImage || 'images/og-jongchan.png'}`;
         Kakao.Share.sendDefault({
           objectType: 'feed',
           content: {

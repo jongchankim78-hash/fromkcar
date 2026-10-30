@@ -22,6 +22,8 @@
       wa: '821074498282',
       email: 'chanini78@naver.com',
       photo: 'images/dealer-photo-v2.jpg',
+      // SNS로 사이트 주소를 공유할 때 보이는 대표 이미지(1200×630). 이미지를 바꿀 땐 파일 이름도 바꿔야 SNS 쪽 옛 이미지가 새로 갱신된다.
+      ogImage: 'images/og-jongchan.png',
       cardKo: 'images/idcard-kr.jpg',
       cardEn: 'images/idcard-en.jpg'
     },
@@ -37,6 +39,7 @@
       wa: '821064221235', // 왓츠앱 문의 번호는 담당자 휴대폰 번호를 따른다
       email: 'jh1162@naver.com',
       photo: 'images/hoons/profile.jpg',
+      ogImage: 'images/hoons/og-image.png',
       cardKo: 'images/hoons/idcard-kr.jpg',
       cardEn: 'images/hoons/idcard-en.jpg'
     }
@@ -73,6 +76,7 @@
       [d.nameEn, profile.nameEn],
       [d.nameKo, profile.nameKo],
       [d.photo, profile.photo],
+      [d.ogImage, profile.ogImage],
       // 로고·"갤러리로" 같은 처음으로 가는 링크는 이 담당자 버전의 첫 화면으로
       ['href="index.html"', `href="${profile.base}"`]
     ];
