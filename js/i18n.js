@@ -375,7 +375,18 @@
     return (DICT[lang] && DICT[lang][key]) || DICT.ko[key] || key;
   }
 
+  // 휴대폰 번호: 한국어 화면은 국내 형식(010-1234-5678), 그 밖의 언어는 국제번호를 붙인다(+82-10-1234-5678).
+  function phone(num, lang) {
+    const n = String(num || '');
+    return (lang || getLang()) === 'ko' ? n : '+82-' + n.replace(/^0/, '');
+  }
+
   function applyStaticI18n() {
+    document.querySelectorAll('[data-phone]').forEach((el) => {
+      const shown = phone(el.getAttribute('data-phone'));
+      el.setAttribute('href', 'tel:' + shown);
+      (el.querySelector('[data-phone-text]') || el).textContent = shown;
+    });
     document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       // 정훈 이사 버전의 한국어 이름은 "정 훈 이사"(직함은 작게)로 보여준다
@@ -411,5 +422,5 @@
     btn.addEventListener('click', () => setLang(btn.dataset.lang));
   });
 
-  global.KCarI18n = { t, getLang, setLang, applyStaticI18n, path: localizedPath };
+  global.KCarI18n = { t, getLang, setLang, applyStaticI18n, path: localizedPath, phone };
 })(window);

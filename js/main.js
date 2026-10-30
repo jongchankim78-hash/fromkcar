@@ -507,7 +507,7 @@
       <a href="${wa}" target="_blank" rel="noopener" class="${cls} text-white" style="background:#25D366"><i class="ti ti-brand-whatsapp text-lg"></i>WhatsApp</a>
       <a href="https://t.me/fromkcar" target="_blank" rel="noopener" data-copy-inquiry class="${cls} text-white" style="background:#26A5E4"><i class="ti ti-brand-telegram text-lg"></i>Telegram</a>
       <a href="http://pf.kakao.com/_jWCxnX/chat" target="_blank" rel="noopener" data-copy-inquiry class="${cls}" style="background:#FEE500;color:#3C1E1E"><i class="fa-solid fa-comment"></i>KakaoTalk</a>
-      <a href="tel:${PROFILE.phone}" class="${cls} text-white" style="background:var(--fk-navy)"><i class="fa-solid fa-phone"></i>${t('inquiry_phone')}</a>
+      <a href="tel:${KCarI18n.phone(PROFILE.phone)}" class="${cls} text-white" style="background:var(--fk-navy)"><i class="fa-solid fa-phone"></i>${t('inquiry_phone')}</a>
     </div>`;
   }
 
