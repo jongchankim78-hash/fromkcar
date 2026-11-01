@@ -40,8 +40,8 @@
       email: 'jh1162@naver.com',
       photo: 'images/hoons/profile.jpg',
       ogImage: 'images/hoons/og-image.png',
-      cardKo: 'images/hoons/idcard-kr.jpg',
-      cardEn: 'images/hoons/idcard-en.jpg'
+      cardKo: 'images/hoons/idcard-kr-v2.jpg',
+      cardEn: 'images/hoons/idcard-en-v2.jpg'
     }
   };
 
