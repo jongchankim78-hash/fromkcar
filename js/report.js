@@ -10,7 +10,7 @@
   const DEVICE_LABEL = { mobile: '모바일', desktop: 'PC' };
   const CHANNEL_LABEL = {
     whatsapp: 'WhatsApp', telegram: '텔레그램 문의', telegram_channel: '텔레그램 채널',
-    instagram: '인스타그램', kakao: '카카오톡', phone: '전화', email: '이메일'
+    instagram: '인스타그램', naver_blog: '네이버 블로그', kakao: '카카오톡', phone: '전화', email: '이메일'
   };
 
   // 링크에 붙인 ?src=꼬리표(예: 블로그 글)는 알아보기 쉬운 이름으로 보여준다.

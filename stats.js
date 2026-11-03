@@ -8,7 +8,7 @@ const path = require('path');
 
 const KEEP_DAYS = 180;
 const LANGS = new Set(['ko', 'ru', 'mn', 'en']);
-const CHANNELS = new Set(['whatsapp', 'telegram', 'telegram_channel', 'instagram', 'kakao', 'phone', 'email']);
+const CHANNELS = new Set(['whatsapp', 'telegram', 'telegram_channel', 'instagram', 'naver_blog', 'kakao', 'phone', 'email']);
 const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|lighthouse|monitor|uptime/i;
 const FLUSH_MS = 15000;
 const RATE_LIMIT_PER_MIN = 120;

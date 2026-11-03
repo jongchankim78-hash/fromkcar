@@ -82,6 +82,7 @@
     if (/t\.me\/from_k_car/i.test(href)) return 'telegram_channel';
     if (/t\.me\/fromkcar(?:[/?#]|$)/i.test(href)) return 'telegram';
     if (/instagram\.com\/fromkcar/i.test(href)) return 'instagram';
+    if (/blog\.naver\.com\/fromkcar/i.test(href)) return 'naver_blog';
     if (/pf\.kakao\.com/i.test(href)) return 'kakao';
     return '';
   }
