@@ -30,12 +30,15 @@
   const refreshBtn = document.getElementById('report-refresh');
   if (!reportTab) return;
 
+  const customersTab = document.getElementById('tab-customers');
+
   function showTab(name) {
     const isReport = name === 'report';
-    listingsTab.classList.toggle('hidden', isReport);
+    listingsTab.classList.toggle('hidden', name !== 'listings');
     reportTab.classList.toggle('hidden', !isReport);
+    if (customersTab) customersTab.classList.toggle('hidden', name !== 'customers');
     tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
-    history.replaceState(null, '', isReport ? '#report' : location.pathname + location.search);
+    history.replaceState(null, '', name === 'listings' ? location.pathname + location.search : '#' + name);
     if (isReport) loadReport();
   }
 
@@ -168,4 +171,7 @@
   }
 
   if (location.hash === '#report') showTab('report');
+  else if (location.hash === '#customers') showTab('customers');
+  // 상단 메뉴의 "고객 관리" 링크
+  document.querySelectorAll('[data-open-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.openTab); window.scrollTo({ top: 0 }); }));
 })();

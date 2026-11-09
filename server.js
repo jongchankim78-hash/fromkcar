@@ -94,6 +94,147 @@ function writeTopicDone(done) {
   fs.writeFileSync(TOPICS_FILE, JSON.stringify({ done }), 'utf-8');
 }
 
+// --- 고객 관리 (관리자 전용) -------------------------------------------------------------------------
+// 고객 정보는 개인정보라서 매물 공개 API(/tables/car_listings)와 따로 data/customers.json에 두고,
+// 관리자 인증이 있어야만 /admin/customers로 읽고 쓴다. (data/*.json은 git에도 올라가지 않는다.)
+const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+const CUSTOMER_STATUSES = ['문의', '상담중', '견적', '계약', '판매완료', '보류'];
+const CUSTOMER_CHANNELS = ['카카오톡', '텔레그램', 'WhatsApp', '전화', '문자', '이메일', '기타'];
+const CUSTOMER_SOURCES = ['인스타그램', '네이버 블로그', '텔레그램', '지인 소개', '사이트', '당근', '기타'];
+const EXPORT_STAGES = ['', '계약금', '서류', '선적', '입항', '완료'];
+
+function readCustomers() {
+  try {
+    return JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8') || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeCustomers(list) {
+  ensureDataFile();
+  fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+}
+
+// 요청 본문에서 허용된 항목만, 형식에 맞게 골라낸다. 들어온 키만 돌려주므로 PATCH(일부 수정)에도 그대로 쓴다.
+function cleanCustomerInput(body) {
+  const out = {};
+  const str = (v, max) => String(v ?? '').trim().slice(0, max);
+  const oneOf = (v, list, fallback) => (list.includes(v) ? v : fallback);
+  const num = (v) => (v === null || v === '' || v === undefined || !Number.isFinite(Number(v)) || Number(v) < 0 ? null : Number(v));
+  const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+  const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
+
+  if (has('name')) out.name = str(body.name, 60);
+  if (has('phone')) out.phone = str(body.phone, 40);
+  if (has('country')) out.country = str(body.country, 40);
+  if (has('channel')) out.channel = oneOf(body.channel, CUSTOMER_CHANNELS, '기타');
+  if (has('source')) out.source = oneOf(body.source, CUSTOMER_SOURCES, '기타');
+  if (has('status')) out.status = oneOf(body.status, CUSTOMER_STATUSES, '문의');
+  if (has('memo')) out.memo = str(body.memo, 2000);
+  if (has('referred_by')) out.referred_by = str(body.referred_by, 100);
+  if (has('pref_brand')) out.pref_brand = str(body.pref_brand, 100);
+  if (has('pref_budget_min')) out.pref_budget_min = num(body.pref_budget_min); // 만원 단위
+  if (has('pref_budget_max')) out.pref_budget_max = num(body.pref_budget_max);
+  if (has('next_contact')) out.next_contact = date(body.next_contact);
+  if (has('export_stage')) out.export_stage = oneOf(body.export_stage, EXPORT_STAGES, '');
+  if (has('interested_car_ids')) {
+    out.interested_car_ids = (Array.isArray(body.interested_car_ids) ? body.interested_car_ids : [])
+      .map((x) => str(x, 80)).filter(Boolean).slice(0, 50);
+  }
+  if (has('notes')) {
+    out.notes = (Array.isArray(body.notes) ? body.notes : []).slice(-200)
+      .map((n) => ({ at: Number(n && n.at) || Date.now(), text: str(n && n.text, 1000) })).filter((n) => n.text);
+  }
+  if (has('deals')) {
+    out.deals = (Array.isArray(body.deals) ? body.deals : []).slice(-50).map((d) => ({
+      car_id: str(d && d.car_id, 80),
+      title: str(d && d.title, 120),
+      price: num(d && d.price), // 원
+      date: date(d && d.date)
+    }));
+  }
+  return out;
+}
+
+// 엑셀에서 수식으로 실행되지 않도록 = + - @ 로 시작하는 값 앞에 작은따옴표를 붙인다
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function customersToCsv(list, cars) {
+  const titleOf = (id) => { const c = cars.find((x) => x.id === id); return c ? c.title : ''; };
+  const head = ['이름', '연락처', '국가', '선호 채널', '유입 경로', '상태', '다음 연락일', '수출 진행', '관심 차량', '희망 브랜드', '예산(만원)', '소개해 준 사람', '거래 횟수', '거래 금액 합계(원)', '메모', '등록일'];
+  const rows = list.map((c) => [
+    c.name, c.phone, c.country, c.channel, c.source, c.status, c.next_contact, c.export_stage,
+    (c.interested_car_ids || []).map(titleOf).filter(Boolean).join(' / '), c.pref_brand,
+    [c.pref_budget_min, c.pref_budget_max].some((v) => v != null) ? `${c.pref_budget_min ?? ''}~${c.pref_budget_max ?? ''}` : '',
+    c.referred_by, (c.deals || []).length, (c.deals || []).reduce((a, d) => a + (d.price || 0), 0),
+    c.memo, c.created_at ? new Date(c.created_at).toISOString().slice(0, 10) : ''
+  ]);
+  return '﻿' + [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+}
+
+async function handleCustomersApi(req, res, urlObj) {
+  if (!requireAuth(req, res)) return;
+  const method = req.method;
+  const m = urlObj.pathname.match(/^\/admin\/customers(?:\/([\w-]+))?$/);
+  if (urlObj.pathname === '/admin/customers.csv' && method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="fromkcar_customers.csv"',
+      'Cache-Control': 'no-store'
+    });
+    return res.end(customersToCsv(readCustomers(), readListings()));
+  }
+  if (!m) return sendJson(res, 404, { error: 'Not found' });
+  const id = m[1];
+  res.setHeader('Cache-Control', 'no-store');
+  if (method === 'GET' && !id) return sendJson(res, 200, { data: readCustomers() });
+
+  if (method === 'POST' && !id) {
+    let body;
+    try { body = await readRequestBody(req, 256 * 1024); } catch (e) { return sendJson(res, 400, { error: e.message }); }
+    const input = cleanCustomerInput(body || {});
+    if (!input.name) return sendJson(res, 400, { error: '이름을 입력해 주세요.' });
+    const now = Date.now();
+    const customer = {
+      status: '문의', channel: '기타', source: '기타', interested_car_ids: [], notes: [], deals: [], export_stage: '',
+      ...input, id: crypto.randomUUID(), created_at: now, updated_at: now
+    };
+    const list = readCustomers();
+    list.push(customer);
+    writeCustomers(list);
+    return sendJson(res, 201, customer);
+  }
+
+  if (method === 'PATCH' && id) {
+    let body;
+    try { body = await readRequestBody(req, 256 * 1024); } catch (e) { return sendJson(res, 400, { error: e.message }); }
+    const list = readCustomers();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
+    const input = cleanCustomerInput(body || {});
+    if ('name' in input && !input.name) return sendJson(res, 400, { error: '이름을 입력해 주세요.' });
+    list[idx] = { ...list[idx], ...input, id, updated_at: Date.now() };
+    writeCustomers(list);
+    return sendJson(res, 200, list[idx]);
+  }
+
+  if (method === 'DELETE' && id) {
+    const list = readCustomers();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
+    list.splice(idx, 1);
+    writeCustomers(list);
+    res.writeHead(204);
+    return res.end();
+  }
+  return sendJson(res, 405, { error: 'Method not allowed' });
+}
+
 function ensureUploadsDir() {
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -716,8 +857,8 @@ function applyPriceAndSoldRules(old, body, now) {
 
 function publicView(car, isAdmin) {
   if (isAdmin) return car;
-  // 가격 변경 이력은 관리자만 본다
-  const { price_history: _history, ...pub } = car;
+  // 가격 변경 이력과 매입가·경비·실판매가(마진 계산용)는 관리자만 본다
+  const { price_history: _history, cost_purchase: _cp, cost_expense: _ce, sold_price: _sp, ...pub } = car;
   if (car.status !== '판매완료') return pub;
   return { ...pub, price: null, price_display: '' };
 }
@@ -1387,6 +1528,9 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204);
     return res.end();
   }
+
+  // 고객 관리 (관리자 전용)
+  if (/^\/admin\/customers(\.csv|\/[\w-]+)?$/.test(urlObj.pathname)) return handleCustomersApi(req, res, urlObj);
 
   // 정보성 블로그 글 주제별 "작성 완료" 기록 (어느 주제를 이미 썼는지 기억해서 새 주제를 계속 제안하는 데 쓴다)
   if (urlObj.pathname === '/admin/blog-topics') {

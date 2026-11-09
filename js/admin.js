@@ -172,6 +172,36 @@
   wireTranslateBtn('translate-mn-btn', 'f-description-mn', 'mn', '몽골어');
 
   /* ---------------- 폼 채우기 / 읽기 ---------------- */
+  // 마진 계산용 금액: 화면은 만원, 저장은 원
+  const manInput = (won) => (Number(won) > 0 ? String(Math.round(Number(won) / 10000)) : '');
+  const manToWon = (v) => (v !== '' && Number(v) >= 0 ? Math.round(Number(v) * 10000) : null);
+
+  // 마진 = (실판매가, 없으면 판매가격) - 매입가 - 경비. 매입가를 모르면 계산하지 않는다.
+  function carMargin(car) {
+    if (!(Number(car.cost_purchase) > 0)) return null;
+    const sale = Number(car.sold_price) > 0 ? Number(car.sold_price) : Number(car.price) || 0;
+    if (!sale) return null;
+    return sale - Number(car.cost_purchase) - (Number(car.cost_expense) || 0);
+  }
+
+  function updateMarginNote() {
+    const note = document.getElementById('f-margin-note');
+    if (!note) return;
+    const m = carMargin({
+      cost_purchase: manToWon(document.getElementById('f-cost-purchase').value),
+      cost_expense: manToWon(document.getElementById('f-cost-expense').value),
+      sold_price: manToWon(document.getElementById('f-sold-price').value),
+      price: Number(document.getElementById('f-price').value) || 0
+    });
+    note.textContent = m === null
+      ? '매입가를 입력하면 예상 마진이 계산돼요. (실판매가가 비어 있으면 판매가격 기준)'
+      : `${document.getElementById('f-sold-price').value ? '실제' : '예상'} 마진 ${m < 0 ? '-' : ''}${Math.abs(Math.round(m / 10000)).toLocaleString('en-US')}만원`;
+    note.style.color = m !== null && m < 0 ? '#dc2626' : '';
+  }
+  ['f-cost-purchase', 'f-cost-expense', 'f-sold-price', 'f-price'].forEach((id) => {
+    document.getElementById(id).addEventListener('input', updateMarginNote);
+  });
+
   function fillFormFromData(data) {
     document.getElementById('f-id').value = data.id || '';
     document.getElementById('f-source-url').value = data.source_url || '';
@@ -188,6 +218,10 @@
     document.getElementById('f-car-number').value = data.car_number || '';
     document.getElementById('f-price').value = data.price ?? '';
     document.getElementById('f-price-display').value = data.price_display || '';
+    document.getElementById('f-cost-purchase').value = manInput(data.cost_purchase);
+    document.getElementById('f-cost-expense').value = manInput(data.cost_expense);
+    document.getElementById('f-sold-price').value = manInput(data.sold_price);
+    updateMarginNote();
     document.getElementById('f-year').value = data.year_info || '';
     document.getElementById('f-mileage').value = data.mileage ?? '';
     document.getElementById('f-fuel').value = data.fuel_type || '';
@@ -407,6 +441,9 @@
       car_number: document.getElementById('f-car-number').value.trim(),
       price: document.getElementById('f-price').value ? Number(document.getElementById('f-price').value) : null,
       price_display: document.getElementById('f-price-display').value.trim(),
+      cost_purchase: manToWon(document.getElementById('f-cost-purchase').value),
+      cost_expense: manToWon(document.getElementById('f-cost-expense').value),
+      sold_price: manToWon(document.getElementById('f-sold-price').value),
       year_info: document.getElementById('f-year').value.trim(),
       mileage: document.getElementById('f-mileage').value ? Number(document.getElementById('f-mileage').value) : null,
       fuel_type: document.getElementById('f-fuel').value.trim(),
@@ -461,6 +498,7 @@
 
   function resetForm() {
     carForm.reset();
+    updateMarginNote();
     editingId = null;
     pasteTargetId = null;
     currentExtractedImages = [];
@@ -555,7 +593,10 @@
         car.price_history = saved.price_history;
         car.updated_at = saved.updated_at;
         renderSalesDashboard();
-        KCarUtil.toast(car.price ? `가격을 ${car.price_display}으로 변경했습니다.` : '가격을 "문의"로 바꿨습니다.', 'success');
+        const interested = window.KCarCustomers ? KCarCustomers.interestedIn(car.id).filter((c) => c.status !== '판매완료').length : 0;
+        const lowered = prev.price > 0 && car.price > 0 && car.price < prev.price;
+        KCarUtil.toast((car.price ? `가격을 ${car.price_display}으로 변경했습니다.` : '가격을 "문의"로 바꿨습니다.')
+          + (lowered && interested ? ` 이 매물에 관심 있는 고객 ${interested}명에게 알려 보세요.` : ''), 'success', lowered && interested ? 5000 : undefined);
       } catch (err) {
         car.price = prev.price;
         car.price_display = prev.price_display;
@@ -596,7 +637,7 @@
   });
   fPriceDisplay.addEventListener('input', () => {
     const m = fPriceDisplay.value.replace(/,/g, '').match(/(\d+)\s*만원/);
-    if (m) fPrice.value = String(Number(m[1]) * 10000);
+    if (m) { fPrice.value = String(Number(m[1]) * 10000); updateMarginNote(); }
   });
 
   /* ---------------- 판매 현황 (그래프 + 매입·매매 요약) ---------------- */
@@ -703,6 +744,12 @@
       if (now - h.at <= 30 * DAY_MS && h.from > 0 && h.to > 0) { if (h.to < h.from) cut += 1; else if (h.to > h.from) raise += 1; }
     }));
 
+    // 마진: 매입가를 입력한 매물만 계산한다
+    const soldMargins = sold.map(carMargin).filter((m) => m !== null);
+    const onSaleMargins = onSale.map(carMargin).filter((m) => m !== null);
+    const marginSum = soldMargins.reduce((a, b) => a + b, 0);
+    const fmtMargin = (won) => (won < 0 ? '-' : '') + fmtWonBig(Math.abs(won));
+
     const card = (label, value, sub) => `<div class="rounded-2xl border border-[var(--fk-gray-200)] bg-[var(--fk-gray-100)]/60 px-4 py-3">
       <p class="text-[11px] font-semibold text-[var(--fk-gray-600)]">${label}</p>
       <p class="text-xl font-extrabold text-[var(--fk-navy)] leading-tight mt-0.5">${value}</p>
@@ -712,7 +759,7 @@
     const dot = (color) => `<span class="inline-block w-2 h-2 rounded-sm align-middle mr-1" style="background:${color}"></span>`;
 
     el.innerHTML = `
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
         ${card('판매중 재고', `${onSale.length}대`, `재고 총액 ${fmtWonBig(sum(onSale))}`)}
         ${card('누적 판매', `${sold.length}대`, `누적 판매액 ${fmtWonBig(sum(sold))}`)}
         ${card('이번 달 판매', `${cur.sold}대`, diffBadge(cur.sold, prev.sold, '대'))}
@@ -721,12 +768,21 @@
         ${card('평균 재고 일수', avgAge === null ? '-' : `${avgAge}일`, oldest === null ? '' : `가장 오래된 매물 ${oldest}일`)}
         ${card('장기 재고 (60일+)', `${stale}대`, stale ? '가격 조정을 검토해 보세요' : '장기 재고 없음')}
         ${card('최근 30일 가격 조정', `${cut + raise}건`, `인하 ${cut} · 인상 ${raise}`)}
+        ${card('누적 마진 (판매완료)', soldMargins.length ? fmtMargin(marginSum) : '-', soldMargins.length ? `매입가 입력 ${soldMargins.length}/${sold.length}대` : '매물 편집에서 매입가를 입력하세요')}
+        ${card('대당 평균 마진', soldMargins.length ? fmtMargin(Math.round(marginSum / soldMargins.length)) : '-', onSaleMargins.length ? `재고 예상 마진 ${fmtMargin(onSaleMargins.reduce((a, b) => a + b, 0))}` : '&nbsp;')}
       </div>
       <div class="grid lg:grid-cols-2 gap-3">
         ${panel('월간 입고 · 판매 (최근 12개월)', `${dot('#94a3b8')}입고(등록) &nbsp; ${dot('var(--fk-green)')}판매`, barChartSvg(series))}
         ${panel('누적 판매 추이', `현재까지 ${sold.length}대`, lineChartSvg(series))}
       </div>
-      <p class="text-[11px] text-[var(--fk-gray-600)] mt-2">※ 입고는 매물을 등록한 날 기준이에요(매입가는 따로 기록하지 않습니다). 판매일은 "판매완료"로 바꾼 시점부터 기록되고, 그 전에 판매완료로 바꾼 매물은 마지막 수정일을 판매일로 봅니다. 삭제한 매물은 집계에 포함되지 않습니다.</p>`;
+      <p class="text-[11px] text-[var(--fk-gray-600)] mt-2">※ 입고는 매물을 등록한 날 기준이에요. 마진은 매물 편집에서 매입가를 입력한 매물만 계산합니다. 판매일은 "판매완료"로 바꾼 시점부터 기록되고, 그 전에 판매완료로 바꾼 매물은 마지막 수정일을 판매일로 봅니다. 삭제한 매물은 집계에 포함되지 않습니다.</p>`;
+  }
+
+  // 이 매물에 관심 있는 고객 수 (누르면 고객 관리 화면이 그 매물로 걸러서 보여준다)
+  function interestChipHtml(car) {
+    const n = window.KCarCustomers ? KCarCustomers.countFor(car.id) : 0;
+    if (!n) return '';
+    return `<button type="button" data-interest-car="${car.id}" title="이 매물에 관심 있는 고객 보기" class="mt-1 ml-1 text-[10px] font-bold rounded-full px-2 py-0.5 bg-sky-100 text-sky-800"><i class="fa-solid fa-user-group mr-0.5"></i>관심 고객 ${n}</button>`;
   }
 
   function renderAdminTable() {
@@ -754,7 +810,7 @@
         <td class="py-3 pr-3 max-w-[220px]">
           <p class="font-semibold text-[var(--fk-gray-800)] line-clamp-2">${KCarUtil.escapeHtml(car.title || '-')}</p>
           <p class="text-xs text-[var(--fk-gray-600)]">${car.listing_no ? `No.${car.listing_no} · ` : ''}${KCarUtil.escapeHtml(car.car_number || '')}</p>
-          ${blogChipHtml(car)}
+          ${blogChipHtml(car)}${interestChipHtml(car)}
         </td>
         <td class="py-3 pr-3 whitespace-nowrap">${priceCellHtml(car)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">
@@ -1875,6 +1931,7 @@
       const res = await KCarAPI.listCars({ limit: 200 });
       adminCars = (res.data || []).filter(c => !c.deleted);
       renderAdminTable();
+      document.dispatchEvent(new CustomEvent('adminlistloaded')); // 고객 관리 화면(js/customers.js)이 매물 목록을 쓴다
     } catch (e) {
       document.getElementById('admin-table-body').innerHTML =
         `<tr><td colspan="7" class="text-center py-10 text-[var(--fk-red)]">목록을 불러오지 못했습니다.</td></tr>`;
@@ -1883,4 +1940,6 @@
 
   loadAdminList();
   document.addEventListener('adminlogin', loadAdminList);
+  document.addEventListener('customersloaded', renderAdminTable); // 고객 정보가 바뀌면 매물 목록의 "관심 고객" 표시도 갱신
+  window.KCarAdminData = { cars: () => adminCars, margin: carMargin };
 })();
