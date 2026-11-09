@@ -1043,7 +1043,7 @@
     const direction = storyDirection.value.trim();
     storyGoBtn.disabled = true;
     storyGoBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>쓰는 중…';
-    storyStatus.textContent = '전문 에디터가 쓰고 있어요. 10~30초 걸립니다.';
+    storyStatus.textContent = '전문 에디터가 쓰고 있어요. 30~60초 걸립니다.';
     storyStatus.style.color = '';
     try {
       const res = await fetch('admin/generate-story', {
