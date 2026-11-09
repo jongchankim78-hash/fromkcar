@@ -504,7 +504,233 @@
     return `<button type="button" data-action="toggle-blog-posted" data-id="${car.id}" title="블로그에 올렸다면 눌러서 완료로 표시" class="mt-1 text-[10px] font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-800"><i class="fa-regular fa-clock mr-0.5"></i>블로그 미작성</button>`;
   }
 
+  /* ---------------- 가격 빠른 수정 (매물 목록에서 바로) ---------------- */
+  const PRICE_STEP_MAN = 100; // 화살표 한 번에 100만원
+  const priceSaved = {}; // 마지막으로 서버에 저장된 가격 (저장 실패 시 되돌리는 용도)
+  const priceTimers = {};
+
+  const manText = (won) => (Number(won) > 0 ? Math.round(Number(won) / 10000).toLocaleString('en-US') : '');
+
+  // 현재 가격(만원). price가 비어 있으면 "4,490만원" 같은 표시문구에서 읽는다.
+  function carMan(car) {
+    if (Number(car.price) > 0) return Math.round(Number(car.price) / 10000);
+    const m = String(car.price_display || '').replace(/,/g, '').match(/(\d+)\s*만원/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  function priceCellHtml(car) {
+    const stepBtn = 'w-6 h-[18px] flex items-center justify-center text-[10px] rounded border border-[var(--fk-gray-200)] bg-white text-[var(--fk-gray-800)] hover:bg-[var(--fk-gray-100)]';
+    return `<div class="flex items-center gap-1.5">
+      <div class="flex flex-col gap-0.5">
+        <button type="button" class="${stepBtn}" data-action="price-up" data-id="${car.id}" title="${PRICE_STEP_MAN}만원 올리기"><i class="fa-solid fa-chevron-up"></i></button>
+        <button type="button" class="${stepBtn}" data-action="price-down" data-id="${car.id}" title="${PRICE_STEP_MAN}만원 내리기"><i class="fa-solid fa-chevron-down"></i></button>
+      </div>
+      <input type="text" inputmode="numeric" data-action="price-input" data-id="${car.id}" value="${manText(carMan(car) * 10000)}" placeholder="문의"
+             title="가격을 직접 입력하고 Enter (단위: 만원)" class="fk-input !py-1 !px-2 !w-[84px] text-right font-bold text-[var(--fk-navy)]">
+      <span class="text-xs font-bold text-[var(--fk-navy)]">만원</span>
+    </div>`;
+  }
+
+  function refreshPriceInput(car) {
+    const input = document.querySelector(`input[data-action="price-input"][data-id="${car.id}"]`);
+    if (input) input.value = manText(carMan(car) * 10000);
+  }
+
+  // 화면은 바로 바꾸고, 저장은 마지막 입력 뒤 0.6초 만에 한 번만 한다 (화살표를 연달아 눌러도 요청이 한 번)
+  function setCarPrice(car, man) {
+    const won = man > 0 ? man * 10000 : null;
+    if (!(car.id in priceSaved)) priceSaved[car.id] = { price: car.price ?? null, price_display: car.price_display || '' };
+    car.price = won;
+    car.price_display = won ? `${manText(won)}만원` : '';
+    refreshPriceInput(car);
+    renderSalesDashboard();
+    clearTimeout(priceTimers[car.id]);
+    priceTimers[car.id] = setTimeout(async () => {
+      const prev = priceSaved[car.id];
+      delete priceSaved[car.id];
+      if (!prev || prev.price === car.price) return;
+      try {
+        // 가격(price)과 표시문구(price_display)를 함께 보내고, 서버가 변경 이력도 남긴다
+        const saved = await KCarAPI.updateCar(car.id, { price: car.price, price_display: car.price_display });
+        car.price_history = saved.price_history;
+        car.updated_at = saved.updated_at;
+        renderSalesDashboard();
+        KCarUtil.toast(car.price ? `가격을 ${car.price_display}으로 변경했습니다.` : '가격을 "문의"로 바꿨습니다.', 'success');
+      } catch (err) {
+        car.price = prev.price;
+        car.price_display = prev.price_display;
+        refreshPriceInput(car);
+        renderSalesDashboard();
+        KCarUtil.toast('가격 변경에 실패했습니다.', 'error');
+      }
+    }, 600);
+  }
+
+  const adminBody = document.getElementById('admin-table-body');
+  adminBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="price-up"], [data-action="price-down"]');
+    if (!btn) return;
+    const car = adminCars.find((c) => c.id === btn.dataset.id);
+    if (!car) return;
+    const delta = btn.dataset.action === 'price-up' ? PRICE_STEP_MAN : -PRICE_STEP_MAN;
+    setCarPrice(car, Math.max(0, carMan(car) + delta));
+  });
+  adminBody.addEventListener('change', (e) => {
+    const input = e.target.closest('[data-action="price-input"]');
+    if (!input) return;
+    const car = adminCars.find((c) => c.id === input.dataset.id);
+    if (!car) return;
+    const raw = input.value.replace(/[,\s]|만원/g, '');
+    if (raw !== '' && !/^\d+$/.test(raw)) { refreshPriceInput(car); KCarUtil.toast('가격은 숫자(만원 단위)로 입력해 주세요.', 'error'); return; }
+    setCarPrice(car, raw === '' ? 0 : Number(raw));
+  });
+  adminBody.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('[data-action="price-input"]')) e.target.blur();
+  });
+
+  // 편집 폼: 판매가격(원)과 가격 표시문구는 같은 금액이므로 한쪽을 고치면 다른 쪽도 같이 맞춘다
+  const fPrice = document.getElementById('f-price');
+  const fPriceDisplay = document.getElementById('f-price-display');
+  fPrice.addEventListener('input', () => {
+    fPriceDisplay.value = fPrice.value && Number(fPrice.value) > 0 ? `${manText(fPrice.value)}만원` : '';
+  });
+  fPriceDisplay.addEventListener('input', () => {
+    const m = fPriceDisplay.value.replace(/,/g, '').match(/(\d+)\s*만원/);
+    if (m) fPrice.value = String(Number(m[1]) * 10000);
+  });
+
+  /* ---------------- 판매 현황 (그래프 + 매입·매매 요약) ---------------- */
+  const DAY_MS = 86400000;
+  const ymKey = (ts) => { const d = new Date(ts); return d.getFullYear() * 12 + d.getMonth(); };
+  // 판매 시각: 판매완료로 바꾼 시점(sold_at). 예전에 처리한 매물은 기록이 없어서 마지막 수정일로 대신한다.
+  const soldTime = (c) => c.sold_at || c.updated_at || c.created_at || 0;
+
+  function fmtWonBig(won) {
+    const man = Math.round(won / 10000);
+    if (man >= 10000) return `${Math.floor(man / 10000)}억${man % 10000 ? ' ' + (man % 10000).toLocaleString('en-US') + '만원' : ''}`;
+    return `${man.toLocaleString('en-US')}만원`;
+  }
+
+  function diffBadge(cur, prev, unit) {
+    const d = cur - prev;
+    if (d === 0) return `<span class="text-[var(--fk-gray-600)]">전월과 같음</span>`;
+    return `<span class="${d > 0 ? 'text-green-700' : 'text-red-600'}">전월보다 ${d > 0 ? '▲' : '▼'} ${Math.abs(d)}${unit}</span>`;
+  }
+
+  function monthlySeries(months) {
+    const nowKey = ymKey(Date.now());
+    const series = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const key = nowKey - i;
+      series.push({ key, month: (key % 12) + 1, reg: 0, sold: 0 });
+    }
+    const byKey = Object.fromEntries(series.map((s) => [s.key, s]));
+    let soldBefore = 0; // 그래프 구간 이전에 판매된 대수 (누적 그래프의 시작점)
+    adminCars.forEach((c) => {
+      const r = byKey[ymKey(c.created_at || 0)];
+      if (r) r.reg += 1;
+      if (c.status === '판매완료') {
+        const k = ymKey(soldTime(c));
+        if (byKey[k]) byKey[k].sold += 1;
+        else if (k < series[0].key) soldBefore += 1;
+      }
+    });
+    let run = soldBefore;
+    series.forEach((s) => { run += s.sold; s.cum = run; });
+    return series;
+  }
+
+  function chartFrame(W, H, L, T, B, max) {
+    const y = (v) => T + (H - T - B) * (1 - v / max);
+    const axis = `<line x1="${L}" y1="${y(0)}" x2="${W}" y2="${y(0)}" stroke="var(--fk-gray-200)"/><line x1="${L}" y1="${y(max)}" x2="${W}" y2="${y(max)}" stroke="var(--fk-gray-200)" stroke-dasharray="3 3"/>`
+      + `<text x="${L - 5}" y="${y(0) + 3}" text-anchor="end" font-size="9" fill="var(--fk-gray-600)">0</text><text x="${L - 5}" y="${y(max) + 3}" text-anchor="end" font-size="9" fill="var(--fk-gray-600)">${max}</text>`;
+    return { y, axis };
+  }
+
+  function barChartSvg(series) {
+    const W = 360, H = 170, L = 26, B = 22, T = 14;
+    const max = Math.max(1, ...series.map((s) => Math.max(s.reg, s.sold)));
+    const { y, axis } = chartFrame(W, H, L, T, B, max);
+    const gw = (W - L - 4) / series.length;
+    const bw = Math.min(11, gw / 2 - 1.5);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="월간 입고·판매 대수">${axis}`;
+    series.forEach((s, i) => {
+      const cx = L + gw * i + gw / 2;
+      [[s.reg, cx - bw - 0.5, '#94a3b8'], [s.sold, cx + 0.5, 'var(--fk-green)']].forEach(([v, x, fill]) => {
+        if (v > 0) svg += `<rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(y(0) - y(v)).toFixed(1)}" rx="2" fill="${fill}"/><text x="${(x + bw / 2).toFixed(1)}" y="${(y(v) - 3).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="var(--fk-gray-800)">${v}</text>`;
+      });
+      svg += `<text x="${cx.toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="var(--fk-gray-600)">${s.month}월</text>`;
+    });
+    return svg + '</svg>';
+  }
+
+  function lineChartSvg(series) {
+    const W = 360, H = 170, L = 30, B = 22, T = 14;
+    const max = Math.max(1, ...series.map((s) => s.cum));
+    const { y, axis } = chartFrame(W, H, L, T, B, max);
+    const gw = (W - L - 10) / (series.length - 1 || 1);
+    const x = (i) => L + gw * i + 4;
+    const pts = series.map((s, i) => `${x(i).toFixed(1)},${y(s.cum).toFixed(1)}`);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="누적 판매 대수">${axis}`;
+    svg += `<polygon points="${x(0).toFixed(1)},${y(0)} ${pts.join(' ')} ${x(series.length - 1).toFixed(1)},${y(0)}" fill="var(--fk-green)" opacity="0.12"/><polyline points="${pts.join(' ')}" fill="none" stroke="var(--fk-green)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    series.forEach((s, i) => {
+      svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(s.cum).toFixed(1)}" r="2.5" fill="var(--fk-green)"/>`;
+      if (i === series.length - 1 || i % 3 === 0) svg += `<text x="${x(i).toFixed(1)}" y="${(y(s.cum) - 6).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--fk-gray-800)">${s.cum}</text>`;
+      svg += `<text x="${x(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="var(--fk-gray-600)">${s.month}월</text>`;
+    });
+    return svg + '</svg>';
+  }
+
+  function renderSalesDashboard() {
+    const el = document.getElementById('sales-dashboard');
+    if (!el) return;
+    if (!adminCars.length) { el.innerHTML = ''; return; }
+    const now = Date.now();
+    const sold = adminCars.filter((c) => c.status === '판매완료');
+    const onSale = adminCars.filter((c) => c.status !== '판매완료');
+    const series = monthlySeries(12);
+    const cur = series[series.length - 1];
+    const prev = series[series.length - 2] || { reg: 0, sold: 0 };
+    const sum = (list) => list.reduce((a, c) => a + (Number(c.price) || 0), 0);
+    const days = sold.filter((c) => c.created_at && soldTime(c) > c.created_at).map((c) => (soldTime(c) - c.created_at) / DAY_MS);
+    const avgSell = days.length ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : null;
+    const ages = onSale.map((c) => (now - (c.created_at || now)) / DAY_MS);
+    const avgAge = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : null;
+    const stale = ages.filter((d) => d >= 60).length;
+    const oldest = ages.length ? Math.round(Math.max(...ages)) : null;
+    let cut = 0, raise = 0;
+    adminCars.forEach((c) => (c.price_history || []).forEach((h) => {
+      if (now - h.at <= 30 * DAY_MS && h.from > 0 && h.to > 0) { if (h.to < h.from) cut += 1; else if (h.to > h.from) raise += 1; }
+    }));
+
+    const card = (label, value, sub) => `<div class="rounded-2xl border border-[var(--fk-gray-200)] bg-[var(--fk-gray-100)]/60 px-4 py-3">
+      <p class="text-[11px] font-semibold text-[var(--fk-gray-600)]">${label}</p>
+      <p class="text-xl font-extrabold text-[var(--fk-navy)] leading-tight mt-0.5">${value}</p>
+      <p class="text-[11px] mt-0.5 text-[var(--fk-gray-600)]">${sub || '&nbsp;'}</p></div>`;
+    const panel = (title, legend, body) => `<div class="rounded-2xl border border-[var(--fk-gray-200)] px-4 pt-3 pb-2">
+      <div class="flex items-center justify-between flex-wrap gap-1 mb-1"><p class="text-sm font-bold text-[var(--fk-gray-800)]">${title}</p><p class="text-[11px] text-[var(--fk-gray-600)]">${legend}</p></div>${body}</div>`;
+    const dot = (color) => `<span class="inline-block w-2 h-2 rounded-sm align-middle mr-1" style="background:${color}"></span>`;
+
+    el.innerHTML = `
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        ${card('판매중 재고', `${onSale.length}대`, `재고 총액 ${fmtWonBig(sum(onSale))}`)}
+        ${card('누적 판매', `${sold.length}대`, `누적 판매액 ${fmtWonBig(sum(sold))}`)}
+        ${card('이번 달 판매', `${cur.sold}대`, diffBadge(cur.sold, prev.sold, '대'))}
+        ${card('이번 달 신규 입고', `${cur.reg}대`, diffBadge(cur.reg, prev.reg, '대'))}
+        ${card('평균 판매 소요일', avgSell === null ? '-' : `${avgSell}일`, '등록 → 판매완료')}
+        ${card('평균 재고 일수', avgAge === null ? '-' : `${avgAge}일`, oldest === null ? '' : `가장 오래된 매물 ${oldest}일`)}
+        ${card('장기 재고 (60일+)', `${stale}대`, stale ? '가격 조정을 검토해 보세요' : '장기 재고 없음')}
+        ${card('최근 30일 가격 조정', `${cut + raise}건`, `인하 ${cut} · 인상 ${raise}`)}
+      </div>
+      <div class="grid lg:grid-cols-2 gap-3">
+        ${panel('월간 입고 · 판매 (최근 12개월)', `${dot('#94a3b8')}입고(등록) &nbsp; ${dot('var(--fk-green)')}판매`, barChartSvg(series))}
+        ${panel('누적 판매 추이', `현재까지 ${sold.length}대`, lineChartSvg(series))}
+      </div>
+      <p class="text-[11px] text-[var(--fk-gray-600)] mt-2">※ 입고는 매물을 등록한 날 기준이에요(매입가는 따로 기록하지 않습니다). 판매일은 "판매완료"로 바꾼 시점부터 기록되고, 그 전에 판매완료로 바꾼 매물은 마지막 수정일을 판매일로 봅니다. 삭제한 매물은 집계에 포함되지 않습니다.</p>`;
+  }
+
   function renderAdminTable() {
+    renderSalesDashboard();
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-total-count').textContent = adminCars.length;
     const unposted = adminCars.filter(c => !c.blog_posted && c.status !== '판매완료').length;
@@ -530,7 +756,7 @@
           <p class="text-xs text-[var(--fk-gray-600)]">${car.listing_no ? `No.${car.listing_no} · ` : ''}${KCarUtil.escapeHtml(car.car_number || '')}</p>
           ${blogChipHtml(car)}
         </td>
-        <td class="py-3 pr-3 font-bold text-[var(--fk-navy)] whitespace-nowrap">${car.price_display || KCarUtil.formatPrice(car.price)}</td>
+        <td class="py-3 pr-3 whitespace-nowrap">${priceCellHtml(car)}</td>
         <td class="py-3 pr-3 whitespace-nowrap text-xs text-[var(--fk-gray-600)]">
           ${KCarUtil.escapeHtml(car.year_info || '-')}<br>${KCarUtil.formatMileage(car.mileage)}
         </td>
@@ -1532,8 +1758,10 @@
     const prevStatus = car.status;
     select.disabled = true;
     try {
-      await KCarAPI.updateCar(car.id, { status: newStatus });
+      const saved = await KCarAPI.updateCar(car.id, { status: newStatus });
       car.status = newStatus;
+      car.sold_at = saved.sold_at; // 서버가 판매 시각을 기록한다 (판매 현황 그래프에 쓰임)
+      renderSalesDashboard();
       select.style.background = newStatus === '판매완료' ? 'var(--fk-gray-600)' : 'var(--fk-green)';
       KCarUtil.toast('상태를 변경했습니다.', 'success');
     } catch (err) {
@@ -1654,4 +1882,5 @@
   }
 
   loadAdminList();
+  document.addEventListener('adminlogin', loadAdminList);
 })();

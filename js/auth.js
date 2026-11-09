@@ -64,6 +64,8 @@
         userInput.value = '';
         passInput.value = '';
         showContent();
+        // 로그인 전에 불러온 목록은 방문자용(판매완료 매물의 가격이 빠진 것)이므로, 관리자 화면이 다시 불러오게 알린다
+        document.dispatchEvent(new CustomEvent('adminlogin'));
       } catch (err) {
         errorEl.classList.remove('hidden');
         passInput.value = '';

@@ -683,9 +683,43 @@ async function notifyTelegramNewListing(car) {
 
 // 판매완료 매물의 판매가는 방문자에게 내보내지 않는다 (화면에서 숨기는 것만으로는 개발자 도구로 값이 보이므로 응답에서도 뺀다).
 // 관리자(로그인한 요청)에게는 그대로 준다. 정렬은 이 처리 전의 전체 데이터로 이미 끝난 뒤다.
+// 매물 수정 요청(body)에 가격·판매 상태 규칙을 적용해 실제로 저장할 값을 만든다.
+//  - 가격(price)과 표시문구(price_display)는 항상 같은 금액이어야 한다: 한쪽만 바뀌면 다른 쪽을 맞춰 준다.
+//  - 가격이 바뀌면 price_history에 변경 이력(이전 가격, 새 가격, 시각)을 남긴다 (최근 50건).
+//  - 판매완료로 바뀌면 sold_at(판매 시각)을 기록하고, 판매중으로 되돌리면 지운다 (관리자 판매 현황 그래프용).
+function applyPriceAndSoldRules(old, body, now) {
+  const out = { ...body };
+  const wonText = (won) => (won === null || won === undefined || won === '' ? '' : `${Math.round(Number(won) / 10000).toLocaleString('en-US')}만원`);
+  const wonFromText = (text) => {
+    const m = String(text || '').match(/([\d,]+)\s*만원/);
+    return m ? Number(m[1].replace(/,/g, '')) * 10000 : null;
+  };
+  const hasPrice = 'price' in body;
+  const hasDisplay = 'price_display' in body;
+  const priceChanged = hasPrice && (body.price ?? null) !== (old.price ?? null);
+  const displayChanged = hasDisplay && (body.price_display || '') !== (old.price_display || '');
+  if (priceChanged && !displayChanged) {
+    out.price_display = wonText(body.price);
+  } else if (displayChanged && !priceChanged) {
+    const won = wonFromText(body.price_display);
+    if (won !== null) out.price = won;
+  }
+  const newPrice = 'price' in out ? (out.price ?? null) : (old.price ?? null);
+  if (newPrice !== (old.price ?? null)) {
+    out.price_history = [...(Array.isArray(old.price_history) ? old.price_history : []), { at: now, from: old.price ?? null, to: newPrice }].slice(-50);
+  }
+  if (body.status !== undefined && body.status !== old.status) {
+    out.sold_at = body.status === '판매완료' ? now : null;
+  }
+  return out;
+}
+
 function publicView(car, isAdmin) {
-  if (isAdmin || car.status !== '판매완료') return car;
-  return { ...car, price: null, price_display: '' };
+  if (isAdmin) return car;
+  // 가격 변경 이력은 관리자만 본다
+  const { price_history: _history, ...pub } = car;
+  if (car.status !== '판매완료') return pub;
+  return { ...pub, price: null, price_display: '' };
 }
 
 async function handleTablesApi(req, res, urlObj, idFromPath) {
@@ -736,6 +770,7 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
       ...body,
       listing_no: nextListingNo(list),
       display_order: nextDisplayOrder(list),
+      ...(body.status === '판매완료' ? { sold_at: now } : {}),
       created_at: now,
       updated_at: now,
       deleted: false
@@ -758,7 +793,8 @@ async function handleTablesApi(req, res, urlObj, idFromPath) {
     const list = readListings();
     const idx = list.findIndex((c) => c.id === idFromPath);
     if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
-    list[idx] = { ...list[idx], ...body, id: idFromPath, updated_at: Date.now() };
+    const now = Date.now();
+    list[idx] = { ...list[idx], ...applyPriceAndSoldRules(list[idx], body, now), id: idFromPath, updated_at: now };
     writeListings(list);
     // "원본에서 다시 불러오기" 후 저장하면 사진이 외부 주소로 되돌아오므로, 사진이 바뀐 수정은 다시 내재화한다.
     if (body.images !== undefined || body.main_image !== undefined) enqueueLocalize(idFromPath);
