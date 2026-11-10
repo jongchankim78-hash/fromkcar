@@ -8,6 +8,9 @@
  *  - 세션: 로그인에 성공하면 서버가 서명한 토큰(12시간)을 준다. 비밀번호는 로그인할 때만 오가고, 이후 요청에는 토큰만 쓴다.
  *  - 로그인 시도 제한: 아이디별 5회·IP별 20회 틀리면 15분간 막는다.
  * 외부 라이브러리 없이 Node 기본 모듈만 쓴다.
+ *
+ * 2차 인증 켜기/끄기: 환경변수 ADMIN_2FA=1 이면 위 방식 전체가 동작하고, 없으면(기본) 대표 계정이 아이디·비밀번호만으로 로그인한다
+ * (세션 토큰은 그대로 쓴다). 꺼져 있는 동안 직원 계정은 로그인할 수 없고 계정 관리 기능도 막혀 있다.
  */
 'use strict';
 const crypto = require('crypto');
@@ -89,7 +92,7 @@ function checkPasswordHash(pw, stored) {
 
 const hashCode = (c) => crypto.createHash('sha256').update(c).digest('hex');
 
-function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequestBody, clientIp }) {
+function createAdminAuth({ dataDir, ownerUser, ownerPassword, twoFactor, sendJson, readRequestBody, clientIp }) {
   const accountsFile = path.join(dataDir, 'admin_accounts.json');
   const secretsFile = path.join(dataDir, 'admin_secrets.json');
   const enabled = !!(ownerUser && ownerPassword);
@@ -207,6 +210,7 @@ function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequ
     if (!p || p.t !== 's') return false;
     const acct = findAccount(p.u);
     if (!acct || (acct.token_version || 0) !== p.v) return false;
+    if (!twoFactor && acct.role !== 'owner') return false; // 2차 인증이 꺼져 있으면 대표 계정만
     // 임시 비밀번호로 들어온 직원은 비밀번호를 바꾸기 전까지 다른 기능을 쓸 수 없다
     if (acct.must_change_pw && !/^\/admin\/(password|session)$/.test(String(req.url || '').split('?')[0])) return false;
     req.admin = { username: acct.username, role: acct.role, must_change_pw: !!acct.must_change_pw, exp: p.exp };
@@ -238,6 +242,13 @@ function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequ
         console.warn(`[admin] 로그인 실패: ${String(b.username || '').slice(0, 30)} (${clientIp(req)})`);
         return sendJson(res, 401, { error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
       }
+      if (!twoFactor) {
+        if (acct.role !== 'owner') return sendJson(res, 401, { error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+        fails.delete(userKey);
+        const s = newSession(acct);
+        console.log(`[admin] 로그인: ${acct.username} (${clientIp(req)})`);
+        return sendJson(res, 200, { token: s.token, expires_at: s.expires_at, username: acct.username, role: acct.role, must_change_pw: false });
+      }
       const challenge = sign({ t: 'pre', u: acct.username, exp: Date.now() + CHALLENGE_TTL_MS });
       if (acct.totp_secret) return sendJson(res, 200, { step: 'totp', challenge });
       if (!acct.pending_secret) { acct.pending_secret = base32Encode(crypto.randomBytes(20)); save(); }
@@ -246,6 +257,7 @@ function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequ
 
     // 2단계: 인증 앱의 6자리 코드(또는 백업 코드). 처음 로그인이면 이 코드로 등록을 마친다.
     if (p === '/admin/login/verify' && method === 'POST') {
+      if (!twoFactor) return sendJson(res, 404, { error: 'Not found' });
       const b = await body();
       const pre = b && verifyToken(b.challenge);
       if (!pre || pre.t !== 'pre') return sendJson(res, 401, { error: '인증 시간이 지났어요. 처음부터 다시 로그인해 주세요.', restart: true });
@@ -304,7 +316,7 @@ function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequ
 
     if (p === '/admin/session' && method === 'GET') {
       const acct = findAccount(me.username);
-      return sendJson(res, 200, { ok: true, username: me.username, role: me.role, must_change_pw: me.must_change_pw, expires_at: me.exp, backup_left: (acct.backup_hashes || []).length });
+      return sendJson(res, 200, { ok: true, two_factor: !!twoFactor, username: me.username, role: me.role, must_change_pw: me.must_change_pw, expires_at: me.exp, backup_left: (acct.backup_hashes || []).length });
     }
 
     // 내 비밀번호 바꾸기 (직원 계정. 대표 비밀번호는 서버 환경변수로 관리한다)
@@ -325,7 +337,8 @@ function createAdminAuth({ dataDir, ownerUser, ownerPassword, sendJson, readRequ
       return sendJson(res, 200, { ok: true, token: s.token, expires_at: s.expires_at });
     }
 
-    // 계정 관리 (대표만)
+    // 계정 관리 (대표만, 2차 인증을 켠 경우에만)
+    if (!twoFactor) return sendJson(res, 403, { error: '2차 인증이 꺼져 있어서 계정 관리를 쓸 수 없어요.' });
     const m = p.match(/^\/admin\/accounts(?:\/([A-Za-z0-9_.-]+)(\/reset)?)?$/);
     if (!m) return sendJson(res, 404, { error: 'Not found' });
     if (me.role !== 'owner') return sendJson(res, 403, { error: '대표 계정만 쓸 수 있어요.' });

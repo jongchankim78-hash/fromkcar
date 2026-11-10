@@ -121,7 +121,18 @@
     }
   });
 
+  // 계정·보안 탭은 서버에서 2차 인증(ADMIN_2FA=1)을 켰을 때만 보인다
+  async function syncTabVisibility() {
+    if (!KCarAuth.getToken()) return;
+    try {
+      const s = await api('GET', 'admin/session');
+      document.querySelector('.admin-tab[data-tab="accounts"]').classList.toggle('hidden', !s.two_factor);
+      if (s.two_factor && location.hash === '#accounts') document.querySelector('.admin-tab[data-tab="accounts"]').click();
+    } catch (e) { /* 로그인이 필요하면 api()가 로그인 화면을 띄운다 */ }
+  }
+  syncTabVisibility();
+  document.addEventListener('adminlogin', syncTabVisibility);
+
   // 탭을 열 때마다 새로 그린다
   document.querySelector('.admin-tab[data-tab="accounts"]').addEventListener('click', render);
-  if (location.hash === '#accounts') render();
 })();

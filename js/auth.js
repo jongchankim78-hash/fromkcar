@@ -239,6 +239,7 @@
           return;
         }
         errorEl.classList.add('hidden');
+        if (r.data.token) { setToken(r.data.token); finish(); return; } // 2차 인증이 꺼져 있으면 바로 입장
         lastPassword = passInput.value;
         renderCodeStep(r.data);
       } catch (err) {

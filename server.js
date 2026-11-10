@@ -44,6 +44,7 @@ const adminAuth = createAdminAuth({
   dataDir: DATA_DIR,
   ownerUser: ADMIN_USER,
   ownerPassword: ADMIN_PASSWORD,
+  twoFactor: process.env.ADMIN_2FA === '1', // 인증 앱 2차 인증 (기본 꺼짐)
   sendJson,
   readRequestBody,
   clientIp: (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || ''
