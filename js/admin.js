@@ -381,7 +381,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: 'Basic ' + token } : {})
+        ...(token ? { Authorization: 'Bearer ' + token } : {})
       },
       body: JSON.stringify({ dataUrl })
     });
@@ -855,7 +855,7 @@
 
   function authHeader() {
     const token = window.KCarAuth && KCarAuth.getToken();
-    return token ? { Authorization: 'Basic ' + token } : {};
+    return token ? { Authorization: 'Bearer ' + token } : {};
   }
 
   async function loadTopicDone() {

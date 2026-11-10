@@ -17,6 +17,7 @@ const { createStats } = require('./stats');
 const KCarKo = require('./js/korean-name.js');
 const KCarProfiles = require('./js/profiles.js');
 const KCarCurrency = require('./js/currency.js');
+const { createAdminAuth } = require('./admin-auth');
 
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -27,12 +28,11 @@ const DATA_FILE = path.join(DATA_DIR, 'car_listings.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PORT = process.env.PORT || 8080;
 
-// 매물 등록/수정/삭제(POST/PATCH/DELETE)를 지키는 서버 측 인증.
-// admin.html 자체는 정적 파일이라 누구나 열람 가능하지만, 실제 데이터 변경은 여기서 막힌다.
-// admin.html의 로그인 화면(아이디+비번)이 이 값과 대조해 세션을 발급한다 (/admin/verify).
-// 배포 시 반드시 ADMIN_USER / ADMIN_PASSWORD 환경변수를 설정해서 기본값을 덮어쓸 것.
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '4887asdf';
+// 관리자 인증 (아이디·비밀번호 + 인증 앱 2차 인증, 12시간 세션). 자세한 내용은 admin-auth.js.
+// admin.html 자체는 정적 파일이라 누구나 열람 가능하지만, 데이터 조회·변경은 로그인한 세션이 있어야 한다.
+// 배포 시 ADMIN_USER / ADMIN_PASSWORD 환경변수(대표 계정)를 반드시 설정해야 한다. 기본 비밀번호는 없다.
+const ADMIN_USER = process.env.ADMIN_USER || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 // 새 매물이 등록될 때 텔레그램 채널(@fromkcar)에 자동으로 소개글을 올리는 데 쓰는 봇 정보.
 // 둘 다 설정 안 하면 조용히 건너뛴다 (로컬 개발 환경에서 굳이 필요 없음).
@@ -40,21 +40,20 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL || '@from_k_car';
 const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://www.fromkcar.kr';
 
-function isAuthorized(req) {
-  const header = req.headers['authorization'] || '';
-  if (!header.startsWith('Basic ')) return false;
-  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
-  const sepIdx = decoded.indexOf(':');
-  if (sepIdx === -1) return false;
-  const user = decoded.slice(0, sepIdx);
-  const pass = decoded.slice(sepIdx + 1);
-  return user === ADMIN_USER && pass === ADMIN_PASSWORD;
-}
+const adminAuth = createAdminAuth({
+  dataDir: DATA_DIR,
+  ownerUser: ADMIN_USER,
+  ownerPassword: ADMIN_PASSWORD,
+  sendJson,
+  readRequestBody,
+  clientIp: (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || ''
+});
+const isAuthorized = adminAuth.isAuthorized;
 
 function requireAuth(req, res) {
   if (isAuthorized(req)) return true;
-  // WWW-Authenticate를 보내지 않아야 브라우저 네이티브 Basic Auth 팝업이 뜨지 않는다.
-  // 인증은 admin.html의 자체 로그인 화면(아이디+비번) 하나로만 이뤄지도록 한다.
+  // WWW-Authenticate를 보내지 않아야 브라우저 네이티브 로그인 팝업이 뜨지 않는다.
+  // 인증은 admin.html의 자체 로그인 화면 하나로만 이뤄지도록 한다.
   res.writeHead(401, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Authentication required');
   return false;
@@ -1498,15 +1497,9 @@ const server = http.createServer(async (req, res) => {
   const profile = KCarProfiles.fromPath(urlObj.pathname);
   if (profile.base) urlObj.pathname = KCarProfiles.inner(urlObj.pathname, profile);
 
-  if (urlObj.pathname === '/admin/verify' && req.method === 'POST') {
-    let body;
-    try {
-      body = await readRequestBody(req);
-    } catch (e) {
-      return sendJson(res, 400, { ok: false });
-    }
-    const ok = !!body && body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
-    return sendJson(res, ok ? 200 : 401, { ok });
+  // 로그인(2단계), 세션 확인, 비밀번호 변경, 계정 관리
+  if (/^\/admin\/(login|login\/verify|session|password|accounts(\/[\w.-]+(\/reset)?)?)$/.test(urlObj.pathname)) {
+    return adminAuth.handle(req, res, urlObj);
   }
 
   // 원/달러 환율 (공개). 가져오지 못했으면 rate가 null이고, 화면은 달러 표기를 숨긴다.

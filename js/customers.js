@@ -35,7 +35,7 @@
     const token = window.KCarAuth && KCarAuth.getToken();
     const res = await fetch(path, {
       method,
-      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Basic ' + token } : {}) },
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: body ? JSON.stringify(body) : undefined
     });
     if (res.status === 401) { if (window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); } throw new Error('로그인이 필요합니다.'); }
@@ -523,7 +523,7 @@
       const stamp = todayStr().replace(/-/g, '');
       if (kind === 'csv') {
         const token = KCarAuth.getToken();
-        const res = await fetch('admin/customers.csv', { headers: { Authorization: 'Basic ' + token } });
+        const res = await fetch('admin/customers.csv', { headers: { Authorization: 'Bearer ' + token } });
         if (!res.ok) throw new Error('내려받지 못했습니다.');
         blob = await res.blob();
         name = `fromkcar_customers_${stamp}.csv`;

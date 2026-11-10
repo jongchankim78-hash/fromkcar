@@ -30,14 +30,14 @@
   const refreshBtn = document.getElementById('report-refresh');
   if (!reportTab) return;
 
-  const customersTab = document.getElementById('tab-customers');
-
+  // 탭 버튼의 data-tab 이름마다 id="tab-이름" 영역이 있다 (매물 관리, 사이트 리포트, 고객 관리, 계정·보안)
   function showTab(name) {
     const isReport = name === 'report';
-    listingsTab.classList.toggle('hidden', name !== 'listings');
-    reportTab.classList.toggle('hidden', !isReport);
-    if (customersTab) customersTab.classList.toggle('hidden', name !== 'customers');
-    tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    tabButtons.forEach((b) => {
+      const panel = document.getElementById('tab-' + b.dataset.tab);
+      if (panel) panel.classList.toggle('hidden', b.dataset.tab !== name);
+      b.classList.toggle('active', b.dataset.tab === name);
+    });
     history.replaceState(null, '', name === 'listings' ? location.pathname + location.search : '#' + name);
     if (isReport) loadReport();
   }
@@ -156,7 +156,7 @@
     bodyEl.innerHTML = '<p class="rp-empty py-10 text-center">불러오는 중…</p>';
     try {
       const res = await fetch(`admin/report?days=${encodeURIComponent(rangeEl.value)}`, {
-        headers: { Authorization: 'Basic ' + token }
+        headers: { Authorization: 'Bearer ' + token }
       });
       if (res.status === 401) {
         KCarAuth.clearToken();
@@ -171,7 +171,7 @@
   }
 
   if (location.hash === '#report') showTab('report');
-  else if (location.hash === '#customers') showTab('customers');
+  else if (['#customers', '#accounts'].includes(location.hash)) showTab(location.hash.slice(1));
   // 상단 메뉴의 "고객 관리" 링크
   document.querySelectorAll('[data-open-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.openTab); window.scrollTo({ top: 0 }); }));
 })();

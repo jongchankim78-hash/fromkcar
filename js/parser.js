@@ -293,7 +293,7 @@
     const token = global.KCarAuth && global.KCarAuth.getToken();
     const res = await fetch('admin/fetch-listing', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Basic ' + token } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: JSON.stringify({ url: originalUrl })
     });
     if (res.status === 401 && global.KCarAuth) {
@@ -351,7 +351,7 @@
     const token = global.KCarAuth && global.KCarAuth.getToken();
     const res = await fetch('admin/parse-html', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Basic ' + token } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: JSON.stringify({ url: originalUrl || '', html })
     });
     if (res.status === 401 && global.KCarAuth) {

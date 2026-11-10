@@ -7,7 +7,7 @@
 
   function authHeaders() {
     const token = global.KCarAuth && global.KCarAuth.getToken();
-    return token ? { 'Authorization': 'Basic ' + token } : {};
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
   }
 
   function handleAuthFailure(res) {
