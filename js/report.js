@@ -170,8 +170,10 @@
     }
   }
 
+  // 숨겨 둔 탭(고객 관리 등)은 주소로도 열리지 않게 한다
+  const tabVisible = (name) => { const b = document.querySelector('.admin-tab[data-tab="' + name + '"]'); return !!b && !b.classList.contains('hidden'); };
   if (location.hash === '#report') showTab('report');
-  else if (['#customers', '#accounts'].includes(location.hash)) showTab(location.hash.slice(1));
+  else if (['#customers', '#accounts'].includes(location.hash) && tabVisible(location.hash.slice(1))) showTab(location.hash.slice(1));
   // 상단 메뉴의 "고객 관리" 링크
   document.querySelectorAll('[data-open-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.openTab); window.scrollTo({ top: 0 }); }));
 })();

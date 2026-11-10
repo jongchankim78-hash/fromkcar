@@ -67,7 +67,7 @@
     <nav class="hidden md:flex items-center gap-1">
       <a href="index.html" class="fk-nav-link">매물 갤러리</a>
       <a href="admin.html" class="fk-nav-link active"><i class="fa-solid fa-lock mr-1.5 text-[11px]"></i>관리자</a>
-      <a href="#customers" data-open-tab="customers" class="fk-nav-link"><i class="fa-solid fa-user-group mr-1.5 text-[11px]"></i>고객 관리</a>
+      <a href="#customers" data-open-tab="customers" data-feature="customers" class="fk-nav-link hidden"><i class="fa-solid fa-user-group mr-1.5 text-[11px]"></i>고객 관리</a>
     </nav>
     <div class="flex items-center gap-2">
       <button id="admin-logout-btn" class="btn-secondary text-sm !py-2 !px-4 !bg-white/10 !text-white !border-white/20 hover:!border-white/50">
@@ -89,7 +89,7 @@
   <div class="flex gap-1 border-b border-[var(--fk-gray-200)] mb-8" role="tablist">
     <button type="button" class="admin-tab active" data-tab="listings" role="tab"><i class="fa-solid fa-car mr-1.5"></i>매물 관리</button>
     <button type="button" class="admin-tab" data-tab="report" role="tab"><i class="fa-solid fa-chart-column mr-1.5"></i>사이트 리포트</button>
-    <button type="button" class="admin-tab" data-tab="customers" role="tab"><i class="fa-solid fa-user-group mr-1.5"></i>고객 관리</button>
+    <button type="button" class="admin-tab hidden" data-tab="customers" data-feature="customers" role="tab"><i class="fa-solid fa-user-group mr-1.5"></i>고객 관리</button>
     <button type="button" class="admin-tab" data-tab="accounts" role="tab"><i class="fa-solid fa-shield-halved mr-1.5"></i>계정·보안</button>
   </div>
 

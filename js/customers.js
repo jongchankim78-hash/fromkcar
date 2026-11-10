@@ -7,8 +7,13 @@
  * 매물 목록은 admin.js가 불러온 것을 KCarAdminData.cars()로 가져다 쓴다.
  */
 (function () {
+  // 고객 관리 화면 켜기/끄기. false이면 메뉴·탭이 보이지 않고 서버에서 고객 정보를 불러오지도 않는다 (코드와 저장된 고객 데이터는 그대로 남는다).
+  // 다시 쓰려면 true로 바꾸면 된다.
+  const CUSTOMERS_ENABLED = false;
+
   const root = document.getElementById('customers-section');
-  if (!root) return;
+  if (!root || !CUSTOMERS_ENABLED) return;
+  document.querySelectorAll('[data-feature="customers"]').forEach((el) => el.classList.remove('hidden'));
 
   const STATUSES = ['문의', '상담중', '견적', '계약', '판매완료', '보류'];
   const CHANNELS = ['카카오톡', '텔레그램', 'WhatsApp', '전화', '문자', '이메일', '기타'];
