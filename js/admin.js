@@ -1019,7 +1019,7 @@
       const short = KCarBlog.generateShort(blogCar, blogChannel);
       shortText.value = short.text;
       document.getElementById('short-note').textContent = short.note;
-      syncRussian(false);
+      syncTranslations(false);
       return;
     }
     const chars = blogPreview.innerText.replace(/\s+/g, '').length;
@@ -1151,51 +1151,64 @@
   document.getElementById('blog-copy-tags').addEventListener('click', () => copyPlain(blogTags.value, '태그를 복사했습니다.'));
   document.getElementById('blog-copy-text').addEventListener('click', () => copyPlain(blogPreview.innerText, '텍스트를 복사했습니다.'));
   document.getElementById('blog-copy-body').addEventListener('click', copyRichBody);
-  /* ---------------- 인스타그램 글의 러시아어 번역 ---------------- */
-  const ruWrap = document.getElementById('short-ru-wrap');
-  const ruText = document.getElementById('short-text-ru');
-  const ruStatus = document.getElementById('short-ru-status');
-  let ruCache = { src: '', ru: '' }; // 같은 한국어 글은 다시 번역하지 않는다
-  let ruSeq = 0;
+  /* ---------------- 인스타그램 글의 러시아어·영어 번역 ---------------- */
+  const TR_LANGS = { ru: '러시아어', en: '영어' };
+  const trWrap = document.getElementById('short-tr-wrap');
+  const trEl = (kind, lang) => document.querySelector(`[data-tr-${kind}="${lang}"]`);
+  const trState = { ru: { src: '', text: '', seq: 0 }, en: { src: '', text: '', seq: 0 } }; // 같은 한국어 글은 다시 번역하지 않는다
 
-  async function syncRussian(force) {
-    const isInsta = blogChannel === 'instagram';
-    ruWrap.classList.toggle('hidden', !isInsta);
-    if (!isInsta) return;
+  async function translateTo(lang, force) {
     const src = shortText.value.trim();
-    if (!src) return;
-    if (!force && ruCache.src === src && ruCache.ru) { ruText.value = ruCache.ru; return; }
-    const seq = ++ruSeq;
-    ruText.value = '';
-    ruStatus.style.color = '';
-    ruStatus.textContent = '러시아어로 번역하고 있어요…';
+    const st = trState[lang];
+    const box = trEl('text', lang);
+    const status = trEl('status', lang);
+    if (!force && st.src === src && st.text) { box.value = st.text; return; }
+    const seq = ++st.seq;
+    box.value = '';
+    status.style.color = '';
+    status.textContent = `${TR_LANGS[lang]}로 번역하고 있어요…`;
     try {
       const res = await fetch('admin/translate-short', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ text: src })
+        body: JSON.stringify({ text: src, lang })
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
       if (!res.ok) throw new Error(body.error || '번역하지 못했습니다.');
-      if (seq !== ruSeq) return; // 그 사이 다른 글로 바뀌었으면 버린다
-      ruCache = { src, ru: body.ru };
-      ruText.value = body.ru;
-      ruStatus.textContent = body.engine === 'claude'
-        ? '번역을 마쳤어요. 러시아어를 아는 분께 한 번 확인받으면 더 안전해요.'
+      if (seq !== st.seq) return; // 그 사이 다른 글로 바뀌었으면 버린다
+      st.src = src;
+      st.text = body.text;
+      box.value = body.text;
+      status.textContent = body.engine === 'claude'
+        ? `번역을 마쳤어요. ${TR_LANGS[lang]}를 아는 분께 한 번 확인받으면 더 안전해요.`
         : '구글 번역으로 번역했어요 (Claude 키가 없거나 실패했어요). 어색한 부분이 있을 수 있으니 확인해 주세요.';
     } catch (e) {
-      if (seq !== ruSeq) return;
-      ruStatus.style.color = '#dc2626';
-      ruStatus.textContent = e.message || '번역하지 못했습니다.';
+      if (seq !== st.seq) return;
+      status.style.color = '#dc2626';
+      status.textContent = e.message || '번역하지 못했습니다.';
     }
   }
 
-  document.getElementById('short-ru-retry').addEventListener('click', () => syncRussian(true));
-  document.getElementById('short-ru-copy').addEventListener('click', () => copyPlain(ruText.value, '러시아어 글을 복사했습니다.'));
-  document.getElementById('short-both-copy').addEventListener('click', () => copyPlain(`${shortText.value.trim()}
+  // 인스타그램 탭일 때만 번역 칸을 보이고, 두 언어를 함께 번역한다
+  function syncTranslations(force) {
+    const isInsta = blogChannel === 'instagram';
+    trWrap.classList.toggle('hidden', !isInsta);
+    if (!isInsta || !shortText.value.trim()) return;
+    Object.keys(TR_LANGS).forEach((lang) => translateTo(lang, force));
+  }
 
-${ruText.value.trim()}`, '한국어와 러시아어를 함께 복사했습니다.'));
+  trWrap.addEventListener('click', (e) => {
+    const retry = e.target.closest('[data-tr-retry]');
+    const copy = e.target.closest('[data-tr-copy]');
+    const both = e.target.closest('[data-tr-both]');
+    if (retry) translateTo(retry.dataset.trRetry, true);
+    if (copy) copyPlain(trEl('text', copy.dataset.trCopy).value, `${TR_LANGS[copy.dataset.trCopy]} 글을 복사했습니다.`);
+    if (both) copyPlain(`${shortText.value.trim()}\n\n${trEl('text', both.dataset.trBoth).value.trim()}`, `한국어와 ${TR_LANGS[both.dataset.trBoth]}를 함께 복사했습니다.`);
+    if (e.target.closest('#short-all-copy')) {
+      copyPlain([shortText.value, trEl('text', 'ru').value, trEl('text', 'en').value].map((t) => t.trim()).filter(Boolean).join('\n\n'), '한국어·러시아어·영어를 함께 복사했습니다.');
+    }
+  });
 
   document.getElementById('short-copy').addEventListener('click', () => copyPlain(shortText.value, '복사했습니다. 붙여넣기(Ctrl+V) 하세요.'));
   document.getElementById('blog-regenerate').addEventListener('click', () => {
