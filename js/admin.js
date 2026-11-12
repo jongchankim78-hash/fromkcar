@@ -1019,6 +1019,7 @@
       const short = KCarBlog.generateShort(blogCar, blogChannel);
       shortText.value = short.text;
       document.getElementById('short-note').textContent = short.note;
+      syncRussian(false);
       return;
     }
     const chars = blogPreview.innerText.replace(/\s+/g, '').length;
@@ -1150,6 +1151,52 @@
   document.getElementById('blog-copy-tags').addEventListener('click', () => copyPlain(blogTags.value, '태그를 복사했습니다.'));
   document.getElementById('blog-copy-text').addEventListener('click', () => copyPlain(blogPreview.innerText, '텍스트를 복사했습니다.'));
   document.getElementById('blog-copy-body').addEventListener('click', copyRichBody);
+  /* ---------------- 인스타그램 글의 러시아어 번역 ---------------- */
+  const ruWrap = document.getElementById('short-ru-wrap');
+  const ruText = document.getElementById('short-text-ru');
+  const ruStatus = document.getElementById('short-ru-status');
+  let ruCache = { src: '', ru: '' }; // 같은 한국어 글은 다시 번역하지 않는다
+  let ruSeq = 0;
+
+  async function syncRussian(force) {
+    const isInsta = blogChannel === 'instagram';
+    ruWrap.classList.toggle('hidden', !isInsta);
+    if (!isInsta) return;
+    const src = shortText.value.trim();
+    if (!src) return;
+    if (!force && ruCache.src === src && ruCache.ru) { ruText.value = ruCache.ru; return; }
+    const seq = ++ruSeq;
+    ruText.value = '';
+    ruStatus.style.color = '';
+    ruStatus.textContent = '러시아어로 번역하고 있어요…';
+    try {
+      const res = await fetch('admin/translate-short', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ text: src })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401 && window.KCarAuth) { KCarAuth.clearToken(); KCarAuth.showGate(); return; }
+      if (!res.ok) throw new Error(body.error || '번역하지 못했습니다.');
+      if (seq !== ruSeq) return; // 그 사이 다른 글로 바뀌었으면 버린다
+      ruCache = { src, ru: body.ru };
+      ruText.value = body.ru;
+      ruStatus.textContent = body.engine === 'claude'
+        ? '번역을 마쳤어요. 러시아어를 아는 분께 한 번 확인받으면 더 안전해요.'
+        : '구글 번역으로 번역했어요 (Claude 키가 없거나 실패했어요). 어색한 부분이 있을 수 있으니 확인해 주세요.';
+    } catch (e) {
+      if (seq !== ruSeq) return;
+      ruStatus.style.color = '#dc2626';
+      ruStatus.textContent = e.message || '번역하지 못했습니다.';
+    }
+  }
+
+  document.getElementById('short-ru-retry').addEventListener('click', () => syncRussian(true));
+  document.getElementById('short-ru-copy').addEventListener('click', () => copyPlain(ruText.value, '러시아어 글을 복사했습니다.'));
+  document.getElementById('short-both-copy').addEventListener('click', () => copyPlain(`${shortText.value.trim()}
+
+${ruText.value.trim()}`, '한국어와 러시아어를 함께 복사했습니다.'));
+
   document.getElementById('short-copy').addEventListener('click', () => copyPlain(shortText.value, '복사했습니다. 붙여넣기(Ctrl+V) 하세요.'));
   document.getElementById('blog-regenerate').addEventListener('click', () => {
     if (!confirmDiscardEdits()) return;

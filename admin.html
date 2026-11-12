@@ -569,6 +569,20 @@
       <div id="blog-pane-short" class="hidden space-y-3">
         <p id="short-note" class="text-xs text-[var(--fk-gray-600)] leading-relaxed"></p>
         <textarea id="short-text" rows="16" class="fk-input" style="resize:vertical;"></textarea>
+
+        <!-- 인스타그램: 러시아어 번역 (한국어 글과 함께 만들어진다) -->
+        <div id="short-ru-wrap" class="hidden rounded-2xl border border-[var(--fk-gray-200)] p-3.5 space-y-2">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span class="text-sm font-bold text-[var(--fk-gray-800)]">🇷🇺 러시아어 번역</span>
+            <div class="flex gap-1.5 flex-wrap">
+              <button type="button" id="short-ru-retry" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-solid fa-rotate mr-1"></i>다시 번역</button>
+              <button type="button" id="short-ru-copy" class="btn-secondary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>러시아어만 복사</button>
+              <button type="button" id="short-both-copy" class="btn-primary !py-1.5 !px-3 text-xs"><i class="fa-regular fa-copy mr-1"></i>한국어 + 러시아어 복사</button>
+            </div>
+          </div>
+          <p id="short-ru-status" class="text-xs text-[var(--fk-gray-600)]"></p>
+          <textarea id="short-text-ru" rows="12" class="fk-input" style="resize:vertical;" placeholder="번역 중…"></textarea>
+        </div>
       </div>
 
       <!-- 대표 이미지 (네이버 블로그·인스타그램 탭에서 보인다) -->

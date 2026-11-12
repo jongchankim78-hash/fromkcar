@@ -735,6 +735,24 @@ const STORY_SYSTEM_PROMPT = `당신은 자동차 전문지에서 오래 일한 �
 - 마크다운 문법을 쓰지 않습니다.
 - 사장님의 "디렉션"이 있으면 말투, 관점, 강조할 점을 그 방향으로 맞추되, 위 정직성 규칙과 충돌하는 요구(확인할 수 없는 사실을 단정하라는 것 등)는 따르지 않고 사실의 범위 안에서 가장 가깝게 표현합니다. 디렉션이 없으면 에디터의 기본 시선으로 씁니다.`;
 
+// --- 인스타그램 글 러시아어 번역 ---------------------------------------------------------------------
+const TRANSLATE_SHORT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['russian'],
+  properties: { russian: { type: 'string' } }
+};
+
+const TRANSLATE_SHORT_PROMPT = `당신은 한국 중고차 수출 업체 "FROM K CAR"의 인스타그램 게시글을 러시아어로 옮기는 번역가입니다. 독자는 한국 중고차를 사려는 러시아어권(러시아·우즈베키스탄 등) 바이어입니다.
+
+규칙
+- 자연스럽고 간결한 러시아어 광고 문체로 번역합니다. 직역투를 피합니다.
+- 줄바꿈 구조, 이모지, 글머리 기호는 원문 그대로 유지합니다.
+- 전화번호, 숫자, 연식, 주행거리, 가격, URL, @계정, 브랜드·모델명(BMW, Range Rover 등)은 바꾸지 않습니다. "만원" 같은 한국 단위는 숫자와 함께 그대로 두거나 "млн вон"처럼 정확히 옮기되 금액을 환산하지 않습니다.
+- 원문에 없는 사실, 과장, 보증, 약속을 덧붙이지 않습니다. "무사고", "무도색"은 "без аварий", "без окраса"처럼 옮깁니다.
+- 해시태그(#)는 러시아어 해시태그로 옮기되 띄어쓰기 없이 한 단어로 쓰고(예: #автоизКореи), 브랜드·모델 이름은 원래 표기를 유지합니다. 개수는 원문과 비슷하게 맞춥니다.
+- 번역문 외의 설명은 쓰지 않습니다.`;
+
 function callClaudeStory(facts, direction) {
   const known = facts.known || {};
   const user = `브랜드: ${facts.brand}
@@ -1604,6 +1622,36 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: friendly });
     } finally {
       articleInFlight = false;
+    }
+  }
+
+  // 관리자 인스타그램 글의 러시아어 번역. Claude(마케팅 문체)를 우선 쓰고, 키가 없거나 실패하면 구글 번역으로 대신한다.
+  if (urlObj.pathname === '/admin/translate-short' && req.method === 'POST') {
+    if (!requireAuth(req, res)) return;
+    let body;
+    try {
+      body = await readRequestBody(req, 16384);
+    } catch (e) {
+      return sendJson(res, 400, { error: e.message });
+    }
+    const text = String((body && body.text) || '').trim().slice(0, 4000);
+    if (!text) return sendJson(res, 400, { error: '번역할 글이 없습니다.' });
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const out = await callClaudeJson({ system: TRANSLATE_SHORT_PROMPT, user: `다음 한국어 인스타그램 게시글을 러시아어로 번역해 주세요.\n\n${text}\n\n지정된 JSON 형식으로만 답하세요.`, schema: TRANSLATE_SHORT_SCHEMA, effort: 'low', maxTokens: 4000 });
+        const ru = String(out.russian || '').trim();
+        if (ru) return sendJson(res, 200, { ru, engine: 'claude' });
+      } catch (e) {
+        console.error('[translate-short] claude failed, falling back:', e.status || '', e.message);
+      }
+    }
+    try {
+      const ru = (await translateText(text, 'ru')).trim();
+      if (!ru) throw new Error('empty');
+      return sendJson(res, 200, { ru, engine: 'google' });
+    } catch (e) {
+      console.error('[translate-short]', e.message);
+      return sendJson(res, 502, { error: '러시아어 번역에 실패했어요. 잠시 후 다시 시도해 주세요.' });
     }
   }
 
